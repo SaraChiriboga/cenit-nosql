@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Seguimiento{% endblock %}
+
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<a href="{% url 'seguimiento_list' %}" class="hover:text-primary transition-colors">Seguimientos</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<span class="text-on-surface">{{ action }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-on-surface">{{ action }} seguimiento</h1>
+        <p class="text-on-surface-variant text-sm mt-1">Asigna un usuario a seguir a un artista</p>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6 flex flex-col gap-2">
+        {% for msg in messages %}
+        <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm">
+            <span class="material-symbols-outlined text-[18px]">error</span>{{ msg }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="glass-panel rounded-2xl p-8 flex flex-col gap-5">
+        {% csrf_token %}
+
+        <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Usuario *</label>
+            <select name="usuario" required
+                    class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
+                <option value="">— Seleccionar usuario —</option>
+                {% for u in usuarios %}
+                <option value="{{ u.idusuario }}">{{ u }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Artista *</label>
+            <select name="artista" required
+                    class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
+                <option value="">— Seleccionar artista —</option>
+                {% for a in artistas %}
+                <option value="{{ a.idartista }}">{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <a href="{% url 'seguimiento_list' %}"
+               class="px-5 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all text-sm font-medium">
+                Cancelar
+            </a>
+            <button type="submit"
+                    class="px-5 py-2.5 rounded-xl bg-secondary text-on-secondary text-sm font-medium hover:opacity-90 transition-all glow-cyan">
+                {{ action }}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

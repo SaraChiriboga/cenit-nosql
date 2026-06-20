@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Agregar Género{% endblock %}
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Catalog</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<a href="{% url 'genre_overview' %}" class="hover:text-primary transition-colors text-on-surface-variant">Géneros</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Agregar Género</span>
+{% endblock %}
+
+{% block content %}
+<style>
+    #fixed-bg {
+        position: fixed; inset: 0; z-index: -1;
+        background-color: #0B0C10;
+        background-image: radial-gradient(circle at 50% 0%, rgba(68, 226, 215, 0.15), transparent 60%);
+        background-size: cover; background-position: center;
+        background-attachment: fixed;
+        filter: blur(12px) brightness(0.9);
+        transform: scale(1.05);
+    }
+    #fixed-bg::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(to bottom, rgba(11, 12, 16, 0.8) 0%, rgba(11, 12, 16, 0.95) 100%);
+    }
+
+    .glass-ultra {
+        background: rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    input:focus, textarea:focus {
+        border-color: #2DD4BF !important;
+        box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.3) !important;
+        outline: none !important;
+    }
+</style>
+
+<div id="fixed-bg"></div>
+
+<div id="page-container" class="w-full min-h-[calc(100vh-64px)] p-8">
+    <div class="max-w-[1200px] mx-auto h-full flex flex-col">
+        <div class="mb-8">
+            <h1 class="text-4xl font-extrabold text-white">Nuevo Género</h1>
+            <p class="text-white/60">Registra una nueva categoría musical en CÉNIT.</p>
+        </div>
+
+        <form id="genre-form" >
+            {% csrf_token %}
+
+            <div class="md:col-span-2 space-y-6">
+                <div class="glass-ultra p-10 rounded-3xl grid grid-cols-1 gap-8 text-white">
+
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Nombre del Género</label>
+                        <input type="text" name="nombregenero" id="nombregenero"
+                               value="{{ nombre_sugerido|default:'' }}" required
+                               placeholder="Ej: Synthwave, Pop, Rock Alternativo..."
+                               class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30 text-lg font-bold placeholder:text-white/20">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Descripción (Opcional)</label>
+                        <textarea name="descripcion" id="descripcion" rows="5"
+                                  placeholder="Describe brevemente las características de este género musical..."
+                                  class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30 resize-none placeholder:text-white/20"></textarea>
+                    </div>
+
+                </div>
+
+                <div class="flex justify-end gap-6 pt-4">
+                    <a href="{% url 'genre_overview' %}" class="px-8 py-4 text-white/60 hover:text-white transition-all font-medium">Cancelar</a>
+                    <button type="submit" id="btn-submit"
+                            class="px-12 py-4 bg-secondary text-black font-bold rounded-xl hover:scale-105 transition-all shadow-lg shadow-secondary/20 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[20px]">save</span>
+                        Guardar Género
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    var CSRF_TOKEN = '{{ csrf_token }}';
+
+    // Manejo de Guardado AJAX
+    document.getElementById('genre-form').onsubmit = async (e) => {
+        e.preventDefault();
+
+        const btn = document.getElementById('btn-submit');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> Guardando...';
+        btn.disabled = true;
+
+        const form = e.target;
+        const formData = new FormData(form);
+
+        try {
+            const res = await fetch("{% url 'add_genre' %}", {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': CSRF_TOKEN }
+            });
+
+            const data = await res.json();
+            showToast(data.message, data.status);
+
+            if (data.status === 'success') {
+                form.reset();
+            }
+        } catch (error) {
+            showToast("Error crítico al comunicarse con el servidor", "error");
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    };
+
+    // Sistema de Toasts
+    function showToast(message, status) {
+        const isSuccess = status === 'success';
+        const toast = document.createElement('div');
+        toast.className = `fixed top-20 right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-lg border ${
+            isSuccess
+                ? 'border-secondary/30 bg-surface-container text-secondary'
+                : 'border-red-500/30 bg-surface-container text-red-400'
+        } shadow-2xl backdrop-blur-md`;
+
+        toast.innerHTML = `
+            <span class="material-symbols-outlined text-[20px]">${isSuccess ? 'check_circle' : 'error'}</span>
+            <div>
+                <p class="text-xs font-black uppercase tracking-widest opacity-60">${isSuccess ? 'Éxito' : 'Error'}</p>
+                <p class="text-sm font-bold">${message}</p>
+            </div>
+        `;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.transition = 'opacity 0.3s';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    }
+</script>
+{% endblock %}

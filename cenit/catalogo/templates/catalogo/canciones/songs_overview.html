@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Canciones{% endblock %}
+
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Catalog</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Canciones</span>
+{% endblock %}
+
+{% block content %}
+<section class="mb-12">
+    <div class="glass-panel rounded-xl overflow-hidden flex flex-col">
+
+        <!-- CABECERA Y FILTROS -->
+        <div class="p-6 border-b border-white/5 flex flex-col lg:flex-row justify-between items-center gap-4 relative z-20">
+            <div class="flex flex-col lg:flex-row items-center gap-4 w-full lg:w-auto">
+                <h2 class="font-headline-md text-headline-md text-primary shrink-0">Canciones</h2>
+
+                <form id="filter-form" method="GET" action="" class="relative flex-1 flex flex-col md:flex-row gap-3 w-full">
+
+                    <!-- Búsqueda General -->
+                    <div class="relative w-full md:w-56 lg:w-48">
+                        <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                            <span class="material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+                        </div>
+                        <input name="q" value="{{ request.GET.q }}" class="w-full bg-surface-container border border-outline-variant/20 rounded-md pl-10 pr-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md placeholder:text-on-surface-variant/50" placeholder="Search tracks..." type="text" onchange="document.getElementById('filter-form').submit();"/>
+                    </div>
+
+                    <!-- Filtro por Estado -->
+                    <select name="estado" class="w-full md:w-48 bg-surface-container border border-outline-variant/20 rounded-md px-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md cursor-pointer" onchange="document.getElementById('filter-form').submit();">
+                        <option value="">Todos los estados</option>
+                        <option value="Publicada" {% if request.GET.estado == 'Publicada' %}selected{% endif %}>Publicada</option>
+                        <option value="Programada" {% if request.GET.estado == 'Programada' %}selected{% endif %}>Programada</option>
+                        <option value="Borrador" {% if request.GET.estado == 'Borrador' %}selected{% endif %}>Borrador</option>
+                    </select>
+
+                    <!-- Ordenamiento -->
+                    <select name="orden" class="w-full md:w-48 bg-surface-container border border-outline-variant/20 rounded-md px-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md cursor-pointer" onchange="document.getElementById('filter-form').submit();">
+                        <option value="desc" {% if request.GET.orden == 'desc' %}selected{% endif %}>Más recientes</option>
+                        <option value="asc" {% if request.GET.orden == 'asc' %}selected{% endif %}>Más antiguas</option>
+                    </select>
+
+                    <button type="submit" class="hidden"></button>
+                </form>
+            </div>
+
+            <!-- Botones Originales -->
+            <div class="flex gap-2 shrink-0 w-full lg:w-auto justify-end">
+                <a href="{% url 'add_track' %}" class="bg-primary-container text-on-primary-container font-label-sm text-label-sm px-4 py-2 rounded-md transition-all font-bold">
+                    Add Track
+                </a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold">Song ID</th>
+                        <th class="px-6 py-4 font-semibold">Title</th>
+                        <th class="px-6 py-4 font-semibold">Release Date</th>
+                        <th class="px-6 py-4 font-semibold">Status</th>
+                        <th class="px-6 py-4 font-semibold text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for cancion in canciones %}
+                    <tr class="hover:bg-white/5 transition-colors group">
+
+                        <td class="px-6 py-4 font-mono text-on-surface-variant text-[13px]">
+                            TRK-{{ cancion.idcancion }}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded bg-white/10 overflow-hidden shrink-0">
+                                    {% if cancion.urlportada %}
+                                        <img alt="Album Art" class="w-full h-full object-cover" src="{{ cancion.urlportada }}"/>
+                                    {% else %}
+                                        <div class="w-full h-full bg-surface-container flex items-center justify-center text-on-surface-variant text-[10px] uppercase font-bold">No img</div>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="font-body-md text-body-md flex items-center gap-2 text-on-surface">
+                                        {{ cancion.titulocancion }}
+                                        {% if cancion.esexplicita %}
+                                            <span class="bg-error/20 text-error text-[10px] px-1 py-0.5 rounded uppercase font-bold">E</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-on-surface-variant text-[12px]">{{ cancion.album.tituloalbum|default:"Desconocido" }}</div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="px-6 py-4 text-on-surface-variant text-label-md">
+                            {{ cancion.album.fechalanzamiento|date:"M d, Y"|default:"---" }}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            {% if cancion.estadopublicacion == 'Publicada' or cancion.estadopublicacion == 'Published' or cancion.estadopublicacion == 'PUBLICADA' %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-secondary/10 text-secondary border border-secondary/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Publicada
+                                </span>
+                            {% elif cancion.estadopublicacion == 'Programada' %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-red-500/10 text-red-400 border border-red-500/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Programada
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span> {{ cancion.estadopublicacion|default:"Borrador" }}
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="javascript:void(0);"
+                                   onclick="navegarSinCortes('{% url 'read_track' cancion.idcancion %}')"
+                                   class="p-2 text-on-surface-variant hover:text-primary transition-colors"
+                                   title="View details">
+                                    <span class="material-symbols-outlined text-[20px]">visibility</span>
+                                </a>
+
+                                <a href="javascript:void(0);"
+                                   onclick="navegarSinCortes('{% url 'edit_track' cancion.idcancion %}')"
+                                   class="p-2 text-on-surface-variant hover:text-primary transition-colors"
+                                   title="Editar Canción">
+                                    <span class="material-symbols-outlined">edit</span>
+                                </a>
+
+                                <button onclick="showDeleteModal('{{ cancion.idcancion }}', '{{ cancion.titulocancion|escapejs }}')"
+                                        class="p-2 text-on-surface-variant hover:text-primary transition-colors"
+                                        title="Eliminar">
+                                    <span class="material-symbols-outlined">delete</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-on-surface-variant border-none">
+                            <span class="material-symbols-outlined text-4xl mb-3 opacity-50">music_off</span>
+                            <div class="font-body-md text-on-surface">No hay tracks en el catálogo</div>
+                            <div class="text-sm mt-1">Conecta la base de datos o añade un nuevo track manualmente.</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="p-4 border-t border-white/5 flex justify-between items-center text-on-surface-variant font-label-sm text-label-sm">
+            <div>Mostrando {{ canciones.count }} tracks</div>
+            <div class="flex gap-2">
+                <button class="px-4 py-1.5 rounded border border-white/10 hover:bg-white/5 transition-all disabled:opacity-50" disabled>Previous</button>
+                <button class="px-4 py-1.5 rounded border border-white/10 hover:bg-white/5 transition-all">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity">
+        <div class="glass-ultra p-8 rounded-3xl w-full max-w-sm text-center border border-white/10 shadow-2xl transform transition-transform scale-95" id="delete-modal-content">
+            <span class="material-symbols-outlined text-5xl text-red-500 mb-4">delete_forever</span>
+
+            <h2 id="delete-modal-title" class="text-xl font-bold text-white mb-2">¿Eliminar canción?</h2>
+
+            <p class="text-white/60 mb-8 text-sm">Esta acción no se puede deshacer. ¿Estás seguro de que quieres borrar permanentemente este track?</p>
+
+            <div class="flex gap-4">
+                <button onclick="closeModal()" class="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all">
+                    Cancelar
+                </button>
+                <button id="btn-confirm-delete" onclick="confirmDelete()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                    Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+<script>
+    const CSRF = '{{ csrf_token }}';
+    let trackToDeleteId = null;
+
+    // 1. Mostrar Modal y setear datos
+    function showDeleteModal(id, titulo) {
+        trackToDeleteId = id;
+        document.getElementById('delete-modal-title').textContent = `¿Eliminar "${titulo}"?`;
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        setTimeout(() => {
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }, 10);
+    }
+
+    // 2. Cerrar Modal
+    function closeModal() {
+        trackToDeleteId = null;
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 150);
+    }
+
+    // 3. Confirmar Eliminación
+    async function confirmDelete() {
+        if (!trackToDeleteId) return;
+        const btn = document.getElementById('btn-confirm-delete');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> Borrando...';
+
+        try {
+            const res = await fetch(`/catalogo/canciones/${trackToDeleteId}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF }
+            });
+
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                alert('Error al eliminar el track.');
+                closeModal();
+            }
+        } catch (error) {
+            alert('Error de red al intentar eliminar.');
+            closeModal();
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Eliminar';
+        }
+    }
+</script>
+{% endblock %}

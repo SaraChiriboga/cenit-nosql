@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Top 10 Mensual{% endblock %}
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Catalog</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Top 10 Mensual</span>
+{% endblock %}
+
+{% block content %}
+<style>
+    @media print {
+        @page { size: A4 portrait; margin: 0; }
+        body, html { background: #ffffff !important; color: #000000 !important; }
+        aside, header, .no-print, .breadcrumb, #edit-banner { display: none !important; }
+        main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+        
+        .print-header { display: flex !important; }
+        .glass-panel { background: #ffffff !important; border: none !important; box-shadow: none !important; border-radius: 0 !important; margin: 0 40px !important;}
+        
+        table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; }
+        th { background-color: #1a1b20 !important; color: #45F3FF !important; border: none !important; }
+        td { border-bottom: 1px solid #e5e7eb !important; color: #374151 !important; }
+        .rank-number { color: #00c5bb !important; }
+    }
+</style>
+
+<div class="w-full">
+    <div class="hidden print-header justify-between items-center bg-[#0B0C10] p-12 text-white mb-10 w-full">
+        <div class="flex-1">
+            <img src="data:image/png;base64,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" alt="Logo" class="h-10 mb-4">
+            <div class="text-[10pt] text-[#bac9ca] leading-relaxed">
+                <strong>Universidad de las Américas</strong><br>
+                Campus UdlaPark, Vía a Nayón<br>
+                Quito 170124, Ecuador
+            </div>
+        </div>
+        <div class="text-right">
+            <div class="text-4xl font-bold uppercase tracking-widest text-[#45F3FF]">REPORTE</div>
+            <div class="text-sm font-medium uppercase tracking-widest">TOP 10 POPULARIDAD MENSUAL</div>
+        </div>
+    </div>
+
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-white/5 pb-6 no-print">
+        <div>
+            <h1 class="text-4xl font-extrabold text-white flex items-center gap-3">
+                Ranking de Reproducciones
+            </h1>
+            <p class="text-on-surface-variant mt-2 text-sm">Las 10 pistas musicales con mayor volumen de escuchas activas consolidadas a la fecha.</p>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <button onclick="window.print()" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 text-sm font-medium transition-all">
+                <span class="material-symbols-outlined text-[18px]">print</span> Imprimir
+            </button>
+            <a href="{% url 'exportar_top_10_pdf' %}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-secondary text-black hover:scale-105 rounded-xl text-sm font-bold transition-transform shadow-lg shadow-secondary/10">
+                <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> Descargar PDF
+            </a>
+            <button onclick="window.enviarReporteCorreo('{% url 'enviar_top_10_correo' %}')" id="btn-mail" class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl border border-primary/20 text-sm font-medium transition-all">
+                <span class="material-symbols-outlined text-[18px]">send</span> Enviar Email
+            </button>
+        </div>
+    </div>
+
+    <div class="glass-panel rounded-3xl overflow-hidden border border-white/5 shadow-2xl print:border-none print:shadow-none print:rounded-none">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-black/40 text-on-surface-variant text-xs uppercase tracking-wider font-bold">
+                    <th class="p-5 font-semibold text-center w-20">Rank</th>
+                    <th class="p-5 font-semibold">Canción</th>
+                    <th class="p-5 font-semibold">Artista Principal</th>
+                    <th class="p-5 font-semibold text-right">Escuchas</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5 text-sm text-white/90 print:divide-gray-200">
+                {% for c in canciones %}
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="p-5 text-center font-black text-secondary text-lg rank-number">#{{ forloop.counter }}</td>
+                    <td class="p-5 font-bold text-white print:text-black">{{ c.tituloCancion }}</td>
+                    <td class="p-5 text-white/70 print:text-gray-600">{{ c.nombreArtistico }}</td>
+                    <td class="p-5 text-right font-mono text-primary print:text-black font-bold">{{ c.total_escuchas_mes }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="p-12 text-center text-on-surface-variant italic">Datos insuficientes para generar el ranking en este momento.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    window.enviarReporteCorreo = async function(url) {
+        var btn = document.getElementById('btn-mail');
+        var oldHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Procesando...';
+        
+        try {
+            var res = await fetch(url);
+            var data = await res.json();
+            alert(data.status === 'success' ? '¡Éxito! ' + data.message : 'Error: ' + data.message);
+        } catch(e) {
+            alert('Error de conexión con el servidor de correo.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = oldHtml;
+        }
+    }
+</script>
+{% endblock %}

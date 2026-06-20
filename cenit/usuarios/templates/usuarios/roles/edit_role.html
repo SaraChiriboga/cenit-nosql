@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Rol{% endblock %}
+
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Users & Access</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<a href="{% url 'roles_overview' %}" class="hover:text-primary transition-colors text-on-surface-variant">Roles</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Editar ROL-{{ rol.idRol }}</span>
+{% endblock %}
+
+{% block content %}
+<style>
+    #fixed-bg {
+        position: fixed; inset: 0; z-index: -1;
+        background-color: #0B0C10;
+        background: radial-gradient(circle at 50% 0%, #1f2833 0%, #0B0C10 70%);
+        background-attachment: fixed;
+    }
+    #fixed-bg::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(to bottom, rgba(11, 12, 16, 0.75) 0%, rgba(11, 12, 16, 0.90) 100%);
+    }
+    .glass-ultra {
+        background: rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(40px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+</style>
+
+<div id="fixed-bg"></div>
+
+<div class="w-full min-h-[calc(100vh-64px)] p-8">
+    <div class="max-w-3xl mx-auto">
+        <div class="mb-8">
+            <h1 class="text-4xl font-extrabold text-white">Editar Asignación</h1>
+            <p class="text-white/60">Modifica el nivel de acceso de <span class="font-bold text-white">{{ rol.usuario_nombre }}</span>.</p>
+        </div>
+
+        <form id="edit-role-form" class="glass-ultra p-10 rounded-3xl space-y-8">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Campo Bloqueado -->
+                <div>
+                    <label class="block text-xs font-bold text-white/60 uppercase mb-2">Usuario Asociado</label>
+                    <input type="text" value="{{ rol.usuario_nombre }}" disabled
+                           class="w-full bg-black/30 border border-white/5 rounded-xl p-4 text-white/50 cursor-not-allowed font-bold">
+                </div>
+
+                <!-- Selector de Rol -->
+                <div>
+                    <label class="block text-xs font-bold text-white/60 uppercase mb-2">Nuevo Nivel de Acceso</label>
+                    <select name="nombreRol" required
+                            class="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white outline-none focus:ring-2 ring-secondary/30 text-lg">
+                        <option value="Usuario" {% if rol.nombreRol == 'Usuario' %}selected{% endif %}>Usuario Estándar</option>
+                        <option value="Analista" {% if rol.nombreRol == 'Analista' %}selected{% endif %}>Analista de Datos</option>
+                        <option value="Administrador" {% if rol.nombreRol == 'Administrador' %}selected{% endif %}>Administrador del Sistema</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-6 pt-4 border-t border-white/10">
+                <a href="{% url 'roles_overview' %}" class="px-8 py-4 text-white/60 hover:text-white transition-all font-bold">Cancelar</a>
+                <button type="submit" id="btn-submit"
+                        class="px-12 py-4 bg-secondary text-background font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-secondary/20">
+                    Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById('edit-role-form');
+    const btn = document.getElementById('btn-submit');
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Procesando...';
+
+        const res = await fetch("{% url 'edit_role' rol.idRol %}", {
+            method: 'POST',
+            body: new FormData(form),
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        });
+
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            window.location.href = "{% url 'roles_overview' %}";
+        } else {
+            alert(data.message || "Error al actualizar.");
+            btn.disabled = false;
+            btn.innerHTML = 'Guardar Cambios';
+        }
+    };
+</script>
+{% endblock %}

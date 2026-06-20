@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Informe B — Vencimientos próximos{% endblock %}
+
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<span class="text-on-surface">Suscripciones a vencer</span>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <div class="flex items-center gap-3 mb-1">
+            <span class="px-2 py-0.5 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs font-medium">Informe B</span>
+            <h1 class="text-2xl font-semibold text-on-surface">Suscripciones a vencer en 5 días</h1>
+        </div>
+        <p class="text-on-surface-variant text-sm">
+            Desde <span class="text-on-surface">{{ hoy|date:"d/m/Y" }}</span>
+            hasta <span class="text-on-surface">{{ limite|date:"d/m/Y" }}</span>
+            · {{ proximas|length }} resultado{{ proximas|length|pluralize:"s" }}
+        </p>
+    </div>
+</div>
+
+{% if proximas %}
+<div class="glass-panel rounded-2xl overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-white/5 text-on-surface-variant text-xs uppercase tracking-wider">
+                <th class="text-left px-6 py-4 font-medium">ID</th>
+                <th class="text-left px-6 py-4 font-medium">Usuario</th>
+                <th class="text-left px-6 py-4 font-medium">Plan</th>
+                <th class="text-left px-6 py-4 font-medium">Fecha inicio</th>
+                <th class="text-left px-6 py-4 font-medium">Vence</th>
+                <th class="text-left px-6 py-4 font-medium">Días restantes</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+            {% for s in proximas %}
+            {% with dias=s.fechafin|timeuntil %}
+            <tr class="hover:bg-white/3 transition-colors">
+                <td class="px-6 py-4 text-on-surface-variant font-mono">{{ s.idsuscripcion }}</td>
+                <td class="px-6 py-4 text-on-surface">{{ s.usuario|default:"—" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ s.tiposuscripcion }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ s.fechainicio|date:"d/m/Y" }}</td>
+                <td class="px-6 py-4 font-medium text-yellow-400">{{ s.fechafin|date:"d/m/Y" }}</td>
+                <td class="px-6 py-4">
+                    <span class="flex items-center gap-1.5 text-yellow-400 text-xs font-medium">
+                        <span class="material-symbols-outlined text-[16px]">schedule</span>
+                        {{ dias }}
+                    </span>
+                </td>
+            </tr>
+            {% endwith %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="glass-panel rounded-2xl p-16 text-center">
+    <span class="material-symbols-outlined text-[48px] block mb-3 text-green-400 opacity-60">check_circle</span>
+    <p class="text-on-surface font-medium">Sin vencimientos próximos</p>
+    <p class="text-on-surface-variant text-sm mt-1">No hay suscripciones activas que venzan en los próximos 5 días.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,678 @@
+{% extends "base.html" %}
+
+{% block title %} Agregar Canción{% endblock %}
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Catalog</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Canciones</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Agregar Canción</span>
+{% endblock %}
+{% block content %}
+<style>
+    #fixed-bg {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background-color: #0B0C10;
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        transition: background-image 1s ease-in-out;
+        filter: blur(12px) brightness(0.9);
+        transform: scale(1.05);
+    }
+    #fixed-bg::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, rgba(11, 12, 16, 0.75) 0%, rgba(11, 12, 16, 0.90) 100%);
+    }
+
+    .glass-ultra {
+        background: rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    #custom-player { display: none; }
+    #custom-player.active { display: block; }
+
+    #progress-bar {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 4px;
+        border-radius: 99px;
+        background: rgba(255,255,255,0.15);
+        outline: none;
+        cursor: pointer;
+    }
+    #progress-bar::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--color-secondary, #2DD4BF);
+        cursor: pointer;
+        box-shadow: 0 0 6px rgba(45,212,191,0.6);
+    }
+    #progress-bar::-moz-range-thumb {
+        width: 12px; height: 12px;
+        border-radius: 50%;
+        background: var(--color-secondary, #2DD4BF);
+        border: none; cursor: pointer;
+    }
+
+    #btn-play-pause {
+        width: 40px; height: 40px;
+        border-radius: 50%;
+        background: var(--color-secondary, #2DD4BF);
+        border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        transition: transform 0.15s ease, filter 0.15s;
+    }
+    #btn-play-pause:hover { filter: brightness(1.15); transform: scale(1.08); }
+    #btn-play-pause .material-symbols-outlined { font-size: 22px; color: #0B0C10; user-select: none; }
+
+    .preview-badge {
+        font-size: 10px; font-weight: 700;
+        letter-spacing: 0.08em;
+        color: rgba(255,255,255,0.35);
+        text-transform: uppercase;
+    }
+
+    /* Logo Spotify SVG inline */
+    .spotify-logo { width: 20px; height: 20px; flex-shrink: 0; }
+
+    /* Forzar el estilo de borde en el foco para tu buscador */
+    #search_input:focus {
+        outline: none !important;
+        border: none !important;
+        box-shadow: none !important; /* Elimina sombras por defecto */
+    }
+
+    /* Asegurar el borde aquamarina en el contenedor padre si es necesario */
+    .search-container-custom:focus-within {
+        border: 1px solid #2DD4BF !important;
+        box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.2) !important;
+    }
+
+    /* Eliminar estilos por defecto del sistema */
+    input[type="checkbox"] {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.4rem;
+        cursor: pointer;
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        background-color: transparent;
+    }
+
+    /* Estado marcado: Fondo aquamarina */
+    input[type="checkbox"]:checked {
+        background-color: #2DD4BF !important;
+        border-color: #2DD4BF !important;
+    }
+
+    /* El check blanco (evita que se superponga el check nativo) */
+    input[type="checkbox"]:checked::after {
+        color: #0B0C10; /* Color del tick */
+        font-weight: 900;
+        font-size: 1rem;
+    }
+
+    /* Aplicar estilo turquesa a todos los inputs y selects al hacer clic */
+    input:not(#search_input):focus,
+    select:focus,
+    textarea:focus {
+        border-color: #2DD4BF !important;
+        box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.3) !important;
+        outline: none !important;
+    }
+
+    .error-link { color: #FFB4AB !important; text-decoration: underline; font-weight: bold; cursor: pointer; }
+    .status-msg { font-size: 0.75rem; margin-top: 0.5rem; color: rgba(255, 255, 255, 0.6); min-height: 1rem; }
+
+    select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.2em;
+    padding-right: 2.5rem !important; /* Espacio para que el texto no choque con la flecha */
+    cursor: pointer;
+}
+
+/* Efecto al pasar el mouse */
+select:hover {
+    border-color: rgba(45, 212, 191, 0.5) !important;
+}
+
+/* Asegurar que el texto dentro sea legible */
+select option {
+    background-color: #1A1B20;
+    color: white;
+    padding: 10px;
+}
+</style>
+
+<div id="fixed-bg"></div>
+
+<div id="page-container" class="w-full min-h-[calc(100vh-64px)] p-8">
+    <div class="max-w-[1800px] mx-auto h-full flex flex-col">
+        <div class="mb-8">
+            <h1 class="text-4xl font-extrabold text-white">Nueva Canción</h1>
+            <p class="text-white/60">Registra metadatos de activos en CÉNIT.</p>
+        </div>
+
+        <form method="POST" class="grid grid-cols-1 xl:grid-cols-4 gap-8 h-full">
+            {% csrf_token %}
+
+            <!-- Columna izquierda -->
+            <div class="xl:col-span-1 space-y-4">
+                <div class="aspect-square w-full rounded-3xl border border-white/10 glass-ultra flex items-center justify-center overflow-hidden shadow-2xl relative">
+                    <img id="track-image" src="" class="w-full h-full object-cover hidden">
+                    <span id="icon-empty" class="material-symbols-outlined text-7xl text-white/20">image</span>
+                </div>
+                <!-- url de Spotify oculto -->
+                {% csrf_token %}
+                <input type="hidden" name="spotify_url" id="spotify_url">
+                <!-- Reproductor custom -->
+                <div id="custom-player" class="glass-ultra rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="preview-badge">Vista previa · 30s</span>
+                        <span id="time-display" class="text-xs text-white/40 font-mono">0:00 / 0:30</span>
+                    </div>
+                    <input type="range" id="progress-bar" min="0" max="100" value="0" step="0.1">
+                    <div class="flex items-center gap-3">
+                        <button type="button" id="btn-play-pause">
+                            <span class="material-symbols-outlined" id="play-icon">play_arrow</span>
+                        </button>
+                        <div class="min-w-0">
+                            <p id="player-title" class="text-white text-sm font-bold truncate"></p>
+                            <p id="player-artist" class="text-white/50 text-xs truncate"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="text" name="urlportada" id="urlportada" placeholder="URL de la portada..."
+                       class="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white outline-none focus:border-secondary"
+                       oninput="applyStyles(this.value)">
+            </div>
+
+            <!-- Columna derecha -->
+            <div class="xl:col-span-3 space-y-6">
+
+                <div class="p-4 bg-black/40 rounded-2xl border border-white/10 flex gap-4 items-center backdrop-blur-md">
+                    <svg class="spotify-logo ml-2" viewBox="0 0 24 24" fill="#1DB954" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                    </svg>
+
+                    <input type="text" id="search_input" placeholder="Buscar en Spotify para autocompletado..."
+                           class="flex-1 bg-transparent border-none text-white placeholder:text-white/40 outline-none">
+                    <button type="button" id="btn-search"
+                            class="bg-secondary text-background px-10 rounded-xl font-bold hover:brightness-110 transition-all">
+                        Buscar
+                    </button>
+                </div>
+
+                <div class="glass-ultra p-10 rounded-3xl grid grid-cols-1 md:grid-cols-2 gap-8 text-white">
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Título de Canción</label>
+                        <input type="text" name="titulocancion" id="titulocancion" required
+                               class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Artista (Autocompletado)</label>
+                        <input type="text" id="artist_name" name="artista" disabled
+                               class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30 opacity-50 cursor-not-allowed" placeholder="Se asigna en colaboradores">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Álbum</label>
+                        <select name="album" id="album-select" required class="native-select w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30">
+                            <option value="">Seleccione un álbum</option>
+                            {% for album in albumes %}<option value="{{ album.idalbum }}">{{ album.tituloalbum }}</option>{% endfor %}
+                        </select>
+                        <div id="album-msg" class="status-msg"></div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Género</label>
+                        <select name="genero" id="genero-select" class="native-select w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30">
+                            {% for genero in generos %}<option value="{{ genero.idgenero }}">{{ genero.nombregenero }}</option>{% endfor %}
+                        </select>
+                        <div id="genero-msg" class="status-msg"></div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Duración (seg)</label>
+                        <div class="w-full bg-black/30 border border-white/10 rounded-xl flex items-center overflow-hidden focus-within:ring-2 focus-within:ring-secondary/30 transition-all">
+                            <input type="number" name="duracionseg" id="duracionseg"
+                                   class="flex-1 bg-transparent border-none outline-none text-white p-4 m-0 w-full"
+                                   oninput="window.livePreviewDuration(this.value, 'add-preview-span')">
+                            <div class="pr-4 pl-2 flex items-center justify-center pointer-events-none">
+                                <span id="add-preview-span" class="font-sans text-secondary font-bold tracking-wide text-sm">0:00</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-end pb-2">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" name="esexplicita" id="esexplicita"
+                                   class="w-6 h-6 rounded border-white/20 bg-black/30 accent-secondary">
+                            <span class="font-bold text-white/80">Contenido Explícito (E)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="glass-ultra p-10 rounded-3xl text-white">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-sm font-semibold text-white/50 uppercase tracking-wider flex items-center gap-2">
+                                <span class="material-symbols-outlined text-base">group</span>
+                                COLABORADORES
+                            </h3>
+                            <p class="text-xs text-white/40 mt-1">Añade los artistas vinculados a esta pista</p>
+                        </div>
+                        <button type="button" onclick="addColabRow()" class="flex items-center gap-2 px-4 py-2 bg-secondary/10 hover:bg-secondary/20 text-secondary border border-secondary/30 rounded-xl transition-colors text-sm font-bold">
+                            <span class="material-symbols-outlined text-[18px]">add</span>
+                            Añadir Colaborador
+                        </button>
+                    </div>
+
+                    <div id="colabs-container" class="space-y-3">
+                        <div class="colab-row flex items-center gap-4">
+                            <select name="colab_artistas" class="native-select flex-1 bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30 text-white text-sm">
+                                <option value="" disabled selected>Seleccione artista principal...</option>
+                                {% for a in artistas %}
+                                <option value="{{ a.idartista }}">{{ a.nombreartistico }}</option>
+                                {% endfor %}
+                            </select>
+                            <select name="colab_roles" class="native-select w-1/3 bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30 text-white text-sm">
+                                <option value="Principal" selected>Principal</option>
+                                <option value="Invitado">Invitado</option>
+                                <option value="Remixer">Remixer</option>
+                            </select>
+                            <button type="button" onclick="this.closest('.colab-row').remove()" class="p-4 text-white/40 hover:text-red-400 bg-black/30 hover:bg-red-500/10 border border-white/10 rounded-xl transition-all">
+                                <span class="material-symbols-outlined text-[20px]">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-6 pt-4">
+                    <a href="{% url 'songs_overview' %}" class="px-8 py-4 text-white/60 hover:text-white transition-all">Cancelar</a>
+                    <button type="submit"
+                            class="px-12 py-4 bg-secondary text-background font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-secondary/20">
+                        Guardar Track
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal resultados con logo Spotify en header -->
+<div id="results-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-4">
+    <div class="bg-black/90 w-full max-w-lg rounded-3xl p-8 border border-white/10">
+
+        <!-- Header del modal con logo -->
+        <div class="flex items-center gap-3 mb-6">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#1DB954" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+            </svg>
+            <div>
+                <h3 class="text-white font-bold text-xl leading-none">Resultados</h3>
+                <p class="text-white/30 text-xs mt-0.5">vía Spotify</p>
+            </div>
+        </div>
+
+        <div id="results-list" class="space-y-3 max-h-96 overflow-y-auto"></div>
+        <button onclick="document.getElementById('results-modal').classList.add('hidden')"
+                class="mt-8 w-full py-3 bg-white/5 rounded-xl font-bold text-white/70 hover:bg-white/10">
+            Cerrar
+        </button>
+    </div>
+</div>
+
+<div id="toast-container" class="fixed top-20 right-8 z-[100] flex flex-col gap-2">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="glass-ultra px-6 py-4 rounded-xl border-l-4 border-{{ message.tags }} flex items-center gap-3 animate-in fade-in slide-in-from-right-4">
+                <span class="material-symbols-outlined text-{{ message.tags }}">
+                    {% if message.tags == 'success' %}check_circle{% else %}error{% endif %}
+                </span>
+                <span class="text-white font-bold">{{ message }}</span>
+            </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<audio id="audio-el" preload="none"></audio>
+
+<script>
+    const fixedBg      = document.getElementById('fixed-bg');
+    const trackImg     = document.getElementById('track-image');
+    const iconEmpty    = document.getElementById('icon-empty');
+    const audioEl      = document.getElementById('audio-el');
+    const customPlayer = document.getElementById('custom-player');
+    const progressBar  = document.getElementById('progress-bar');
+    const btnPlay      = document.getElementById('btn-play-pause');
+    const playIcon     = document.getElementById('play-icon');
+    const timeDisplay  = document.getElementById('time-display');
+    const playerTitle  = document.getElementById('player-title');
+    const playerArtist = document.getElementById('player-artist');
+
+    function fmtTime(s) {
+        const m = Math.floor(s / 60);
+        const sec = Math.floor(s % 60).toString().padStart(2, '0');
+        return `${m}:${sec}`;
+    }
+
+    function applyStyles(url) {
+        if (url && url.length > 5) {
+            fixedBg.style.backgroundImage = `url('${url}')`;
+            trackImg.src = url;
+            trackImg.classList.remove('hidden');
+            iconEmpty.classList.add('hidden');
+        } else {
+            fixedBg.style.backgroundImage = 'none';
+            trackImg.classList.add('hidden');
+            iconEmpty.classList.remove('hidden');
+        }
+    }
+
+    function loadPreview(previewUrl, title, artist) {
+        const hasPreview = previewUrl && previewUrl !== 'null' && previewUrl !== 'undefined';
+        if (hasPreview) {
+            audioEl.pause();
+            audioEl.src = previewUrl;
+            audioEl.load();
+            customPlayer.classList.add('active');
+            playIcon.textContent = 'play_arrow';
+            progressBar.value = 0;
+            timeDisplay.textContent = '0:00 / 0:30';
+            playerTitle.textContent  = title  || '';
+            playerArtist.textContent = artist || '';
+        } else {
+            audioEl.pause();
+            audioEl.src = '';
+            customPlayer.classList.remove('active');
+        }
+    }
+
+    btnPlay.addEventListener('click', () => {
+        if (audioEl.paused) { audioEl.play(); playIcon.textContent = 'pause'; }
+        else { audioEl.pause(); playIcon.textContent = 'play_arrow'; }
+    });
+
+    audioEl.addEventListener('timeupdate', () => {
+        if (!audioEl.duration) return;
+        progressBar.value = (audioEl.currentTime / audioEl.duration) * 100;
+        timeDisplay.textContent = `${fmtTime(audioEl.currentTime)} / ${fmtTime(audioEl.duration)}`;
+    });
+
+    progressBar.addEventListener('input', () => {
+        if (!audioEl.duration) return;
+        audioEl.currentTime = (progressBar.value / 100) * audioEl.duration;
+    });
+
+    audioEl.addEventListener('ended', () => {
+        playIcon.textContent = 'play_arrow';
+        progressBar.value = 0;
+        timeDisplay.textContent = `0:00 / ${fmtTime(audioEl.duration)}`;
+    });
+
+    document.getElementById('btn-search').onclick = async () => {
+        const q = document.getElementById('search_input').value;
+        const list = document.getElementById('results-list');
+        list.innerHTML = '<p class="text-white/50 text-center py-4">Buscando...</p>';
+        document.getElementById('results-modal').classList.remove('hidden');
+
+        const res = await fetch("{% url 'search_spotify_ajax' %}?q=" + encodeURIComponent(q));
+        const data = await res.json();
+
+        list.innerHTML = '';
+        data.forEach(item => {
+            const div = document.createElement('div');
+            div.className = "flex items-center gap-4 p-4 bg-black/40 hover:bg-secondary/20 cursor-pointer rounded-2xl border border-white/5 transition-all";
+            div.innerHTML = `
+                <img src="${item.album_cover}" class="w-16 h-16 rounded-xl object-cover flex-shrink-0">
+                <div class="min-w-0 flex-1">
+                    <div class="font-bold text-white truncate">${item.name}</div>
+                    <div class="text-sm text-secondary truncate">${item.artist}</div>
+                    ${item.preview_url
+                ? '<div class="text-xs text-white/30 mt-0.5">▶ Preview disponible</div>'
+                : '<div class="text-xs text-white/20 mt-0.5">Sin preview</div>'}
+                </div>`;
+            div.onclick = async () => {
+                document.getElementById('titulocancion').value = item.name;
+                document.getElementById('spotify_url').value = item.spotify_url;
+                document.getElementById('artist_name').value = item.artist;
+                document.getElementById('urlportada').value = item.album_cover;
+                document.getElementById('duracionseg').value = item.duration;
+                window.livePreviewDuration(item.duration, 'add-preview-span');
+                applyStyles(item.album_cover);
+                loadPreview(item.preview_url, item.name, item.artist);
+
+                // --- NUEVO: AUTOCOMPLETADO DE COLABORADORES ---
+                const colabsContainer = document.getElementById('colabs-container');
+                colabsContainer.innerHTML = ''; // Limpiamos cualquier fila anterior
+
+                // 1. Añadimos siempre al Artista Principal
+                addColabRow(item.artist, 'Principal');
+                document.getElementById('artist_name').value = item.artist; // Llena el campo de visualización
+
+                // 2. Añadimos a los Feats / Invitados (Si los hay)
+                if (item.collaborators && item.collaborators.length > 0) {
+                    item.collaborators.forEach(featName => {
+                        addColabRow(featName, 'Invitado');
+                    });
+                }
+                // 1. Intentar autoselección
+                const albumEncontrado = autoSelect('album-select', item.album_name);
+
+                // 2. Manejo de Álbum
+                if (!albumEncontrado) {
+                    // Ponemos el select en blanco (el index 0, si es el de "Seleccione...")
+                    document.getElementById('album-select').selectedIndex = 0;
+                    // Lanzamos el aviso
+                    await checkIntegrity('album', item.album_name);
+                } else {
+                    document.getElementById('album-msg').innerHTML = '';
+                }
+
+                // 2. Manejo de Género
+                if (item.genre && item.genre.trim() !== "") {
+                    const generoEncontrado = autoSelect('genero-select', item.genre);
+                    if (!generoEncontrado) {
+                        await checkIntegrity('genero', item.genre);
+                    } else {
+                        document.getElementById('genero-msg').innerHTML = '';
+                    }
+                } else {
+                    // Si viene vacío o es [], no validamos ni mostramos error,
+                    // solo reseteamos el select para que tú elijas
+                    document.getElementById('genero-select').selectedIndex = 0;
+                    document.getElementById('genero-msg').innerHTML = '<span class="text-xs text-white/40 italic">Género no disponible, selecciona manualmente.</span>';
+                }
+
+                document.getElementById('results-modal').classList.add('hidden');
+            };
+
+            list.appendChild(div);
+        });
+    }
+
+    function autoSelect(selectId, valueToFind) {
+        const select = document.getElementById(selectId);
+        if (!select) return false;
+
+        // Intentar encontrar el match
+        let found = false;
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].text.trim().toLowerCase() === valueToFind.trim().toLowerCase()) {
+                select.selectedIndex = i;
+                found = true;
+                break;
+            }
+        }
+
+        // SI NO LO ENCUENTRA: Resetear a vacío
+        if (!found) {
+            select.selectedIndex = 0; // O la opción que sea tu "vacío" o "seleccionar"
+            // Si tu primer option es el de "Seleccionar...", el índice 0 lo pone ahí.
+        }
+
+        return found;
+    }
+
+    // Corrección de la validación (usando data.existe)
+    async function checkIntegrity(tipo, nombre) {
+        const msgContainer = document.getElementById(`${tipo}-msg`);
+        if (!msgContainer) return;
+        msgContainer.innerHTML = '';
+        if (!nombre) return;
+
+        const res = await fetch("{% url 'check_existence' %}?tipo=" + encodeURIComponent(tipo) + "&nombre=" + encodeURIComponent(nombre));
+        const data = await res.json();
+
+        if (!data.existe) {
+            let createUrl = tipo === 'album' ? "{% url 'add_album' %}" : "{% url 'add_genre' %}";
+            msgContainer.innerHTML = `<div class="text-red-400 text-xs mt-1">⚠️ "${nombre}" no existe. <a href="${createUrl}?nombre=${encodeURIComponent(nombre)}" class="error-link" target="_blank">Crear ${tipo}</a></div>`;
+        }
+
+        async function verificarDuplicado(titulo) {
+            const res = await fetch(`{% url 'check_existence' %}?tipo=cancion&nombre=${encodeURIComponent(titulo)}`);
+            const data = await res.json();
+            return data.existe;
+        }
+    }
+
+    document.querySelector('form').onsubmit = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+
+            try {
+                const res = await fetch("{% url 'add_track' %}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                });
+
+                // LEER LA RESPUESTA COMO JSON
+                const data = await res.json();
+
+                // AQUÍ ES DONDE APARECE EL BADGE
+                showToast(data.message, data.status);
+
+                if (data.status === 'success') {
+                    form.reset();
+                    applyStyles('');
+                }
+            } catch (error) {
+                console.error("Error al procesar:", error);
+                showToast("Error crítico al guardar", "error");
+            }
+        };
+
+        function showToast(message, status) {
+            const isSuccess = status === 'success';
+            const toast = document.createElement('div');
+            toast.className = `fixed top-20 right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-lg border ${
+                isSuccess
+                    ? 'border-secondary/30 bg-surface-container text-secondary'
+                    : 'border-red-500/30 bg-surface-container text-red-400'
+            } shadow-2xl backdrop-blur-md`;
+            toast.innerHTML = `
+                <span class="material-symbols-outlined text-[20px]">${isSuccess ? 'check_circle' : 'error'}</span>
+                <div>
+                    <p class="text-xs font-black uppercase tracking-widest opacity-60">${isSuccess ? 'Éxito' : 'Error'}</p>
+                    <p class="text-sm font-bold">${message}</p>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Plantilla oculta en JS para clonar filas de colaboradores
+    const colabTemplate = `
+        <div class="colab-row flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+            <select name="colab_artistas" class="native-select flex-1 bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30 text-white text-sm">
+                <option value="" disabled selected>Seleccione artista...</option>
+                {% for a in artistas %}
+                <option value="{{ a.idartista }}">{{ a.nombreartistico|escapejs }}</option>
+                {% endfor %}
+            </select>
+            <select name="colab_roles" class="native-select w-1/3 bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30 text-white text-sm">
+                <option value="" disabled selected>Seleccione rol...</option>
+                <option value="Principal">Principal</option>
+                <option value="Invitado">Invitado</option>
+                <option value="Remixer">Remixer</option>
+            </select>
+            <button type="button" onclick="this.closest('.colab-row').remove()" class="p-4 text-white/40 hover:text-red-400 bg-black/30 hover:bg-red-500/10 border border-white/10 rounded-xl transition-all">
+                <span class="material-symbols-outlined text-[20px]">delete</span>
+            </button>
+        </div>
+    `;
+
+    function addColabRow(artistName = null, role = null) {
+        const container = document.getElementById('colabs-container');
+        container.insertAdjacentHTML('beforeend', colabTemplate);
+
+        const newRow = container.lastElementChild;
+        const artistSelect = newRow.querySelector('select[name="colab_artistas"]');
+        const roleSelect = newRow.querySelector('select[name="colab_roles"]');
+
+        // Autoseleccionar Rol
+        if (role) {
+            for (let i = 0; i < roleSelect.options.length; i++) {
+                if (roleSelect.options[i].value === role) {
+                    roleSelect.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        // Autoseleccionar Artista y lanzar Toast de error si no existe en la BD
+        if (artistName) {
+            let found = false;
+            for (let i = 0; i < artistSelect.options.length; i++) {
+                if (artistSelect.options[i].text.trim().toLowerCase() === artistName.trim().toLowerCase()) {
+                    artistSelect.selectedIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                showToast(`El artista "${artistName}" no está en tu base de datos. Fila añadida, regístralo manualmente.`, 'error');
+            }
+        }
+    }
+
+    window.livePreviewDuration = function(segundos, targetId) {
+        var totalSegundos = parseInt(segundos) || 0;
+        var minutos = Math.floor(totalSegundos / 60);
+        var restantes = totalSegundos % 60;
+        var segundosFormateados = restantes < 10 ? '0' + restantes : restantes;
+
+        document.getElementById(targetId).textContent = minutos + ':' + segundosFormateados;
+    };
+</script>
+{% endblock %}

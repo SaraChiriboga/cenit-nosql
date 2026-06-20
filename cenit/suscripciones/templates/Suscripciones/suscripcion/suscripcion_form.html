@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Suscripción{% endblock %}
+
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<a href="{% url 'suscripcion_list' %}" class="hover:text-primary transition-colors">Suscripciones</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<span class="text-on-surface">{{ action }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-on-surface">{{ action }} suscripción</h1>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6 flex flex-col gap-2">
+        {% for msg in messages %}
+        <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm">
+            <span class="material-symbols-outlined text-[18px]">error</span>{{ msg }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="glass-panel rounded-2xl p-8 flex flex-col gap-5">
+        {% csrf_token %}
+
+        <!-- Eliminado: campo ID suscripción (idsuscripcion ya no se pide) -->
+
+        <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Usuario</label>
+            <select name="usuario"
+                    class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
+                <option value="">— Sin usuario —</option>
+                {% for u in usuarios %}
+                <option value="{{ u.idusuario }}"
+                    {% if suscripcion.usuario_id == u.idusuario %}selected{% endif %}>
+                    {{ u.nombre }} {{ u.apellido }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Plan</label>
+            <select name="tiposuscripcion" required
+                    class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
+                <option value="">— Selecciona —</option>
+                {% for plan in planes %}
+                <option value="{{ plan.idtipo }}"
+                    {% if suscripcion.tiposuscripcion_id == plan.idtipo %}selected{% endif %}>
+                    {{ plan.nombreplan }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Promoción (opcional)</label>
+            <select name="promocion"
+                    class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
+                <option value="">— Sin promoción —</option>
+                {% for promo in promociones %}
+                <option value="{{ promo.idpromo }}"
+                    {% if suscripcion.promocion_id == promo.idpromo %}selected{% endif %}>
+                    {{ promo.descripcion }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Fecha inicio</label>
+                <input type="datetime-local" name="fechainicio"
+                       value="{{ suscripcion.fechainicio|date:'Y-m-d\TH:i'|default:'' }}" required
+                       class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+            </div>
+            <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Fecha fin</label>
+                <input type="datetime-local" name="fechafin"
+                       value="{{ suscripcion.fechafin|date:'Y-m-d\TH:i'|default:'' }}" required
+                       class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Estado</label>
+            <select name="estado" required
+                    class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
+                {% for e in estados %}
+                <option value="{{ e }}" {% if suscripcion.estado == e %}selected{% endif %}>{{ e }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <a href="{% url 'suscripcion_list' %}"
+               class="px-5 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all text-sm font-medium">
+                Cancelar
+            </a>
+            <button type="submit"
+                    class="px-5 py-2.5 rounded-xl bg-secondary text-on-secondary text-sm font-medium hover:opacity-90 transition-all glow-cyan">
+                {{ action }}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

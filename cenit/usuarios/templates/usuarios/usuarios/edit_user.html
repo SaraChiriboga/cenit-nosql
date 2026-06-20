@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Usuario{% endblock %}
+
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Users & Access</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<a href="{% url 'users_overview' %}" class="hover:text-primary transition-colors text-on-surface-variant">Usuarios</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<a href="{% url 'read_user' u.idUsuario %}" class="hover:text-primary transition-colors text-on-surface-variant">{{ u.nombre }}</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Editar</span>
+{% endblock %}
+
+{% block content %}
+<style>
+    #fixed-bg {
+        position: fixed; inset: 0; z-index: -1;
+        background-color: #0B0C10;
+        background: radial-gradient(circle at 50% 0%, #1f2833 0%, #0B0C10 70%);
+        background-size: cover; background-position: center;
+        background-attachment: fixed;
+        transition: background-image 1s ease-in-out;
+    }
+    #fixed-bg::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(to bottom, rgba(11, 12, 16, 0.75) 0%, rgba(11, 12, 16, 0.90) 100%);
+    }
+
+    .glass-ultra {
+        background: rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    input:focus, select:focus {
+        border-color: #2DD4BF !important;
+        box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.3) !important;
+        outline: none !important;
+    }
+
+    select {
+        appearance: none; -webkit-appearance: none; -moz-appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat; background-position: right 1rem center; background-size: 1.2em;
+        padding-right: 2.5rem !important; cursor: pointer;
+    }
+    select:hover { border-color: rgba(45, 212, 191, 0.5) !important; }
+    select option { background-color: #1A1B20; color: white; padding: 10px; }
+</style>
+
+<div id="fixed-bg"></div>
+
+<div id="page-container" class="w-full min-h-[calc(100vh-64px)] p-8">
+    <div class="max-w-[1200px] mx-auto h-full flex flex-col">
+        <div class="mb-8">
+            <h1 class="text-4xl font-extrabold text-white">Editar Perfil</h1>
+            <p class="text-white/60">Actualiza los datos y accesos de <span class="font-bold text-white">{{ u.nombre }} {{ u.apellido }}</span> en CÉNIT.</p>
+        </div>
+
+        <form method="POST" id="edit-user-form" class="grid grid-cols-1 xl:grid-cols-4 gap-8 h-full">
+            {% csrf_token %}
+
+            <!-- Avatar Placeholder Dinámico (Columna Izquierda) -->
+            <div class="xl:col-span-1 space-y-4">
+                <div class="aspect-square w-full rounded-3xl border border-white/10 glass-ultra flex items-center justify-center overflow-hidden shadow-2xl relative max-w-[360px] mx-auto bg-black/20">
+                    <div id="avatar-preview" class="absolute inset-0 flex items-center justify-center bg-secondary/10">
+                        <span id="avatar-initials" class="text-6xl font-black text-secondary tracking-widest uppercase">
+                            {{ u.nombre|first }}{{ u.apellido|first }}
+                        </span>
+                    </div>
+                </div>
+                <div class="text-center text-white/40 text-xs font-bold uppercase tracking-wider mt-4">
+                    Perfil del Sistema
+                </div>
+            </div>
+
+            <!-- Formulario (Columna Derecha) -->
+            <div class="xl:col-span-3 space-y-6">
+                <div class="glass-ultra p-10 rounded-3xl grid grid-cols-1 md:grid-cols-2 gap-8 text-white">
+
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Nombre</label>
+                        <input type="text" name="nombre" id="nombre" value="{{ u.nombre }}" required
+                               class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30 text-lg font-bold"
+                               oninput="window.updateInitials()">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Apellido</label>
+                        <input type="text" name="apellido" id="apellido" value="{{ u.apellido }}" required
+                               class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30 text-lg font-bold"
+                               oninput="window.updateInitials()">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Correo Electrónico</label>
+                        <input type="email" name="email" id="email" value="{{ u.email }}" required
+                               class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30 text-lg font-bold">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Rol Asignado</label>
+                        <select name="rol_nombre" id="rol_nombre" required class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none text-lg">
+                            <option value="Usuario" {% if u.nombreRol == 'Usuario' %}selected{% endif %}>Usuario (Por defecto)</option>
+                            <option value="Analista" {% if u.nombreRol == 'Analista' %}selected{% endif %}>Analista</option>
+                            <option value="Administrador" {% if u.nombreRol == 'Administrador' %}selected{% endif %}>Administrador</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Estado de Cuenta</label>
+                        <select name="estadoCuenta" id="estadoCuenta" required class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none text-lg">
+                            <option value="Activo" {% if u.estadoCuenta == 'Activo' %}selected{% endif %}>Activo</option>
+                            <option value="Inactivo" {% if u.estadoCuenta == 'Inactivo' %}selected{% endif %}>Inactivo</option>
+                            <option value="Suspendido" {% if u.estadoCuenta == 'Suspendido' %}selected{% endif %}>Suspendido</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-6 pt-4">
+                    <a href="{% url 'read_user' u.idUsuario %}" class="px-8 py-4 text-white/60 hover:text-white transition-all font-bold">Cancelar</a>
+                    <button type="submit" id="btn-submit"
+                            class="px-12 py-4 bg-secondary text-background font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-secondary/20">
+                        Guardar Cambios
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+(function() {
+    var CSRF_TOKEN = '{{ csrf_token }}';
+
+    // Actualiza el avatar visualmente al escribir
+    window.updateInitials = function() {
+        const nombre = document.getElementById('nombre').value.trim();
+        const apellido = document.getElementById('apellido').value.trim();
+        const initialsSpan = document.getElementById('avatar-initials');
+
+        const first = nombre ? nombre.charAt(0) : '';
+        const last = apellido ? apellido.charAt(0) : '';
+        initialsSpan.textContent = first + last;
+    };
+
+    window.showToast = function(message, status) {
+        const isSuccess = status === 'success';
+        const toast = document.createElement('div');
+        toast.className = `fixed top-20 right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-lg border ${
+            isSuccess ? 'border-secondary/30 bg-surface-container text-secondary' : 'border-red-500/30 bg-surface-container text-red-400'
+        } shadow-2xl backdrop-blur-md`;
+        toast.innerHTML = `
+            <span class="material-symbols-outlined text-[20px]">${isSuccess ? 'check_circle' : 'error'}</span>
+            <div>
+                <p class="text-xs font-black uppercase tracking-widest opacity-60">${isSuccess ? 'Éxito' : 'Error'}</p>
+                <p class="text-sm font-bold">${message}</p>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.transition = 'opacity 0.3s';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    };
+
+    // Intercepción AJAX para guardar sin recargar la página abruptamente
+    const form = document.getElementById('edit-user-form');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+
+        const btn = document.getElementById('btn-submit');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-background">progress_activity</span>';
+        btn.disabled = true;
+
+        const formData = new FormData(form);
+
+        try {
+            const res = await fetch("{% url 'edit_user' u.idUsuario %}", {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': CSRF_TOKEN }
+            });
+
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                window.showToast(data.message, 'success');
+                setTimeout(() => {
+                    window.location.href = "{% url 'read_user' u.idUsuario %}";
+                }, 1000);
+            } else {
+                window.showToast(data.message || "Error al actualizar usuario", "error");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        } catch (error) {
+            console.error("Error al procesar:", error);
+            window.showToast("Error crítico al guardar", "error");
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    };
+})();
+</script>
+{% endblock %}

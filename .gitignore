@@ -1,0 +1,58 @@
+# ==============================================================================
+# 1. ENTORNOS VIRTUALES Y DEPENDENCIAS
+# ==============================================================================
+.venv/
+venv/
+env/
+ENV/
+bin/
+lib/
+include/
+share/
+
+# ==============================================================================
+# 2. ARCHIVOS DE PYCHARM / JETBRAINS
+# ==============================================================================
+.idea/
+*.iml
+
+# ==============================================================================
+# 3. PYTHON (Caché y compilados)
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# ==============================================================================
+# 4. DJANGO (Datos locales, estáticos y secretos)
+# ==============================================================================
+# Base de datos local para desarrollo
+db.sqlite3
+db.sqlite3-journal
+
+# Archivos multimedia subidos por usuarios (Media)
+media/
+
+# Archivos estáticos recopilados (Solo si usas collectstatic localmente)
+staticfiles/
+
+# Archivos de configuración local o secretos (JSON o .env según uses)
+local_settings.py
+secrets.json
+.env
+spotifyCreds.json
+
+# ==============================================================================
+# 5. CONTEXTO DE SISTEMA OPERATIVO
+# ==============================================================================
+.DS_Store
+Thumbs.db
+
+# ====================================================================================
+# 6. ARCHIVOS Y CARPETAS DE SCRIPTS Y FASES NO QUE TENGAN QUE VER CON EL CODIGO FUENTE
+# ====================================================================================
+JSONDatosMigracion/
+Cénit - MongoDB Script - Shell/
+MongoDB_model_Cenit_final.json

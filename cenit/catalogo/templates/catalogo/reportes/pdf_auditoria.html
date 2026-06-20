@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Auditoría de Metadatos - CÉNIT</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.5cm;
+            @bottom-right {
+                content: "Página " counter(page) " de " counter(pages);
+                font-family: 'Helvetica', sans-serif; font-size: 8pt; color: #888;
+            }
+            @bottom-left {
+                content: "AUDITORÍA INTERNA — CONFIDENCIAL";
+                font-family: 'Helvetica', sans-serif; font-size: 8pt; color: #b91c1c;
+            }
+        }
+
+        body { font-family: 'Helvetica', sans-serif; font-size: 10pt; color: #1a1b20; margin: 0; }
+
+        .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 3px solid #b91c1c; padding-bottom: 20px; }
+
+        .brand-block { display: flex; align-items: center; gap: 12px; }
+        .logo-diamond { width: 55px; height: 55px; }
+        .brand-text { font-size: 38pt; font-weight: 900; letter-spacing: 2px; color: #1a1b20; line-height: 1; }
+        .brand-dot { color: #b91c1c; } /* Rojo para Auditoría */
+
+        .office-info { font-size: 9pt; color: #666; margin-top: 10px; line-height: 1.3; }
+
+        .report-meta-box { text-align: right; }
+        .report-badge { background-color: #b91c1c; color: #ffffff; padding: 5px 15px; font-weight: bold; font-size: 10pt; display: inline-block; margin-bottom: 10px; }
+        .meta-text { font-size: 8.5pt; color: #444; line-height: 1.5; }
+
+        .main-title { font-size: 20pt; font-weight: bold; color: #1a1b20; margin-bottom: 5px; }
+        .main-desc { font-size: 10.5pt; color: #555; margin-bottom: 30px; }
+
+        table.data-table { width: 100%; border-collapse: collapse; }
+        table.data-table th { background-color: #1a1b20; color: #ffffff; padding: 14px; text-align: left; font-size: 9pt; text-transform: uppercase; }
+        table.data-table td { padding: 12px 14px; border-bottom: 1px solid #eee; font-size: 10pt; }
+
+        .id-col { font-family: 'Courier', monospace; color: #666; width: 100px; }
+        .badge-error { background-color: #fee2e2; color: #b91c1c; border: 1px solid #f87171; padding: 4px 8px; font-size: 8pt; font-weight: bold; border-radius: 4px; text-transform: uppercase; }
+        .badge-ok { color: #059669; font-weight: bold; }
+
+        .footer-note { margin-top: 50px; padding: 20px; background-color: #fff1f2; border-left: 5px solid #b91c1c; page-break-inside: avoid; }
+        .footer-note-title { font-weight: bold; text-transform: uppercase; font-size: 8pt; color: #b91c1c; display: block; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <div>
+            <div class="brand-block">
+                <svg class="logo-diamond" viewBox="0 0 50 60" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 30L25 10L40 30L25 50L10 30Z" stroke="#b91c1c" stroke-width="2.5" fill="none"/>
+                    <path d="M18 30L25 20L32 30L25 40L18 30Z" fill="#b91c1c"/>
+                </svg>
+                <div class="brand-text">CÉNIT<span class="brand-dot">.</span></div>
+            </div>
+            <div class="office-info">
+                <strong>Universidad de las Américas</strong><br>
+                Campus UdlaPark, Vía a Nayón · Quito 170124, Ecuador
+            </div>
+        </div>
+
+        <div class="report-meta-box">
+            <div class="report-badge">AUDITORÍA TÉCNICA</div>
+            <div class="meta-text">
+                <strong>Fecha Evaluación:</strong> {{ fecha_generacion|date:"d/m/Y" }}<br>
+                <strong>Auditor:</strong> {{ usuario_generador }}<br>
+                <strong>Estatus:</strong> REVISIÓN REQUERIDA
+            </div>
+        </div>
+    </div>
+
+    <div class="main-title">Informe de Integridad de Catálogo</div>
+    <div class="main-desc">Análisis de inconsistencias en metadatos críticos. Las pistas listadas a continuación carecen de asociaciones obligatorias para su distribución comercial.</div>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>ID TRACK</th>
+                <th>TÍTULO DE LA PISTA</th>
+                <th>VALIDACIÓN GÉNERO</th>
+                <th>VALIDACIÓN ÁLBUM</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for i in inconsistencias %}
+            <tr>
+                <td class="id-col">TRK-{{ i.idCancion }}</td>
+                <td style="font-weight: bold;">{{ i.tituloCancion }}</td>
+                <td>
+                    {% if i.EstatusGenero == 'SIN GÉNERO' %}
+                        <span class="badge-error">Falta Género</span>
+                    {% else %}
+                        <span class="badge-ok">Válido</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if i.EstatusJerarquia == 'Sin Álbum vinculado' %}
+                        <span class="badge-error">Sin Álbum</span>
+                    {% else %}
+                        <span class="badge-ok">Válido</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center; padding: 50px; color: #059669; font-weight: bold;">¡Catálogo al 100% de integridad!</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer-note">
+        <span class="footer-note-title">Protocolo de Corrección</span>
+        Cualquier inconsistencia detectada en este reporte debe ser solventada en un plazo máximo de 48 horas mediante la consola de administración para garantizar la calidad de la experiencia del usuario final.
+    </div>
+
+</body>
+</html>

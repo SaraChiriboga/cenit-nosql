@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Roles{% endblock %}
+
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Users & Access</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Roles</span>
+{% endblock %}
+
+{% block content %}
+<section class="mb-12">
+    <div class="glass-panel rounded-xl overflow-hidden flex flex-col">
+
+        <!-- CABECERA CON BÚSQUEDA Y FILTROS -->
+        <div class="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-6 w-full md:w-auto">
+                <h2 class="font-headline-md text-headline-md text-primary shrink-0">Gestión de Roles</h2>
+
+                <form method="GET" action="" class="relative flex-1 md:w-80 flex gap-2">
+                    <div class="relative flex-1">
+                        <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                            <span class="material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+                        </div>
+                        <input name="q" value="{{ request.GET.q }}" class="w-full bg-surface-container border border-outline-variant/20 rounded-md pl-10 pr-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md placeholder:text-on-surface-variant/50" placeholder="Buscar por usuario o rol..." type="text"/>
+                    </div>
+                    <select name="rol" class="w-32 bg-surface-container border border-outline-variant/20 rounded-md px-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md">
+                        <option value="">Roles</option>
+                        <option value="Administrador" {% if request.GET.rol == 'Administrador' %}selected{% endif %}>Admin</option>
+                        <option value="Analista" {% if request.GET.rol == 'Analista' %}selected{% endif %}>Analista</option>
+                        <option value="Usuario" {% if request.GET.rol == 'Usuario' %}selected{% endif %}>Usuario</option>
+                    </select>
+                    <button type="submit" class="hidden"></button>
+                </form>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold">ID Asignación</th>
+                        <th class="px-6 py-4 font-semibold">Usuario</th>
+                        <th class="px-6 py-4 font-semibold">Nivel de Rol</th>
+                        <th class="px-6 py-4 font-semibold">Descripción</th>
+                        <th class="px-6 py-4 font-semibold text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for r in roles %}
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="px-6 py-4 font-mono text-on-surface-variant text-[13px]">ROL-{{ r.idRol }}</td>
+
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-md bg-secondary/20 flex items-center justify-center shrink-0 border border-white/5">
+                                    <span class="font-bold text-secondary">{{ r.usuario_nombre|first|upper }}</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-on-surface">{{ r.usuario_nombre }}</span>
+                                    <span class="text-xs text-on-surface-variant mt-0.5">{{ r.usuario_email }}</span>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="px-6 py-4">
+                            {% if r.nombreRol == 'Administrador' %}
+                                <span class="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">Administrador</span>
+                            {% elif r.nombreRol == 'Analista' %}
+                                <span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">Analista</span>
+                            {% else %}
+                                <span class="bg-secondary/10 text-secondary border border-secondary/20 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">Usuario</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4 text-on-surface-variant text-sm">{{ r.descripcion }}</td>
+
+                        <td class="px-6 py-4">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{% url 'read_role' r.idRol %}"
+                                   class="p-2 text-on-surface-variant hover:text-primary transition-colors"
+                                   title="Ver detalle del rol">
+                                    <span class="material-symbols-outlined text-[20px]">visibility</span>
+                                </a>
+                                <a href="{% url 'edit_role' r.idRol %}" class="p-2 text-on-surface-variant hover:text-secondary transition-colors" title="Editar">
+                                    <span class="material-symbols-outlined text-[20px]">edit</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-on-surface-variant">No se encontraron roles que coincidan con la búsqueda.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

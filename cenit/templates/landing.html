@@ -1,0 +1,1090 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CÉNIT | El Ecosistema Musical Definitivo</title>
+
+<!-- Favicon de tu rombo -->
+<link rel="icon" type="image/svg+xml" href="{% static 'logo.svg' %}">
+
+<!-- Fuentes y Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cyan: #45f3ff;
+  --cyan-dim: rgba(69,243,255,0.15);
+  --cyan-glow: rgba(69,243,255,0.4);
+  --bg: #08090d;
+  --bg-1: #0e1017;
+  --bg-2: #13151e;
+  --bg-3: #191c26;
+  --border: rgba(255,255,255,0.06);
+  --border-hover: rgba(69,243,255,0.3);
+  --text: #e8e9f0;
+  --text-muted: #6b7280;
+  --text-mid: #9ca3af;
+}
+
+html { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+body { overflow-x: hidden; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: rgba(69,243,255,0.2); border-radius: 4px; }
+
+/* ─── NOISE OVERLAY ─── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.5;
+}
+
+/* ─── GRID BG ─── */
+.grid-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(69,243,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(69,243,255,0.03) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 20%, transparent 70%);
+}
+
+/* ─── GLOWS ─── */
+.glow-tl {
+  position: fixed; top: -200px; left: -200px; width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(69,243,255,0.06) 0%, transparent 65%);
+  pointer-events: none; z-index: 0;
+}
+.glow-br {
+  position: fixed; bottom: -200px; right: -200px; width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(100,60,255,0.06) 0%, transparent 65%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ─── NAV ─── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 72px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 48px;
+  background: rgba(8,9,13,0.6);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.logo-diamond {
+  width: 32px; height: 32px; transform: rotate(45deg);
+  border: 2px solid var(--cyan);
+  display: flex; align-items: center; justify-content: center;
+  animation: diamond-pulse 3s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.logo-diamond-inner {
+  width: 14px; height: 14px;
+  background: var(--cyan);
+}
+@keyframes diamond-pulse {
+  0%,100% { box-shadow: 0 0 4px var(--cyan-glow); }
+  50% { box-shadow: 0 0 16px var(--cyan-glow), 0 0 32px rgba(69,243,255,0.15); }
+}
+.logo-text {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.45em; color: var(--text);
+  text-transform: uppercase;
+}
+.nav-links { display: flex; align-items: center; gap: 36px; }
+.nav-links a {
+  font-size: 13px; font-weight: 400; color: var(--text-muted);
+  text-decoration: none; letter-spacing: 0.02em;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--text); }
+.nav-cta {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 20px; border-radius: 8px;
+  background: var(--cyan); color: #000;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+  text-decoration: none; transition: all 0.2s;
+  box-shadow: 0 0 20px rgba(69,243,255,0.25);
+}
+.nav-cta:hover { background: #7ff8ff; box-shadow: 0 0 32px rgba(69,243,255,0.45); }
+
+/* ─── SECTIONS ─── */
+section { position: relative; z-index: 10; }
+
+/* ─── HERO ─── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 120px 24px 80px;
+  text-align: center;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 16px; border-radius: 100px;
+  background: rgba(69,243,255,0.06); border: 1px solid rgba(69,243,255,0.2);
+  font-size: 12px; font-weight: 500; color: var(--cyan); letter-spacing: 0.08em;
+  text-transform: uppercase; margin-bottom: 32px;
+  animation: fadeDown 0.8s cubic-bezier(0.22,1,0.36,1) both;
+}
+.hero-badge-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--cyan);
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+.hero-title {
+  font-size: clamp(48px, 9vw, 88px);
+  font-weight: 800; line-height: 1.05; letter-spacing: -0.03em;
+  color: var(--text); max-width: 900px;
+  animation: fadeDown 0.8s 0.1s cubic-bezier(0.22,1,0.36,1) both;
+}
+.hero-title .accent {
+  background: linear-gradient(135deg, var(--cyan) 0%, #a78bfa 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-sub {
+  font-size: 18px; font-weight: 400; color: var(--text-muted);
+  max-width: 520px; line-height: 1.7; margin: 24px auto 0;
+  animation: fadeDown 0.8s 0.2s cubic-bezier(0.22,1,0.36,1) both;
+}
+.hero-actions {
+  display: flex; align-items: center; gap: 16px; margin-top: 48px;
+  animation: fadeDown 0.8s 0.3s cubic-bezier(0.22,1,0.36,1) both;
+}
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 32px; border-radius: 10px;
+  background: var(--cyan); color: #000;
+  font-size: 14px; font-weight: 600; letter-spacing: 0.02em;
+  text-decoration: none; cursor: pointer; border: none;
+  transition: all 0.25s; box-shadow: 0 0 24px rgba(69,243,255,0.3);
+  animation: btn-breathe 4s ease-in-out infinite;
+}
+@keyframes btn-breathe {
+  0%,100% { box-shadow: 0 0 24px rgba(69,243,255,0.3); }
+  50% { box-shadow: 0 0 40px rgba(69,243,255,0.5); }
+}
+.btn-primary:hover { transform: translateY(-2px); background: #7ff8ff; }
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 32px; border-radius: 10px;
+  background: transparent; color: var(--text-mid);
+  font-size: 14px; font-weight: 500; letter-spacing: 0.02em;
+  text-decoration: none; cursor: pointer;
+  border: 1px solid var(--border);
+  transition: all 0.25s;
+}
+.btn-ghost:hover { border-color: var(--border-hover); color: var(--text); }
+
+/* ─── HERO VISUAL / WAVEFORM ─── */
+.hero-visual {
+  width: 100%; max-width: 800px; margin-top: 64px;
+  animation: fadeDown 0.8s 0.4s cubic-bezier(0.22,1,0.36,1) both;
+  position: relative;
+}
+.hero-visual::before, .hero-visual::after {
+  content: ''; position: absolute;
+  left: 0; right: 0;
+  height: 60px;
+  z-index: 2; pointer-events: none;
+}
+.hero-visual::before { top: 0; background: linear-gradient(to bottom, var(--bg), transparent); }
+.hero-visual::after { bottom: 0; background: linear-gradient(to top, var(--bg), transparent); }
+.waveform-container {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 16px; padding: 24px; overflow: hidden;
+  position: relative;
+}
+.waveform-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.waveform-track-info { display: flex; align-items: center; gap: 12px; text-align: left;}
+.waveform-album {
+  width: 44px; height: 44px; border-radius: 8px;
+  background-color: var(--bg-3);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.waveform-album img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.waveform-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.waveform-artist { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.waveform-quality {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  color: var(--cyan); background: rgba(69,243,255,0.08);
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid rgba(69,243,255,0.2);
+}
+.waveform-bars {
+  display: flex; align-items: center; gap: 3px; height: 64px;
+}
+.waveform-bars span {
+  flex: 1; background: rgba(69,243,255,0.18); border-radius: 2px;
+  animation: bar-dance var(--d) ease-in-out infinite alternate;
+  transform-origin: bottom;
+}
+.waveform-bars span.active { background: var(--cyan); }
+@keyframes bar-dance {
+  from { transform: scaleY(0.15); }
+  to { transform: scaleY(1); }
+}
+.waveform-controls {
+  display: flex; align-items: center; justify-content: space-between; margin-top: 20px;
+}
+.waveform-time { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.waveform-btns { display: flex; align-items: center; gap: 16px; }
+.wbtn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: transparent; border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s; color: var(--text-muted);
+}
+.wbtn:hover { border-color: var(--border-hover); color: var(--text); }
+.wbtn.play {
+  width: 44px; height: 44px; background: var(--cyan);
+  border-color: var(--cyan); color: #000;
+  box-shadow: 0 0 16px rgba(69,243,255,0.4);
+}
+.wbtn.play:hover { background: #7ff8ff; }
+.waveform-progress {
+  width: 100%; height: 3px; background: rgba(255,255,255,0.08);
+  border-radius: 3px; margin-top: 16px; position: relative;
+}
+.waveform-progress-fill {
+  height: 100%; width: 37%; background: var(--cyan); border-radius: 3px;
+  position: relative;
+}
+.waveform-progress-fill::after {
+  content: ''; position: absolute; right: -5px; top: -3px;
+  width: 9px; height: 9px; border-radius: 50%; background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+}
+
+/* ─── STATS STRIP ─── */
+.stats-strip {
+  padding: 48px 24px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.stats-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: var(--border);
+}
+.stat-item {
+  background: var(--bg);
+  padding: 32px 24px; text-align: center;
+}
+.stat-number {
+  font-size: 40px; font-weight: 800; letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--cyan) 0%, #7dd3fc 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.stat-label { font-size: 13px; color: var(--text-muted); margin-top: 6px; font-weight: 400; }
+
+/* ─── SECTION COMMON ─── */
+.section-wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+.section-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--cyan);
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 16px;
+}
+.section-tag::before {
+  content: ''; width: 20px; height: 1px; background: var(--cyan);
+}
+.section-title {
+  font-size: clamp(32px, 4vw, 48px); font-weight: 800;
+  letter-spacing: -0.025em; line-height: 1.15; color: var(--text);
+}
+.section-sub {
+  font-size: 17px; color: var(--text-muted); line-height: 1.7;
+  max-width: 480px; margin-top: 16px;
+}
+
+/* ─── DUAL CARDS ─── */
+.dual-section { padding: 120px 24px; }
+.dual-grid {
+  max-width: 1100px; margin: 64px auto 0;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.portal-card {
+  border-radius: 20px; padding: 48px;
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  position: relative; overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.23,1,0.32,1);
+  display: flex; flex-direction: column;
+}
+.portal-card::before {
+  content: ''; position: absolute; inset: 0;
+  border-radius: 20px; opacity: 0;
+  transition: opacity 0.5s;
+  background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(69,243,255,0.04) 0%, transparent 60%);
+}
+.portal-card:hover::before { opacity: 1; }
+.portal-card:hover {
+  border-color: rgba(69,243,255,0.25);
+  transform: translateY(-8px);
+  box-shadow: 0 32px 64px rgba(0,0,0,0.4), 0 0 0 1px rgba(69,243,255,0.1);
+}
+.portal-card.featured { background: linear-gradient(135deg, rgba(69,243,255,0.04) 0%, rgba(100,60,255,0.04) 100%); }
+.portal-icon-wrap {
+  width: 60px; height: 60px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 32px;
+}
+.portal-icon-wrap.admin { background: var(--bg-3); border: 1px solid var(--border); color: var(--text); }
+.portal-icon-wrap.player { background: var(--cyan); box-shadow: 0 0 24px rgba(69,243,255,0.35); color: #000; }
+.portal-card-title { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+.portal-card-desc {
+  font-size: 15px; color: var(--text-muted); line-height: 1.7; margin-top: 12px; flex: 1;
+}
+.portal-features { list-style: none; margin: 28px 0 36px; display: flex; flex-direction: column; gap: 10px; }
+.portal-features li {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--text-mid);
+}
+.portal-features li::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
+}
+.portal-features.admin-list li::before { background: rgba(255,255,255,0.3); }
+.portal-features.player-list li::before { background: var(--cyan); }
+.portal-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 28px; border-radius: 10px;
+  font-size: 14px; font-weight: 600; text-decoration: none;
+  transition: all 0.25s; align-self: flex-start;
+}
+.portal-btn.admin-btn {
+  border: 1px solid rgba(255,255,255,0.12); color: var(--text);
+  background: transparent;
+}
+.portal-btn.admin-btn:hover { border-color: var(--border-hover); color: var(--cyan); }
+.portal-btn.player-btn {
+  background: var(--cyan); color: #000;
+  box-shadow: 0 0 20px rgba(69,243,255,0.3);
+}
+.portal-btn.player-btn:hover { background: #7ff8ff; transform: translateX(3px); }
+.card-watermark {
+  position: absolute; right: -10px; top: -10px;
+  font-size: 140px !important; line-height: 1; opacity: 0.03; pointer-events: none;
+}
+
+/* ─── FEATURES SECTION ─── */
+.features-section { padding: 120px 24px; }
+.features-header { max-width: 1100px; margin: 0 auto; }
+.features-grid {
+  max-width: 1100px; margin: 64px auto 0;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 20px; overflow: hidden;
+}
+.feature-cell {
+  background: var(--bg-1); padding: 40px 36px;
+  transition: background 0.3s;
+  position: relative;
+}
+.feature-cell:hover { background: var(--bg-2); }
+.feature-cell::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(69,243,255,0.15), transparent);
+  opacity: 0; transition: opacity 0.3s;
+}
+.feature-cell:hover::after { opacity: 1; }
+.feature-icon {
+  font-size: 32px !important; margin-bottom: 20px; display: block; color: var(--text);
+}
+.feature-title { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+.feature-desc { font-size: 14px; color: var(--text-muted); line-height: 1.7; margin-top: 10px; }
+
+/* ─── PLAYER PREVIEW SECTION ─── */
+.preview-section { padding: 120px 24px; }
+.preview-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1.2fr; gap: 80px; align-items: center;
+}
+.preview-content {}
+.preview-list { list-style: none; margin-top: 40px; display: flex; flex-direction: column; gap: 16px; }
+.preview-list-item {
+  display: flex; align-items: flex-start; gap: 16px;
+  padding: 20px; border-radius: 12px; border: 1px solid transparent;
+  transition: all 0.3s; cursor: pointer;
+}
+.preview-list-item:hover, .preview-list-item.active {
+  background: var(--bg-2); border-color: var(--border);
+}
+.preview-list-item.active { border-color: rgba(69,243,255,0.2); }
+.preview-list-item.active .pli-icon { color: var(--cyan); }
+.pli-icon { font-size: 26px !important; margin-top: 2px; flex-shrink: 0; color: var(--text-muted); transition: color 0.2s; }
+.pli-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.pli-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-top: 4px; }
+
+.preview-mockup {
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 20px; overflow: hidden;
+}
+.mockup-topbar {
+  background: var(--bg-3); padding: 14px 20px;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+.mockup-nav-row {
+  padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.mockup-tab {
+  font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 6px;
+  cursor: pointer; transition: all 0.2s;
+}
+.mockup-tab.active { background: rgba(69,243,255,0.12); color: var(--cyan); }
+.mockup-tab:not(.active) { color: var(--text-muted); }
+.mockup-body { padding: 20px; }
+.mockup-now-playing {
+  background: linear-gradient(135deg, rgba(69,243,255,0.08) 0%, rgba(100,60,255,0.06) 100%);
+  border: 1px solid rgba(69,243,255,0.15); border-radius: 12px; padding: 16px;
+  display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+}
+.mockup-thumb {
+  width: 46px; height: 46px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.mockup-thumb img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+/* La rotación puede distraer con una portada real, pero la conservamos sutil */
+.spin-anim { animation: spin 15s linear infinite; border-radius: 50%; border: 2px solid var(--border); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.mockup-np-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.mockup-np-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.mockup-np-tag {
+  margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  color: var(--cyan); background: rgba(69,243,255,0.1); padding: 4px 8px; border-radius: 5px;
+}
+.mockup-section-title { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; }
+.mockup-tracks { display: flex; flex-direction: column; gap: 6px; }
+.mockup-track {
+  display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px;
+  transition: background 0.2s; cursor: pointer;
+}
+.mockup-track:hover { background: rgba(255,255,255,0.04); }
+.mockup-track-num { font-size: 12px; color: var(--text-muted); width: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+.mockup-track-thumb {
+  width: 34px; height: 34px; border-radius: 6px; flex-shrink: 0;
+  background-color: var(--bg-3); display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); overflow: hidden;
+}
+.mockup-track-thumb img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+.mockup-track-name { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+.mockup-track-dur { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.hifi-badge {
+  display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--cyan); background: rgba(69,243,255,0.1); padding: 2px 6px; border-radius: 4px; margin-left: 6px;
+}
+
+/* ─── TECHNOLOGY SECTION ─── */
+.tech-section { padding: 120px 24px; border-top: 1px solid var(--border); }
+.tech-inner { max-width: 1100px; margin: 0 auto; }
+.tech-grid {
+  margin-top: 64px; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 20px;
+}
+.tech-card {
+  background: var(--bg-1); border: 1px solid var(--border); border-radius: 16px; padding: 32px;
+  transition: all 0.3s;
+}
+.tech-card:hover { border-color: rgba(69,243,255,0.2); }
+.tech-card.large { grid-row: span 2; }
+.tech-card-icon { font-size: 36px !important; margin-bottom: 20px; color: var(--text); }
+.tech-card-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); margin-bottom: 10px; }
+.tech-card-desc { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+.tech-spec {
+  margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.tech-spec-item { background: var(--bg-2); border-radius: 10px; padding: 14px; }
+.tech-spec-val { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; color: var(--cyan); }
+.tech-spec-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* ─── CTA FINAL ─── */
+.cta-section { padding: 120px 24px; }
+.cta-inner {
+  max-width: 900px; margin: 0 auto; text-align: center;
+  background: linear-gradient(135deg, rgba(69,243,255,0.05) 0%, rgba(100,60,255,0.05) 100%);
+  border: 1px solid rgba(69,243,255,0.15); border-radius: 24px;
+  padding: 80px 48px;
+  position: relative; overflow: hidden;
+}
+.cta-inner::before {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px; height: 400px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(69,243,255,0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+.cta-title { font-size: clamp(36px, 5vw, 56px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; color: var(--text); }
+.cta-sub { font-size: 17px; color: var(--text-muted); margin-top: 16px; line-height: 1.7; }
+.cta-actions { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 40px; }
+
+/* ─── FOOTER ─── */
+footer {
+  border-top: 1px solid var(--border); padding: 48px 24px;
+  position: relative; z-index: 10;
+}
+.footer-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.footer-copy { font-size: 13px; color: var(--text-muted); }
+.footer-links { display: flex; gap: 24px; }
+.footer-links a { font-size: 13px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+.footer-links a:hover { color: var(--text); }
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: #4ade80; background: rgba(74,222,128,0.08);
+  padding: 6px 12px; border-radius: 100px; border: 1px solid rgba(74,222,128,0.2);
+}
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; animation: blink 2s ease-in-out infinite; }
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reveal {
+  opacity: 0; transform: translateY(32px);
+  transition: opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1);
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 900px) {
+  nav { padding: 0 24px; }
+  .nav-links { display: none; }
+  .dual-grid { grid-template-columns: 1fr; }
+  .features-grid { grid-template-columns: 1fr; }
+  .preview-inner { grid-template-columns: 1fr; gap: 48px; }
+  .tech-grid { grid-template-columns: 1fr; }
+  .stats-inner { grid-template-columns: 1fr 1fr; }
+  .footer-inner { flex-direction: column; gap: 24px; text-align: center; }
+  .cta-actions { flex-direction: column; }
+  .hero-actions { flex-direction: column; }
+}
+</style>
+
+<!-- Inicialización de Tailwind a través de CDN (Requerido para la sección de Testimonios y arreglar tu bug) -->
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+
+<!-- BACKGROUND LAYERS -->
+<div class="grid-bg"></div>
+<div class="glow-tl"></div>
+<div class="glow-br"></div>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">
+      <svg class="h-10 w-auto" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 30L25 10L40 30L25 50L10 30Z" stroke="#45F3FF" stroke-width="2" fill="none"/>
+          <path d="M18 30L25 20L32 30L25 40L18 30Z" fill="#45F3FF"/>
+          <text x="55" y="42" fill="white" font-family="Inter, sans-serif" font-weight="800" font-size="28" letter-spacing="2">CÉNIT</text>
+      </svg>
+  </a>
+  <div class="nav-links">
+    <a href="#features">Características</a>
+    <a href="#player">Player</a>
+    <a href="#tech">Tecnología</a>
+    <a href="#comunidad">Comunidad</a>
+  </div>
+  <a class="nav-cta" href="#">
+    <span>Empezar gratis</span>
+    <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+  </a>
+</nav>
+
+<!-- ══════════════════════ HERO ══════════════════════ -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="hero-badge-dot"></span>
+    Ahora con streaming 24-Bit / 192kHz
+  </div>
+  <h1 class="hero-title">
+    El ecosistema musical<br>
+    <span class="accent">definitivo</span>
+  </h1>
+  <p class="hero-sub">Una sola plataforma. Sonido sin compromisos. Gestión total. Elige tu universo y transforma la forma en que vives la música.</p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="#">
+      <span class="material-symbols-outlined" style="font-size: 20px;">play_arrow</span>
+      Iniciar Player
+    </a>
+    <a class="btn-ghost" href="{% url 'login' %}">
+      Consola Admin
+      <span class="material-symbols-outlined" style="font-size: 18px;">east</span>
+    </a>
+  </div>
+
+  <!-- WAVEFORM MOCKUP -->
+  <div class="hero-visual">
+    <div class="waveform-container">
+      <div class="waveform-header">
+        <div class="waveform-track-info">
+          <div class="waveform-album">
+            <!-- Portada cargada desde la API de Spotify (Magdalena Bay - Imaginal Disk) -->
+            <img src="https://i.scdn.co/image/ab67616d0000b2737339f7e95927d4b823189f62" alt="Imaginal Disk - Magdalena Bay">
+          </div>
+          <div>
+            <div class="waveform-title">Image</div>
+            <div class="waveform-artist">Magdalena Bay</div>
+          </div>
+        </div>
+        <span class="waveform-quality">HI-RES LOSSLESS</span>
+      </div>
+      <div class="waveform-bars" id="wbars"></div>
+      <div class="waveform-progress">
+        <div class="waveform-progress-fill"></div>
+      </div>
+      <div class="waveform-controls">
+        <span class="waveform-time">1:24</span>
+        <div class="waveform-btns">
+          <button class="wbtn"><span class="material-symbols-outlined">skip_previous</span></button>
+          <button class="wbtn play"><span class="material-symbols-outlined">play_arrow</span></button>
+          <button class="wbtn"><span class="material-symbols-outlined">skip_next</span></button>
+        </div>
+        <span class="waveform-time">3:32</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ STATS ══════════════════════ -->
+<section class="stats-strip reveal">
+  <div class="stats-inner">
+    <div class="stat-item">
+      <div class="stat-number">120M+</div>
+      <div class="stat-label">Tracks en catálogo</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">4.2M</div>
+      <div class="stat-label">Usuarios activos</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">256</div>
+      <div class="stat-label">Países conectados</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">99.99%</div>
+      <div class="stat-label">Uptime garantizado</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ DUAL ACCESS ══════════════════════ -->
+<section class="dual-section" id="about">
+  <div class="section-wrap">
+    <div class="section-tag">Acceso dual</div>
+    <h2 class="section-title">Dos universos,<br>una plataforma</h2>
+    <p class="section-sub">Diseñado para artistas, gestores y oyentes. Cada uno con su propio espacio y herramientas.</p>
+  </div>
+  <div class="dual-grid reveal">
+    <!-- Admin -->
+    <div class="portal-card" id="admin-card">
+      <span class="material-symbols-outlined card-watermark">database</span>
+      <div class="portal-icon-wrap admin">
+        <span class="material-symbols-outlined" style="font-size: 32px;">admin_panel_settings</span>
+      </div>
+      <h3 class="portal-card-title">Consola de Administración</h3>
+      <p class="portal-card-desc">Gestiona el catálogo completo, administra permisos de usuarios, establece colaboraciones estratégicas y supervisa los roles críticos del sistema con herramientas de alta precisión.</p>
+      <ul class="portal-features admin-list">
+        <li>Gestión completa del catálogo de artistas y álbumes</li>
+        <li>Control granular de permisos y roles de usuario</li>
+        <li>Panel de métricas y analítica en tiempo real</li>
+        <li>Herramientas de colaboración entre sellos y artistas</li>
+        <li>Moderación de contenido con IA integrada</li>
+      </ul>
+      <a class="portal-btn admin-btn" href="{% url 'login' %}">
+        Acceder a Consola
+        <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+      </a>
+    </div>
+
+    <!-- Player -->
+    <div class="portal-card featured" id="player-card">
+      <span class="material-symbols-outlined card-watermark">graphic_eq</span>
+      <div class="portal-icon-wrap player">
+        <span class="material-symbols-outlined" style="font-size: 32px;">headphones</span>
+      </div>
+      <h3 class="portal-card-title">CÉNIT Player</h3>
+      <p class="portal-card-desc">Explora un universo sonoro sin límites. Descubre artistas emergentes, disfruta de tus playlists personalizadas y sumérgete en una experiencia de streaming de alta fidelidad.</p>
+      <ul class="portal-features player-list">
+        <li>Streaming lossless 24-Bit / 192kHz sin compresión</li>
+        <li>Playlists inteligentes con IA adaptativa</li>
+        <li>Descarga offline en calidad máxima</li>
+        <li>Ecualizador paramétrico de 32 bandas</li>
+        <li>Modo social: comparte y co-crea con amigos</li>
+      </ul>
+      <a class="portal-btn player-btn" href="#">
+        Iniciar Player
+        <span class="material-symbols-outlined" style="font-size: 18px;">play_arrow</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ FEATURES ══════════════════════ -->
+<section class="features-section" id="features">
+  <div class="features-header reveal">
+    <div class="section-tag">Características</div>
+    <h2 class="section-title">Todo lo que esperas.<br>Y mucho más.</h2>
+    <p class="section-sub">Construido para audiófilos exigentes y profesionales de la industria que no aceptan medias tintas.</p>
+  </div>
+  <div class="features-grid reveal">
+    <div class="feature-cell">
+      <span class="material-symbols-outlined feature-icon">high_quality</span>
+      <div class="feature-title">Calidad sin compromisos</div>
+      <p class="feature-desc">Formatos FLAC, ALAC, WAV y MQA. Streaming adaptativo que nunca sacrifica la fidelidad sonora por la conexión.</p>
+    </div>
+    <div class="feature-cell">
+      <span class="material-symbols-outlined feature-icon">memory</span>
+      <div class="feature-title">IA Sonora Adaptativa</div>
+      <p class="feature-desc">Motor de recomendación propio entrenado con millones de sesiones de escucha. Aprende tu gusto en tiempo real.</p>
+    </div>
+    <div class="feature-cell">
+      <span class="material-symbols-outlined feature-icon">language</span>
+      <div class="feature-title">Red Global Edge</div>
+      <p class="feature-desc">256 nodos de distribución en todo el mundo. Latencia menor a 12ms garantizada independientemente de tu ubicación.</p>
+    </div>
+    <div class="feature-cell">
+      <span class="material-symbols-outlined feature-icon">lock</span>
+      <div class="feature-title">Privacidad Total</div>
+      <p class="feature-desc">Cifrado end-to-end en todas las sesiones. Tus datos de escucha son tuyos. Jamás los vendemos a terceros.</p>
+    </div>
+    <div class="feature-cell">
+      <span class="material-symbols-outlined feature-icon">tune</span>
+      <div class="feature-title">Estudio integrado</div>
+      <p class="feature-desc">Ecualizador paramétrico de 32 bandas, reverb espacial, normalización LUFS y masterización automática por pista.</p>
+    </div>
+    <div class="feature-cell">
+      <span class="material-symbols-outlined feature-icon">api</span>
+      <div class="feature-title">Ecosistema Abierto</div>
+      <p class="feature-desc">API pública, SDK para desarrolladores y marketplace de plugins. Integra CÉNIT en cualquier flujo de trabajo.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ PLAYER PREVIEW ══════════════════════ -->
+<section class="preview-section" id="player">
+  <div class="preview-inner">
+    <div class="preview-content reveal">
+      <div class="section-tag">Player</div>
+      <h2 class="section-title">Una experiencia de escucha redefinida</h2>
+      <p class="section-sub" style="max-width: 400px;">Cada detalle pensado para que nada se interponga entre tú y la música.</p>
+      <ul class="preview-list">
+        <li class="preview-list-item active">
+          <span class="material-symbols-outlined pli-icon">headphones</span>
+          <div>
+            <div class="pli-title">Modo Audiófilo HiRes</div>
+            <p class="pli-desc">Reproduce hasta 192kHz / 32-bit con soporte nativo para DACs externos y amplificadores de auriculares.</p>
+          </div>
+        </li>
+        <li class="preview-list-item">
+          <span class="material-symbols-outlined pli-icon">auto_awesome</span>
+          <div>
+            <div class="pli-title">Colas inteligentes con IA</div>
+            <p class="pli-desc">El sistema analiza BPM, tonalidad, energía y contexto para construir una sesión coherente sin cortes bruscos.</p>
+          </div>
+        </li>
+        <li class="preview-list-item">
+          <span class="material-symbols-outlined pli-icon">devices</span>
+          <div>
+            <div class="pli-title">Sincronización multi-dispositivo</div>
+            <p class="pli-desc">Continúa donde lo dejaste en cualquier dispositivo. Tu biblioteca, historial y preferencias viajan contigo.</p>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- APP MOCKUP -->
+    <div class="preview-mockup reveal">
+      <div class="mockup-topbar">
+        <span class="mockup-dot" style="background:#ff5f57"></span>
+        <span class="mockup-dot" style="background:#ffbd2e"></span>
+        <span class="mockup-dot" style="background:#28ca41"></span>
+        <span style="font-size:12px;color:var(--text-muted);margin-left:auto;margin-right:auto;">CÉNIT Player 3.0</span>
+      </div>
+      <div class="mockup-nav-row">
+        <span class="mockup-tab active">Inicio</span>
+        <span class="mockup-tab">Explorar</span>
+        <span class="mockup-tab">Biblioteca</span>
+      </div>
+      <div class="mockup-body">
+        <div class="mockup-now-playing">
+          <div class="mockup-thumb spin-anim">
+            <!-- Spotify Cover Data Bad Bunny -->
+            <img src="https://i.scdn.co/image/ab67616d0000b273bbd45c8d36e0e045ef640411" alt="DeBÍ TiRAR MáS FOToS">
+          </div>
+          <div>
+            <div class="mockup-np-title">DtMF</div>
+            <div class="mockup-np-sub">Bad Bunny</div>
+          </div>
+          <span class="mockup-np-tag">HI-RES</span>
+        </div>
+        <div class="mockup-section-title">Álbum: DeBÍ TiRAR MáS FOToS</div>
+        <div class="mockup-tracks">
+          <div class="mockup-track">
+            <span class="mockup-track-num">1</span>
+            <div class="mockup-track-thumb">
+                <img src="https://i.scdn.co/image/ab67616d0000b273bbd45c8d36e0e045ef640411" alt="Album Cover">
+            </div>
+            <span class="mockup-track-name">NUEVAYoL<span class="hifi-badge">FLAC</span></span>
+            <span class="mockup-track-dur">3:04</span>
+          </div>
+          <div class="mockup-track">
+            <span class="mockup-track-num">2</span>
+            <div class="mockup-track-thumb">
+                <img src="https://i.scdn.co/image/ab67616d0000b273bbd45c8d36e0e045ef640411" alt="Album Cover">
+            </div>
+            <span class="mockup-track-name">VOY A LLeVARTE PA PR<span class="hifi-badge">ALAC</span></span>
+            <span class="mockup-track-dur">2:36</span>
+          </div>
+          <div class="mockup-track">
+            <span class="mockup-track-num">3</span>
+            <div class="mockup-track-thumb">
+                <img src="https://i.scdn.co/image/ab67616d0000b273bbd45c8d36e0e045ef640411" alt="Album Cover">
+            </div>
+            <span class="mockup-track-name">BAILE INoLVIDABLE</span>
+            <span class="mockup-track-dur">6:08</span>
+          </div>
+          <div class="mockup-track">
+            <span class="mockup-track-num">4</span>
+            <div class="mockup-track-thumb">
+                <img src="https://i.scdn.co/image/ab67616d0000b273bbd45c8d36e0e045ef640411" alt="Album Cover">
+            </div>
+            <span class="mockup-track-name">PERFuMITO NUEVO<span class="hifi-badge">MQA</span></span>
+            <span class="mockup-track-dur">3:21</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ TESTIMONIALS FIX ══════════════════════ -->
+<section class="py-24 px-6 border-t border-white/5 relative z-10" id="comunidad">
+  <div class="max-w-6xl mx-auto reveal">
+    <div class="flex items-center gap-2 text-xs font-bold text-[#45f3ff] uppercase tracking-widest mb-4">
+      <div class="w-5 h-px bg-[#45f3ff]"></div> Comunidad
+    </div>
+    <h2 class="text-3xl md:text-5xl font-extrabold text-white tracking-tight mb-4">Lo que dice nuestra comunidad</h2>
+    <p class="text-gray-400 text-lg max-w-xl mb-16">Más de 4 millones de personas ya viven la música de otra manera.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+      <!-- Card 1 -->
+      <div class="bg-[#0e1017] border border-white/10 rounded-2xl p-8 hover:-translate-y-1 hover:border-white/20 transition-all flex flex-col justify-between">
+        <div>
+          <div class="flex gap-1 text-[#45f3ff] mb-4">
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+          </div>
+          <p class="text-gray-400 text-sm leading-relaxed mb-6">"Nunca pensé que escuchar música en streaming pudiera sonar igual que mi equipo de alta fidelidad. CÉNIT lo logró. La diferencia con el modo HiRes es brutal."</p>
+        </div>
+        <div class="flex items-center gap-4 mt-4">
+          <div class="flex-none w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-cyan-400 to-cyan-200 text-black font-bold text-sm">MR</div>
+          <div class="flex-1">
+            <div class="text-white font-semibold text-sm">Marco Riva</div>
+            <div class="text-gray-500 text-xs">Ingeniero de audio, Milano</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="bg-[#0e1017] border border-white/10 rounded-2xl p-8 hover:-translate-y-1 hover:border-white/20 transition-all flex flex-col justify-between">
+        <div>
+          <div class="flex gap-1 text-[#45f3ff] mb-4">
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+          </div>
+          <p class="text-gray-400 text-sm leading-relaxed mb-6">"La consola de administración es la herramienta que llevábamos años esperando. Gestionar un catálogo de 3.000 artistas nunca fue tan fluido."</p>
+        </div>
+        <div class="flex items-center gap-4 mt-4">
+          <div class="flex-none w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-400 to-purple-300 text-black font-bold text-sm">SL</div>
+          <div class="flex-1">
+            <div class="text-white font-semibold text-sm">Sofía López</div>
+            <div class="text-gray-500 text-xs">Directora de A&R, CDMX</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="bg-[#0e1017] border border-white/10 rounded-2xl p-8 hover:-translate-y-1 hover:border-white/20 transition-all flex flex-col justify-between">
+        <div>
+          <div class="flex gap-1 text-[#45f3ff] mb-4">
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+            <span class="material-symbols-outlined text-[16px]">star</span>
+          </div>
+          <p class="text-gray-400 text-sm leading-relaxed mb-6">"La IA de CÉNIT me descubrió géneros que nunca habría encontrado solo. Siento que la plataforma me conoce mejor que yo mismo a veces."</p>
+        </div>
+        <div class="flex items-center gap-4 mt-4">
+          <div class="flex-none w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-green-400 to-cyan-300 text-black font-bold text-sm">JK</div>
+          <div class="flex-1">
+            <div class="text-white font-semibold text-sm">James Kim</div>
+            <div class="text-gray-500 text-xs">Productor musical, Seúl</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ TECHNOLOGY ══════════════════════ -->
+<section class="tech-section" id="tech">
+  <div class="tech-inner">
+    <div class="reveal">
+      <div class="section-tag">Infraestructura</div>
+      <h2 class="section-title">Tecnología de vanguardia</h2>
+      <p class="section-sub">Cada bit de audio viaja por una infraestructura diseñada para la perfección.</p>
+    </div>
+    <div class="tech-grid reveal">
+      <div class="tech-card large">
+        <span class="material-symbols-outlined tech-card-icon">bolt</span>
+        <div class="tech-card-title">Edge Network Global</div>
+        <p class="tech-card-desc">Red de distribución propietaria con nodos de presencia en los 5 continentes. Protocolo de transmisión adaptativo que garantiza la calidad máxima disponible en cada conexión, priorizando siempre el audio sin pérdida cuando el ancho de banda lo permite.</p>
+        <div class="tech-spec">
+          <div class="tech-spec-item">
+            <div class="tech-spec-val">&lt;12ms</div>
+            <div class="tech-spec-label">Latencia media</div>
+          </div>
+          <div class="tech-spec-item">
+            <div class="tech-spec-val">256</div>
+            <div class="tech-spec-label">Nodos activos</div>
+          </div>
+          <div class="tech-spec-item">
+            <div class="tech-spec-val">99.99%</div>
+            <div class="tech-spec-label">Uptime SLA</div>
+          </div>
+          <div class="tech-spec-item">
+            <div class="tech-spec-val">192kHz</div>
+            <div class="tech-spec-label">Máx. sample rate</div>
+          </div>
+        </div>
+      </div>
+      <div class="tech-card">
+        <span class="material-symbols-outlined tech-card-icon">psychology</span>
+        <div class="tech-card-title">Motor de IA</div>
+        <p class="tech-card-desc">Modelo propio entrenado con 50 mil millones de sesiones de escucha anónimas. Analiza 200 variables de audio por pista.</p>
+      </div>
+      <div class="tech-card">
+        <span class="material-symbols-outlined tech-card-icon">enhanced_encryption</span>
+        <div class="tech-card-title">Seguridad</div>
+        <p class="tech-card-desc">Cifrado AES-256 en reposo. TLS 1.3 en tránsito. Auditorías de seguridad independientes trimestrales.</p>
+      </div>
+      <div class="tech-card">
+        <span class="material-symbols-outlined tech-card-icon">equalizer</span>
+        <div class="tech-card-title">DSP Avanzado</div>
+        <p class="tech-card-desc">Procesamiento de señal digital en tiempo real. Normalización LUFS, limitación transparente y espacialización binaural.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ CTA FINAL ══════════════════════ -->
+<section class="cta-section">
+  <div class="cta-inner reveal">
+    <div class="section-tag" style="justify-content:center;">El momento es ahora</div>
+    <h2 class="cta-title">¿Listo para escuchar en otro nivel?</h2>
+    <p class="cta-sub">Únete a millones de personas que ya descubrieron que la música puede sonar mucho mejor.</p>
+    <div class="cta-actions">
+      <a class="btn-primary" href="#">
+        <span class="material-symbols-outlined" style="font-size: 20px;">play_arrow</span>
+        Comenzar gratis
+      </a>
+      <a class="btn-ghost" href="#">Ver planes →</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="logo-diamond" style="width:24px;height:24px;"><div class="logo-diamond-inner" style="width:10px;height:10px;"></div></div>
+      <span class="footer-copy">© 2026 CÉNIT. Todos los derechos reservados.</span>
+    </div>
+    <div class="status-pill">
+      <span class="status-dot"></span>
+      Todos los sistemas operativos
+    </div>
+    <div class="footer-links">
+      <a href="#">Privacidad</a>
+      <a href="#">Términos</a>
+      <a href="#">API Docs</a>
+      <a href="#">Contacto</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── WAVEFORM BARS ──
+const wbars = document.getElementById('wbars');
+const barHeights = [0.3,0.5,0.7,0.4,0.8,0.6,0.9,0.5,0.7,0.4,0.6,0.8,0.5,0.3,0.7,0.9,0.4,0.6,0.5,0.8,0.3,0.7,0.6,0.4,0.9,0.5,0.7,0.3,0.6,0.8,0.4,0.5,0.7,0.9,0.3,0.6,0.5,0.4,0.8,0.7,0.5,0.3,0.9,0.6,0.4,0.7,0.5,0.8,0.3,0.6,0.7,0.4,0.9,0.5,0.8,0.3,0.6,0.5,0.7,0.4];
+const activeEnd = Math.floor(barHeights.length * 0.37);
+barHeights.forEach((h, i) => {
+  const bar = document.createElement('span');
+  bar.style.setProperty('--d', `${0.6 + Math.random() * 0.8}s`);
+  bar.style.height = `${h * 100}%`;
+  bar.style.minHeight = '4px';
+  if (i <= activeEnd) bar.classList.add('active');
+  wbars.appendChild(bar);
+});
+
+// ── SCROLL REVEAL ──
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── MAGNETIC CARDS ──
+document.querySelectorAll('.portal-card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const rect = card.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    card.style.setProperty('--mx', `${x}%`);
+    card.style.setProperty('--my', `${y}%`);
+  });
+});
+
+// ── PREVIEW LIST INTERACTION ──
+document.querySelectorAll('.preview-list-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.preview-list-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

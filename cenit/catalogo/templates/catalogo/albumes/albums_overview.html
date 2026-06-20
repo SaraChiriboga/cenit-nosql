@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Álbumes{% endblock %}
+
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Catalog</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Álbumes</span>
+{% endblock %}
+
+{% block content %}
+<section class="mb-12">
+    <div class="glass-panel rounded-xl overflow-hidden flex flex-col">
+
+        <div class="p-6 border-b border-white/5 flex flex-col lg:flex-row justify-between items-center gap-4 relative z-20">
+            <div class="flex flex-col lg:flex-row items-center gap-4 w-full lg:w-auto">
+                <h2 class="font-headline-md text-headline-md text-primary shrink-0">Álbumes</h2>
+
+                <form id="filter-form" method="GET" action="" class="relative flex-1 flex flex-col md:flex-row gap-3 w-full">
+
+                    <div class="relative w-full md:w-56 lg:w-48">
+                        <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                            <span class="material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+                        </div>
+                        <input name="q" value="{{ request.GET.q }}" class="w-full bg-surface-container border border-outline-variant/20 rounded-md pl-10 pr-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md placeholder:text-on-surface-variant/50" placeholder="Buscar..." type="text" onchange="document.getElementById('filter-form').submit();"/>
+                    </div>
+
+                    <div class="relative w-full md:w-56" id="custom-select-container">
+                        <input type="hidden" name="artista" id="artista-hidden" value="{{ request.GET.artista }}">
+
+                        <div class="relative">
+                            <input type="text" id="artista-search" class="w-full bg-surface-container border border-outline-variant/20 rounded-md pl-4 pr-10 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md placeholder:text-on-surface-variant/50 cursor-text" placeholder="Filtrar artista..." autocomplete="off">
+                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">arrow_drop_down</span>
+                        </div>
+
+                        <div id="artista-dropdown" class="absolute z-[100] w-full mt-2 bg-surface-container-high border border-white/10 rounded-xl shadow-2xl hidden max-h-60 overflow-y-auto overflow-x-hidden backdrop-blur-xl">
+                            <div class="p-3 cursor-pointer hover:bg-white/10 text-white/50 border-b border-white/5 font-medium transition-colors text-sm" data-value="">
+                                Todos los Artistas
+                            </div>
+                            {% for a in artistas %}
+                            <div class="p-3 cursor-pointer hover:bg-white/10 hover:text-secondary text-white artist-option transition-colors border-b border-white/5 last:border-0 truncate text-sm" data-value="{{ a.idartista }}">
+                                {{ a.nombreartistico }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <select name="orden" class="w-full md:w-48 bg-surface-container border border-outline-variant/20 rounded-md px-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md cursor-pointer" onchange="document.getElementById('filter-form').submit();">
+                        <option value="desc" {% if request.GET.orden == 'desc' %}selected{% endif %}>Más recientes</option>
+                        <option value="asc" {% if request.GET.orden == 'asc' %}selected{% endif %}>Más antiguos</option>
+                    </select>
+
+                    <button type="submit" class="hidden"></button>
+                </form>
+            </div>
+
+            <div class="flex gap-2 shrink-0 w-full lg:w-auto justify-end">
+                <a href="{% url 'add_album' %}" class="bg-primary-container text-on-primary-container font-label-sm text-label-sm px-4 py-2 rounded-md transition-all font-bold text-center">
+                    + Nuevo Álbum
+                </a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto relative z-10">
+            <table class="w-full text-left">
+                <thead class="bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold">ID</th>
+                        <th class="px-6 py-4 font-semibold">Título y Portada</th>
+                        <th class="px-6 py-4 font-semibold">Artista</th>
+                        <th class="px-6 py-4 font-semibold">Lanzamiento</th>
+                        <th class="px-6 py-4 font-semibold text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for album in albumes %}
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="px-6 py-4 font-mono text-on-surface-variant text-[13px]">ALB-{{ album.idalbum }}</td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-md bg-secondary/20 flex items-center justify-center shrink-0 overflow-hidden border border-white/5">
+                                    {% if album.urlportada %}
+                                        <img src="{{ album.urlportada }}" alt="{{ album.tituloalbum }}" class="w-full h-full object-cover">
+                                    {% else %}
+                                        <span class="material-symbols-outlined text-secondary text-[18px]">album</span>
+                                    {% endif %}
+                                </div>
+                                <span class="font-medium text-on-surface">{{ album.tituloalbum }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-on-surface-variant text-sm">{{ album.artista.nombreartistico|default:"Desconocido" }}</td>
+                        <td class="px-6 py-4 text-on-surface-variant text-sm">{{ album.fechalanzamiento|date:"M d, Y" }}</td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="javascript:void(0);"
+                                   onclick="navegarSinCortes('{% url 'read_album' album.idalbum %}')"
+                                   class="p-2 text-on-surface-variant hover:text-primary transition-colors"
+                                   title="Ver detalles">
+                                    <span class="material-symbols-outlined text-[20px]">visibility</span>
+                                </a>
+                                <a href="{% url 'edit_album' album.idalbum %}" class="p-2 text-on-surface-variant hover:text-secondary transition-colors" title="Editar">
+                                    <span class="material-symbols-outlined text-[20px]">edit</span>
+                                </a>
+                                <a href="javascript:void(0);"
+                                   onclick="showDeleteModal('{{ album.idalbum }}', '{{ album.tituloalbum|escapejs }}')"
+                                   class="p-2 text-on-surface-variant hover:text-secondary transition-colors"
+                                   title="Eliminar">
+                                    <span class="material-symbols-outlined text-[20px]">delete</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-on-surface-variant">
+                            <span class="material-symbols-outlined text-4xl mb-3 opacity-50 block">album</span>
+                            <div class="font-body-md text-on-surface">No hay álbumes registrados que coincidan.</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="p-4 border-t border-white/5 flex justify-between items-center text-on-surface-variant font-label-sm text-label-sm">
+            <div>{{ albumes.count }} álbum{{ albumes.count|pluralize:"es" }}</div>
+        </div>
+    </div>
+</section>
+
+<div id="delete-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity">
+    <div class="glass-ultra p-8 rounded-3xl w-full max-w-sm text-center border border-white/10 shadow-2xl transform transition-transform scale-95" id="delete-modal-content">
+        <span class="material-symbols-outlined text-5xl text-red-500 mb-4">delete_forever</span>
+
+        <h2 id="delete-modal-title" class="text-xl font-bold text-white mb-2">¿Eliminar álbum?</h2>
+
+        <p class="text-white/60 mb-8 text-sm">Esta acción no se puede deshacer. Se borrará este disco y <b>todas las canciones</b> que le pertenecen.</p>
+
+        <div class="flex gap-4">
+            <button onclick="closeModal()" class="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all">
+                Cancelar
+            </button>
+            <button id="btn-confirm-delete" onclick="confirmDelete()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                Eliminar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // -------------------------------------------------------------
+    // LOGICA DEL SELECTOR BÚSQUEDA DE ARTISTA (VANILLA JS)
+    // -------------------------------------------------------------
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('artista-search');
+        const hiddenInput = document.getElementById('artista-hidden');
+        const dropdown = document.getElementById('artista-dropdown');
+        const filterForm = document.getElementById('filter-form');
+        const options = dropdown.querySelectorAll('[data-value]');
+
+        if (hiddenInput.value !== "") {
+            const activeOption = dropdown.querySelector(`[data-value="${hiddenInput.value}"]`);
+            if (activeOption) searchInput.value = activeOption.textContent.trim();
+        }
+
+        searchInput.addEventListener('focus', () => dropdown.classList.remove('hidden'));
+        searchInput.addEventListener('click', () => dropdown.classList.remove('hidden'));
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            dropdown.classList.remove('hidden');
+
+            const defaultOption = dropdown.querySelector('[data-value=""]');
+            defaultOption.style.display = searchTerm === '' ? 'block' : 'none';
+
+            options.forEach(opt => {
+                if(opt === defaultOption) return;
+                const text = opt.textContent.toLowerCase();
+                opt.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        dropdown.addEventListener('click', (e) => {
+            const option = e.target.closest('[data-value]');
+            if (option) {
+                hiddenInput.value = option.getAttribute('data-value');
+                dropdown.classList.add('hidden');
+                filterForm.submit();
+            }
+        });
+    });
+
+    // -------------------------------------------------------------
+    // LÓGICA DEL MODAL DE ELIMINACIÓN
+    // -------------------------------------------------------------
+    var CSRF_TOKEN = '{{ csrf_token }}';
+    var albumToDeleteId = null;
+
+    window.showDeleteModal = function(id, titulo) {
+        albumToDeleteId = id;
+        document.getElementById('delete-modal-title').textContent = `¿Eliminar "${titulo}"?`;
+
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        setTimeout(() => {
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }, 10);
+    }
+
+    window.closeModal = function() {
+        albumToDeleteId = null;
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 150);
+    }
+
+    window.showToast = function(message, status) {
+        const isSuccess = status === 'success';
+        const toast = document.createElement('div');
+        toast.className = `fixed top-20 right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-lg border ${
+            isSuccess ? 'border-secondary/30 bg-surface-container text-secondary' : 'border-red-500/30 bg-surface-container text-red-400'
+        } shadow-2xl backdrop-blur-md transition-all duration-300`;
+
+        toast.innerHTML = `
+            <span class="material-symbols-outlined text-[20px]">${isSuccess ? 'check_circle' : 'error'}</span>
+            <div>
+                <p class="text-xs font-black uppercase tracking-widest opacity-60">${isSuccess ? 'Éxito' : 'Error'}</p>
+                <p class="text-sm font-bold">${message}</p>
+            </div>
+        `;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    }
+
+    window.confirmDelete = async function() {
+        if (!albumToDeleteId) return;
+
+        const btn = document.getElementById('btn-confirm-delete');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> Borrando...';
+
+        try {
+            const urlBase = "{% url 'delete_album' 999999 %}";
+            const fetchUrl = urlBase.replace('999999', albumToDeleteId);
+
+            const res = await fetch(fetchUrl, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN }
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.status === 'success') {
+                showToast('Álbum y canciones eliminadas.', 'success');
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                showToast(data.message || 'Error al intentar eliminar.', 'error');
+                closeModal();
+            }
+        } catch (error) {
+            showToast('Error de red al intentar eliminar.', 'error');
+            closeModal();
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Eliminar';
+        }
+    }
+</script>
+{% endblock %}

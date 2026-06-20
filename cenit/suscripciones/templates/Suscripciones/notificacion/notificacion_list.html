@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Notificaciones{% endblock %}
+
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<span class="text-on-surface">Notificaciones</span>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <h1 class="text-2xl font-semibold text-on-surface">Notificaciones</h1>
+        <p class="text-on-surface-variant text-sm mt-1">{{ notificaciones|length }} notificación{{ notificaciones|length|pluralize:"es" }}</p>
+    </div>
+    <a href="{% url 'notificacion_add' %}"
+       class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-secondary text-on-secondary font-medium text-sm hover:opacity-90 transition-all glow-cyan">
+        <span class="material-symbols-outlined text-[18px]">add</span>
+        Nueva notificación
+    </a>
+</div>
+
+{% if messages %}
+<div class="mb-6 flex flex-col gap-2">
+    {% for msg in messages %}
+    <div class="flex items-center gap-3 px-4 py-3 rounded-xl
+        {% if msg.tags == 'success' %}bg-green-500/10 border border-green-500/20 text-green-400
+        {% else %}bg-error/10 border border-error/20 text-error{% endif %} text-sm">
+        <span class="material-symbols-outlined text-[18px]">{% if msg.tags == 'success' %}check_circle{% else %}error{% endif %}</span>
+        {{ msg }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="get" class="mb-6">
+    <div class="relative w-80">
+        <span class="absolute inset-y-0 left-3 flex items-center pointer-events-none material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+        <input name="q" value="{{ query }}" placeholder="Buscar por tipo, usuario o mensaje..."
+               class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl pl-10 pr-4 py-2 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+    </div>
+</form>
+
+<div class="glass-panel rounded-2xl overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-white/5 text-on-surface-variant text-xs uppercase tracking-wider">
+                <th class="text-left px-6 py-4 font-medium">Tipo</th>
+                <th class="text-left px-6 py-4 font-medium">Usuario</th>
+                <th class="text-left px-6 py-4 font-medium">Mensaje</th>
+                <th class="text-left px-6 py-4 font-medium">Fecha envío</th>
+                <th class="text-left px-6 py-4 font-medium">Promoción</th>
+                <th class="text-right px-6 py-4 font-medium">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+            {% for n in notificaciones %}
+            <tr class="hover:bg-white/3 transition-colors">
+                <td class="px-6 py-4">
+                    {% if n.tiponotif == 'Pago Exitoso' %}
+                    <span class="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium">{{ n.tiponotif }}</span>
+                    {% elif n.tiponotif == 'Nuevo Lanzamiento' %}
+                    <span class="px-2 py-1 rounded-lg bg-secondary/10 text-secondary text-xs font-medium">{{ n.tiponotif }}</span>
+                    {% else %}
+                    <span class="px-2 py-1 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs font-medium">{{ n.tiponotif }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 text-on-surface">{{ n.usuario }}</td>
+                <td class="px-6 py-4 text-on-surface-variant max-w-xs truncate">{{ n.mensaje }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ n.fechaenvio|date:"d/m/Y H:i" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ n.promocion }}</td>
+                <td class="px-6 py-4 text-right">
+                    <a href="{% url 'notificacion_delete' n.idnotificacion %}"
+                       class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all inline-flex">
+                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="px-6 py-16 text-center text-on-surface-variant">
+                    <span class="material-symbols-outlined text-[40px] block mb-2 opacity-30">notifications</span>
+                    No hay notificaciones registradas.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

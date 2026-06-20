@@ -1,0 +1,11 @@
+{
+    "ENGINE": "mssql",
+    "NAME": "Cenit",
+    "SERVER": "SARILOLA",
+    "USER": "PythonConnectCenit",
+    "PASSWORD": "Cenit2026!",
+    "OPTIONS": {
+        "driver": "ODBC Driver 17 for SQL Server",
+        "extra_params": "Trusted_Connection=yes;"
+    }
+}

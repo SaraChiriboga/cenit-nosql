@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Promoción{% endblock %}
+
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<a href="{% url 'promocion_list' %}" class="hover:text-primary transition-colors">Promociones</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<span class="text-on-surface">{{ action }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-on-surface">{{ action }} promoción</h1>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6 flex flex-col gap-2">
+        {% for msg in messages %}
+        <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm">
+            <span class="material-symbols-outlined text-[18px]">error</span>{{ msg }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="glass-panel rounded-2xl p-8 flex flex-col gap-5">
+        {% csrf_token %}
+
+        <!-- Eliminado: campo ID de la promoción -->
+
+        <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Descripción</label>
+            <input type="text" name="descripcion" value="{{ promocion.descripcion|default:'' }}" required maxlength="255"
+                   class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">% Descuento</label>
+                <input type="number" name="porcentajedesc" value="{{ promocion.porcentajedesc|default:'' }}"
+                       required step="0.01" min="0" max="100"
+                       class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+            </div>
+            <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Plan</label>
+                <select name="tiposuscripcion" required
+                        class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
+                    <option value="">— Selecciona —</option>
+                    {% for plan in planes %}
+                    <option value="{{ plan.idtipo }}"
+                        {% if promocion.tiposuscripcion_id == plan.idtipo %}selected{% endif %}>
+                        {{ plan.nombreplan }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Fecha inicio</label>
+                <input type="datetime-local" name="fechainicio"
+                       value="{{ promocion.fechainicio|date:'Y-m-d\TH:i'|default:'' }}" required
+                       class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+            </div>
+            <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Fecha expiración</label>
+                <input type="datetime-local" name="fechaexpira"
+                       value="{{ promocion.fechaexpira|date:'Y-m-d\TH:i'|default:'' }}"
+                       class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+            </div>
+        </div>
+
+        <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" name="estadoactivo" {% if promocion.estadoactivo or not promocion %}checked{% endif %}
+                   class="w-4 h-4 rounded accent-secondary"/>
+            <span class="text-sm text-on-surface">Activa</span>
+        </label>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <a href="{% url 'promocion_list' %}"
+               class="px-5 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all text-sm font-medium">
+                Cancelar
+            </a>
+            <button type="submit"
+                    class="px-5 py-2.5 rounded-xl bg-secondary text-on-secondary text-sm font-medium hover:opacity-90 transition-all glow-cyan">
+                {{ action }}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

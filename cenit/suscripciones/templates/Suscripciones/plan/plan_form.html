@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Plan{% endblock %}
+
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<a href="{% url 'plan_list' %}" class="hover:text-primary transition-colors">Planes</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<span class="text-on-surface">{{ action }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-on-surface">{{ action }} plan</h1>
+        <p class="text-on-surface-variant text-sm mt-1">Precio entre $0.99 y $11.99</p>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6 flex flex-col gap-2">
+        {% for msg in messages %}
+        <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm">
+            <span class="material-symbols-outlined text-[18px]">error</span>{{ msg }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="glass-panel rounded-2xl p-8 flex flex-col gap-5">
+        {% csrf_token %}
+
+        <!-- ELIMINADO: bloque del campo ID del plan (ya no se pide) -->
+
+        <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Nombre del plan</label>
+            <input type="text" name="nombreplan" value="{{ plan.nombreplan|default:'' }}" required maxlength="50"
+                   class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Precio</label>
+                <input type="number" name="precio" value="{{ plan.precio|default:'' }}" required step="0.01" min="0.99" max="11.99"
+                       class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+            </div>
+            <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Moneda</label>
+                <select name="moneda" required
+                        class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
+                    {% for m in monedas %}
+                    <option value="{{ m }}" {% if plan.moneda == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Duración (días)</label>
+            <input type="number" name="duracion" value="{{ plan.duracion|default:'' }}" required min="1"
+                   class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <a href="{% url 'plan_list' %}"
+               class="px-5 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all text-sm font-medium">
+                Cancelar
+            </a>
+            <button type="submit"
+                    class="px-5 py-2.5 rounded-xl bg-secondary text-on-secondary text-sm font-medium hover:opacity-90 transition-all glow-cyan">
+                {{ action }}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

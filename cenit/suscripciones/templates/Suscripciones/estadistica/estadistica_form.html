@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Registrar estadística{% endblock %}
+
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<a href="{% url 'estadistica_list' %}" class="hover:text-primary transition-colors">Estadísticas</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<span class="text-on-surface">Nueva</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-on-surface">Registrar estadística</h1>
+        <p class="text-on-surface-variant text-sm mt-1">Registro manual de reproducciones diarias</p>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6 flex flex-col gap-2">
+        {% for msg in messages %}
+        <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm">
+            <span class="material-symbols-outlined text-[18px]">error</span>{{ msg }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="glass-panel rounded-2xl p-8 flex flex-col gap-5">
+        {% csrf_token %}
+
+        <!-- Eliminado: campo ID estadística -->
+
+        <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Canción</label>
+            <select name="cancion" required
+                    class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
+                <option value="">— Selecciona —</option>
+                {% for c in canciones %}
+                <option value="{{ c.idcancion }}">{{ c.titulocancion }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Fecha reporte</label>
+                <input type="date" name="fechareporte" required
+                       class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+            </div>
+            <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Total reproducciones</label>
+                <input type="number" name="totalrepros" required min="0"
+                       class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <a href="{% url 'estadistica_list' %}"
+               class="px-5 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all text-sm font-medium">
+                Cancelar
+            </a>
+            <button type="submit"
+                    class="px-5 py-2.5 rounded-xl bg-secondary text-on-secondary text-sm font-medium hover:opacity-90 transition-all glow-cyan">
+                Registrar
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

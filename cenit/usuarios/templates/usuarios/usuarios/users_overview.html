@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}Usuarios{% endblock %}
+
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Users & Access</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Usuarios</span>
+{% endblock %}
+
+{% block content %}
+<section class="mb-12">
+    <div class="glass-panel rounded-xl overflow-hidden flex flex-col">
+
+        <div class="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-6 w-full md:w-auto">
+                <h2 class="font-headline-md text-headline-md text-primary shrink-0">Usuarios</h2>
+
+                <form method="GET" action="" class="relative flex-1 md:w-80 flex gap-2">
+                    <div class="relative flex-1">
+                        <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                            <span class="material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+                        </div>
+                        <input name="q" value="{{ request.GET.q }}" class="w-full bg-surface-container border border-outline-variant/20 rounded-md pl-10 pr-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md placeholder:text-on-surface-variant/50" placeholder="Buscar usuarios..." type="text"/>
+                    </div>
+                    <select name="rol" class="w-32 bg-surface-container border border-outline-variant/20 rounded-md px-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md">
+                        <option value="">Roles</option>
+                        <option value="Administrador">Admin</option>
+                        <option value="Analista">Analista</option>
+                        <option value="Usuario">Usuario</option>
+                    </select>
+                    <button type="submit" class="hidden"></button>
+                </form>
+            </div>
+
+            <div class="flex gap-2 shrink-0">
+                <a href="{% url 'add_user' %}" class="bg-primary-container text-on-primary-container font-label-sm text-label-sm px-4 py-2 rounded-md transition-all font-bold">
+                    + Nuevo Usuario
+                </a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold">ID</th>
+                        <th class="px-6 py-4 font-semibold">Perfil</th>
+                        <th class="px-6 py-4 font-semibold">Rol</th>
+                        <th class="px-6 py-4 font-semibold">Estado</th>
+                        <th class="px-6 py-4 font-semibold text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for u in usuarios %}
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="px-6 py-4 font-mono text-on-surface-variant text-[13px]">USR-{{ u.idUsuario }}</td>
+
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <!-- Avatar con tres estados: Activo (Turquesa), Inactivo (Amarillo), Suspendido (Gris) -->
+                                <div class="w-10 h-10 rounded-md {% if u.estado == 'Activo' %}bg-secondary/20 border-white/5{% elif u.estado == 'Inactivo' %}bg-yellow-500/20 border-white/5{% else %}bg-white/5 border-white/10 opacity-60{% endif %} flex items-center justify-center shrink-0 overflow-hidden border">
+                                    <span class="font-bold {% if u.estado == 'Activo' %}text-secondary{% elif u.estado == 'Inactivo' %}text-yellow-400{% else %}text-white/40{% endif %}">{{ u.nombre|first|upper }}{{ u.apellido|first|upper }}</span>
+                                </div>
+                                <div class="flex flex-col {% if u.estado == 'Suspendido' %}opacity-60{% endif %}">
+                                    <span class="font-bold text-on-surface">{{ u.nombre }} {{ u.apellido }}</span>
+                                    <span class="text-xs text-on-surface-variant mt-0.5">{{ u.email }}</span>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- ROL DINÁMICO ACORDE A LOS 3 ESTADOS -->
+                        <td class="px-6 py-4">
+                            {% if u.estado == 'Activo' %}
+                                {% if u.rol_nombre == 'Administrador' %}
+                                    <span class="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">Administrador</span>
+                                {% elif u.rol_nombre == 'Analista' %}
+                                    <span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">Analista</span>
+                                {% else %}
+                                    <span class="bg-secondary/10 text-secondary border border-secondary/20 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">Usuario</span>
+                                {% endif %}
+                            {% elif u.estado == 'Inactivo' %}
+                                <!-- Estilo amarillento para usuarios inactivos -->
+                                <span class="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">{{ u.rol_nombre|default:"Usuario" }}</span>
+                            {% else %}
+                                <!-- Estilo apagado para usuarios suspendidos -->
+                                <span class="bg-white/5 text-white/40 border border-white/10 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">{{ u.rol_nombre|default:"Usuario" }}</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- ESTADO CON 3 INDICADORES VISUALES -->
+                        <td class="px-6 py-4">
+                            {% if u.estado == 'Activo' %}
+                                <span class="inline-flex items-center gap-1.5 text-secondary font-bold text-xs uppercase tracking-wider">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Activo
+                                </span>
+                            {% elif u.estado == 'Inactivo' %}
+                                <span class="inline-flex items-center gap-1.5 text-yellow-400 font-bold text-xs uppercase tracking-wider">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span> Inactivo
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center gap-1.5 text-red-400 font-bold text-xs uppercase tracking-wider">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Suspendido
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="javascript:void(0);"
+                                   onclick="navegarSinCortes('{% url 'read_user' u.idUsuario %}')"
+                                   class="p-2 text-on-surface-variant hover:text-primary transition-colors"
+                                   title="Ver detalles">
+                                    <span class="material-symbols-outlined text-[20px]">visibility</span>
+                                </a>
+                                <a href="{% url 'edit_user' u.idUsuario %}" class="p-2 text-on-surface-variant hover:text-secondary transition-colors" title="Editar">
+                                    <span class="material-symbols-outlined text-[20px]">edit</span>
+                                </a>
+
+                                {% if u.estado == 'Activo' %}
+                                <a href="javascript:void(0);"
+                                   onclick="window.showToggleModal('{{ u.idUsuario }}', '{{ u.nombre|escapejs }} {{ u.apellido|escapejs }}', 'suspender')"
+                                   class="p-2 text-on-surface-variant hover:text-error transition-colors"
+                                   title="Suspender">
+                                    <span class="material-symbols-outlined text-[20px]">block</span>
+                                </a>
+                                {% else %}
+                                <a href="javascript:void(0);"
+                                   onclick="window.showToggleModal('{{ u.idUsuario }}', '{{ u.nombre|escapejs }} {{ u.apellido|escapejs }}', 'activar')"
+                                   class="p-2 text-on-surface-variant hover:text-secondary transition-colors"
+                                   title="Reactivar">
+                                    <span class="material-symbols-outlined text-[20px]">how_to_reg</span>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center">
+                            {% if error_db %}
+                                <div class="bg-red-500/20 border border-red-500/50 p-4 rounded-xl inline-block text-left max-w-2xl mx-auto">
+                                    <span class="material-symbols-outlined text-red-400 text-3xl mb-2">warning</span>
+                                    <h3 class="text-red-400 font-bold">Error en la consulta SQL:</h3>
+                                    <p class="text-white/80 font-mono text-sm mt-2">{{ error_db }}</p>
+                                </div>
+                            {% else %}
+                                <span class="material-symbols-outlined text-4xl mb-3 opacity-50 block text-on-surface-variant">group_off</span>
+                                <div class="font-body-md text-on-surface">No hay usuarios registrados</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="p-4 border-t border-white/5 flex justify-between items-center text-on-surface-variant font-label-sm text-label-sm">
+            <div>{{ usuarios|length }} usuario{{ usuarios|length|pluralize:"s" }}</div>
+        </div>
+    </div>
+</section>
+
+<div id="toggle-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity">
+    <div class="glass-ultra p-8 rounded-3xl w-full max-w-sm text-center border border-white/10 shadow-2xl transform transition-transform scale-95" id="toggle-modal-content">
+        <span id="modal-icon" class="material-symbols-outlined text-5xl text-red-500 mb-4">block</span>
+
+        <h2 id="toggle-modal-title" class="text-xl font-bold text-white mb-2">Confirmar Acción</h2>
+
+        <p id="toggle-modal-desc" class="text-white/60 mb-8 text-sm">El usuario perderá el acceso a la plataforma.</p>
+
+        <div class="flex gap-4">
+            <button onclick="closeToggleModal()" class="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all">
+                Cancelar
+            </button>
+            <button id="btn-confirm-toggle" onclick="confirmToggle()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                Confirmar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var CSRF_TOKEN = '{{ csrf_token }}';
+    var userIdToToggle = null;
+    var currentAction = null;
+
+    window.showToggleModal = function(id, nombreCompleto, accion) {
+        userIdToToggle = id;
+        currentAction = accion;
+
+        const isSuspender = accion === 'suspender';
+
+        document.getElementById('toggle-modal-title').textContent = isSuspender ? `¿Suspender a ${nombreCompleto}?` : `¿Reactivar a ${nombreCompleto}?`;
+        document.getElementById('toggle-modal-desc').textContent = isSuspender ?
+            "El usuario perderá inmediatamente el acceso al sistema." :
+            "El usuario recuperará el acceso a la plataforma.";
+
+        const icon = document.getElementById('modal-icon');
+        icon.textContent = isSuspender ? 'block' : 'how_to_reg';
+        icon.className = isSuspender ? 'material-symbols-outlined text-5xl text-red-500 mb-4' : 'material-symbols-outlined text-5xl text-secondary mb-4';
+
+        const btn = document.getElementById('btn-confirm-toggle');
+        btn.textContent = isSuspender ? 'Suspender' : 'Reactivar';
+        btn.className = isSuspender ?
+            'flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2' :
+            'flex-1 py-3 bg-secondary hover:opacity-80 text-on-secondary font-bold rounded-xl transition-all flex items-center justify-center gap-2';
+
+        const modal = document.getElementById('toggle-modal');
+        const content = document.getElementById('toggle-modal-content');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        setTimeout(() => {
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }, 10);
+    };
+
+    window.closeToggleModal = function() {
+        userIdToToggle = null;
+        currentAction = null;
+        const modal = document.getElementById('toggle-modal');
+        const content = document.getElementById('toggle-modal-content');
+
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 150);
+    };
+
+    window.showToast = function(message, status) {
+        const isSuccess = status === 'success';
+        const toast = document.createElement('div');
+        toast.className = `fixed top-20 right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-lg border ${
+            isSuccess ? 'border-secondary/30 bg-surface-container text-secondary' : 'border-red-500/30 bg-surface-container text-red-400'
+        } shadow-2xl backdrop-blur-md transition-all duration-300`;
+
+        toast.innerHTML = `
+            <span class="material-symbols-outlined text-[20px]">${isSuccess ? 'check_circle' : 'error'}</span>
+            <div>
+                <p class="text-xs font-black uppercase tracking-widest opacity-60">${isSuccess ? 'Éxito' : 'Error'}</p>
+                <p class="text-sm font-bold">${message}</p>
+            </div>
+        `;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    };
+
+    window.confirmToggle = async function() {
+        if (!userIdToToggle) return;
+
+        const btn = document.getElementById('btn-confirm-toggle');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>...';
+
+        try {
+            const urlBase = "{% url 'toggle_user' 999999 %}";
+            const fetchUrl = urlBase.replace('999999', userIdToToggle);
+
+            const res = await fetch(fetchUrl, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN }
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.status === 'success') {
+                window.showToast(data.message, 'success');
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                window.showToast(data.message || 'Error en la operación.', 'error');
+                window.closeToggleModal();
+            }
+        } catch (error) {
+            window.showToast('Error de red.', 'error');
+            window.closeToggleModal();
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    };
+})();
+</script>
+{% endblock %}

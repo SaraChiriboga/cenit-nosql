@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Auditoría de Acceso{% endblock %}
+
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<span class="text-on-surface">Auditoría de acceso</span>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <h1 class="text-2xl font-semibold text-on-surface">Auditoría de acceso</h1>
+        <p class="text-on-surface-variant text-sm mt-1">{{ registros|length }} registro{{ registros|length|pluralize:"s" }}</p>
+    </div>
+    <a href="{% url 'auditoria_add' %}"
+       class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-secondary text-on-secondary font-medium text-sm hover:opacity-90 transition-all glow-cyan">
+        <span class="material-symbols-outlined text-[18px]">add</span>
+        Nuevo registro
+    </a>
+</div>
+
+{% if messages %}
+<div class="mb-6 flex flex-col gap-2">
+    {% for msg in messages %}
+    <div class="flex items-center gap-3 px-4 py-3 rounded-xl
+        {% if msg.tags == 'success' %}bg-green-500/10 border border-green-500/20 text-green-400
+        {% else %}bg-error/10 border border-error/20 text-error{% endif %}">
+        <span class="material-symbols-outlined text-[18px]">
+            {% if msg.tags == 'success' %}check_circle{% else %}error{% endif %}
+        </span>
+        {{ msg }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="get" class="mb-6">
+    <div class="relative w-80">
+        <span class="absolute inset-y-0 left-3 flex items-center pointer-events-none material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+        <input name="q" value="{{ query }}" placeholder="Buscar por acción, IP o rol..."
+               class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl pl-10 pr-4 py-2 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+    </div>
+</form>
+
+<div class="glass-panel rounded-2xl overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-white/5 text-on-surface-variant text-xs uppercase tracking-wider">
+                <th class="text-left px-6 py-4 font-medium">ID</th>
+                <th class="text-left px-6 py-4 font-medium">Acción</th>
+                <th class="text-left px-6 py-4 font-medium">IP Origen</th>
+                <th class="text-left px-6 py-4 font-medium">Rol</th>
+                <th class="text-right px-6 py-4 font-medium">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+            {% for registro in registros %}
+            <tr class="hover:bg-white/3 transition-colors">
+                <td class="px-6 py-4 text-on-surface-variant font-mono">{{ registro.idlog }}</td>
+                <td class="px-6 py-4 text-on-surface font-medium">{{ registro.accion|default:"—" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant font-mono">{{ registro.iporigen|default:"—" }}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 rounded-lg bg-secondary/10 text-secondary text-xs font-medium">{{ registro.rol }}</span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <a href="{% url 'auditoria_delete' registro.idlog %}"
+                       class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all inline-flex">
+                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="px-6 py-16 text-center text-on-surface-variant">
+                    <span class="material-symbols-outlined text-[40px] block mb-2 opacity-30">policy</span>
+                    No hay registros de auditoría.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Colaboración{% endblock %}
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Catalog</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<a href="{% url 'colabs_overview' %}" class="hover:text-primary transition-colors text-on-surface-variant">Colaboraciones</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Detalle de Vínculo</span>
+{% endblock %}
+
+{% block content %}
+<style>
+    #fixed-bg {
+        position: fixed; inset: 0; z-index: -1;
+        background-color: #0B0C10;
+        background-size: cover; background-position: center;
+        filter: blur(15px) brightness(0.7);
+        transform: scale(1.1);
+        transition: background-image 0.8s ease-in-out;
+    }
+    #fixed-bg::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(to bottom, rgba(11,12,16,0.85) 0%, rgba(11,12,16,0.98) 100%);
+    }
+    .glass-ultra {
+        background: rgba(0,0,0,0.3);
+        backdrop-filter: blur(40px);
+        border: 1px solid rgba(255,255,255,0.08);
+    }
+    .label-meta {
+        font-size: 0.7rem; font-weight: 800;
+        color: rgba(255,255,255,0.4);
+        text-transform: uppercase; margin-bottom: 0.5rem; display: block;
+    }
+    .read-field {
+        background: rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.05);
+        color: white; padding: 1rem; border-radius: 0.75rem;
+        transition: border-color 0.2s, background 0.2s;
+        font-weight: 500;
+    }
+    
+    .edit-input {
+        width: 100%;
+        background: rgba(0,0,0,0.5);
+        border: 1px solid rgba(68,226,215,0.4);
+        color: white; padding: 1rem; border-radius: 0.75rem;
+        outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .edit-input:focus, .dropdown-btn:focus {
+        border-color: #44e2d7 !important;
+        box-shadow: 0 0 0 3px rgba(68,226,215,0.15) !important;
+    }
+
+    select.native-select {
+        appearance: none; -webkit-appearance: none; -moz-appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat; background-position: right 1rem center; background-size: 1.2em;
+        padding-right: 2.5rem !important; cursor: pointer;
+    }
+    select.native-select option { background-color: #1A1B20; color: white; padding: 10px; }
+
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 8px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 8px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(68, 226, 215, 0.5); }
+
+    #toast {
+        position: fixed; bottom: 2rem; right: 2rem; z-index: 9999;
+        transition: all 0.3s ease; transform: translateY(100px); opacity: 0;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+
+    #edit-banner {
+        display: none;
+        background: rgba(68,226,215,0.08);
+        border: 1px solid rgba(68,226,215,0.2);
+    }
+    #edit-banner.active { display: flex; }
+</style>
+
+<div id="fixed-bg"
+     style="background-image: url('{% if colaboracion.cancion.album_idalbum.urlportada %}{{ colaboracion.cancion.album_idalbum.urlportada }}{% elif colaboracion.cancion.album.urlportada %}{{ colaboracion.cancion.album.urlportada }}{% endif %}');">
+</div>
+
+<div id="toast" class="glass-ultra px-6 py-4 rounded-2xl border border-white/10 flex items-center gap-3">
+    <span id="toast-icon" class="material-symbols-outlined text-secondary">check_circle</span>
+    <span id="toast-msg" class="text-white text-sm font-medium"></span>
+</div>
+
+<div class="w-full min-h-[calc(100vh-64px)] p-8">
+    <div class="max-w-6xl mx-auto">
+
+        <div class="mb-6 flex items-start justify-between gap-4">
+            <div>
+                <h1 class="text-4xl font-extrabold text-white" id="page-title">
+                    {{ colaboracion.cancion.titulocancion }}
+                    <p class="text-white/40 text-sm mt-1 font-mono tracking-widest">COL-{{ colaboracion.idcolaboracion }}</p>
+                </h1>
+            </div>
+            <div id="edit-banner" class="items-center gap-2 px-4 py-2 rounded-xl text-secondary text-sm font-bold shadow-lg shadow-secondary/10">
+                <span class="material-symbols-outlined text-base">edit</span>
+                Modo edición activo
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-8 items-start">
+
+            <div class="space-y-5">
+
+                <div class="aspect-square w-full rounded-3xl border border-white/10 glass-ultra flex items-center justify-center bg-black/40 shadow-2xl p-8 relative">
+                    <div class="relative w-full aspect-square max-w-[260px]">
+                        <div class="w-full h-full rounded-2xl border border-white/10 overflow-hidden bg-surface-container z-10 absolute top-0 left-0 shadow-2xl">
+                            {% if colaboracion.cancion.album_idalbum.urlportada or colaboracion.cancion.album.urlportada %}
+                                <img id="cover-img" src="{% if colaboracion.cancion.album_idalbum.urlportada %}{{ colaboracion.cancion.album_idalbum.urlportada }}{% else %}{{ colaboracion.cancion.album.urlportada }}{% endif %}" class="w-full h-full object-cover transition-all duration-500">
+                            {% else %}
+                                <div class="w-full h-full flex items-center justify-center bg-secondary/5">
+                                    <span class="material-symbols-outlined text-6xl text-secondary/20">music_note</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="w-32 h-32 rounded-full border-4 border-[#1A1B20] overflow-hidden bg-surface-container z-20 absolute -bottom-6 -right-6 shadow-2xl ring-1 ring-white/10">
+                            {% if colaboracion.artista.urlperfil %}
+                                <img id="artist-img" src="{{ colaboracion.artista.urlperfil }}" class="w-full h-full object-cover transition-all duration-500">
+                            {% else %}
+                                <div class="w-full h-full flex items-center justify-center bg-black">
+                                    <span class="material-symbols-outlined text-4xl text-white/20">person</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-ultra p-6 rounded-3xl space-y-4 text-sm">
+                    <div class="flex justify-between items-center pb-4 border-b border-white/5">
+                        <span class="text-white/50 font-bold uppercase flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">link</span> Colab</span>
+                        <span class="font-mono text-white/80 bg-white/5 px-3 py-1 rounded-md border border-white/10">{{ colaboracion.idcolaboracion }}</span>
+                    </div>
+                    <div class="flex justify-between items-center pb-4 border-b border-white/5">
+                        <span class="text-white/50 font-bold uppercase flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">person</span> Artista</span>
+                        <span class="font-mono text-white/80 bg-white/5 px-3 py-1 rounded-md border border-white/10">{{ colaboracion.artista.idartista }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/50 font-bold uppercase flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">music_note</span> Canción</span>
+                        <a href="{% url 'read_track' colaboracion.cancion.idcancion %}"
+                           class="font-mono text-secondary hover:text-black bg-secondary/10 hover:bg-secondary transition-colors px-3 py-1 rounded-md border border-secondary/30 flex items-center gap-1 group" title="Ver detalles de la canción">
+                            {{ colaboracion.cancion.idcancion }}
+                            <span class="material-symbols-outlined text-[14px] group-hover:scale-110 transition-transform">open_in_new</span>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="space-y-6">
+                <div class="glass-ultra p-10 rounded-3xl space-y-8">
+                    <div>
+                        <h3 class="text-sm font-semibold text-white/50 uppercase tracking-wider mb-6 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-base">dataset</span>
+                            DETALLES DE LA COLABORACIÓN
+                        </h3>
+
+                        <form id="edit-form" class="grid grid-cols-1 gap-6 relative">
+
+                            <div>
+                                <label class="label-meta">Pista / Canción</label>
+                                <div id="v-cancion" class="read-field flex items-center gap-3">
+                                    <span class="material-symbols-outlined text-white/30 text-[20px]">music_note</span>
+                                    {{ colaboracion.cancion.titulocancion }}
+                                </div>
+                                <div id="f-cancion-wrap" class="hidden relative">
+                                    <input type="hidden" id="f-cancion-hidden" value="{{ colaboracion.cancion.idcancion }}">
+                                    <button type="button" class="edit-input dropdown-btn text-left flex justify-between items-center" onclick="toggleDropdown('cancion')">
+                                        <span id="cancion-display" class="font-bold">{{ colaboracion.cancion.titulocancion }}</span>
+                                        <span class="material-symbols-outlined text-white/40">expand_more</span>
+                                    </button>
+                                    <div id="cancion-menu" class="hidden absolute z-[60] w-full mt-2 bg-[#1A1B20] border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col">
+                                        <div class="p-3 border-b border-white/5 bg-black/40">
+                                            <div class="relative">
+                                                <span class="material-symbols-outlined absolute left-3 top-2.5 text-white/30 text-[18px]">search</span>
+                                                <input type="text" id="cancion-search" class="w-full bg-transparent border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white outline-none focus:border-secondary" placeholder="Buscar canción..." onkeyup="filterDropdown('cancion')">
+                                            </div>
+                                        </div>
+                                        <div class="max-h-56 overflow-y-auto custom-scrollbar" id="cancion-list">
+                                            {% for c in canciones %}
+                                            <div class="px-4 py-3 hover:bg-secondary/20 cursor-pointer text-sm text-white item-option border-b border-white/5 flex items-center gap-3"
+                                                 onclick="selectOption('cancion', '{{ c.idcancion }}', '{{ c.titulocancion|escapejs }}', '{% if c.album_idalbum.urlportada %}{{ c.album_idalbum.urlportada }}{% elif c.album.urlportada %}{{ c.album.urlportada }}{% endif %}')">
+                                                <span class="material-symbols-outlined text-white/30 text-[18px]">music_note</span>
+                                                <span>{{ c.titulocancion }}</span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-2">
+                                <label class="label-meta">Artista Colaborador</label>
+                                <div id="v-artista" class="read-field flex items-center gap-3">
+                                    <span class="material-symbols-outlined text-white/30 text-[20px]">person</span>
+                                    {{ colaboracion.artista.nombreartistico }}
+                                </div>
+                                <div id="f-artista-wrap" class="hidden relative">
+                                    <input type="hidden" id="f-artista-hidden" value="{{ colaboracion.artista.idartista }}">
+                                    <button type="button" class="edit-input dropdown-btn text-left flex justify-between items-center" onclick="toggleDropdown('artista')">
+                                        <span id="artista-display" class="font-bold">{{ colaboracion.artista.nombreartistico }}</span>
+                                        <span class="material-symbols-outlined text-white/40">expand_more</span>
+                                    </button>
+                                    <div id="artista-menu" class="hidden absolute z-[50] w-full mt-2 bg-[#1A1B20] border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col">
+                                        <div class="p-3 border-b border-white/5 bg-black/40">
+                                            <div class="relative">
+                                                <span class="material-symbols-outlined absolute left-3 top-2.5 text-white/30 text-[18px]">search</span>
+                                                <input type="text" id="artista-search" class="w-full bg-transparent border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white outline-none focus:border-secondary" placeholder="Buscar artista..." onkeyup="filterDropdown('artista')">
+                                            </div>
+                                        </div>
+                                        <div class="max-h-56 overflow-y-auto custom-scrollbar" id="artista-list">
+                                            {% for a in artistas %}
+                                            <div class="px-4 py-3 hover:bg-secondary/20 cursor-pointer text-sm text-white item-option border-b border-white/5 flex items-center gap-3"
+                                                 onclick="selectOption('artista', '{{ a.idartista }}', '{{ a.nombreartistico|escapejs }}', '{{ a.urlperfil|default:"" }}')">
+                                                <span class="material-symbols-outlined text-white/30 text-[18px]">person</span>
+                                                <span>{{ a.nombreartistico }}</span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-2">
+                                <label class="label-meta">Rol Asignado</label>
+                                <div id="v-rol" class="read-field">
+                                    {% if colaboracion.rolartista|lower == 'principal' %}
+                                        <span class="text-primary font-bold">Principal</span>
+                                    {% elif colaboracion.rolartista|lower == 'invitado' %}
+                                        <span class="text-secondary font-bold">Invitado</span>
+                                    {% elif colaboracion.rolartista|lower == 'remixer' %}
+                                        <span class="text-yellow-500 font-bold">Remixer</span>
+                                    {% else %}
+                                        {{ colaboracion.rolartista }}
+                                    {% endif %}
+                                </div>
+                                <select id="f-rol" class="edit-input hidden native-select font-bold">
+                                    <option value="Principal" {% if colaboracion.rolartista == 'Principal' %}selected{% endif %}>Principal</option>
+                                    <option value="Invitado" {% if colaboracion.rolartista == 'Invitado' %}selected{% endif %}>Invitado</option>
+                                    <option value="Remixer" {% if colaboracion.rolartista == 'Remixer' %}selected{% endif %}>Remixer</option>
+                                </select>
+                            </div>
+
+                        </form>
+                    </div>
+                </div>
+
+                <div class="flex justify-end items-center gap-4 pt-2">
+                    <a href="{% url 'colabs_overview' %}"
+                       class="px-8 py-4 text-white/60 hover:text-white transition-all text-sm font-medium">
+                        Volver
+                    </a>
+
+                    <button id="btn-toggle-edit"
+                            onclick="toggleEdit()"
+                            class="inline-flex items-center gap-2 px-8 py-4 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-all text-sm shadow-lg">
+                        <span class="material-symbols-outlined text-[20px]" id="edit-icon">edit</span>
+                        <span id="edit-label">Editar</span>
+                    </button>
+
+                    <button id="btn-save"
+                            onclick="saveChanges()"
+                            class="hidden inline-flex items-center gap-2 px-8 py-4 bg-secondary text-black font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-secondary/20 text-sm">
+                        <span class="material-symbols-outlined text-[20px]">save</span>
+                        Guardar Cambios
+                    </button>
+
+                    <button onclick="showDeleteModal()"
+                            class="inline-flex items-center gap-2 px-8 py-4 bg-red-500/20 text-red-400 font-bold rounded-xl hover:bg-red-500/30 transition-all text-sm shadow-lg">
+                        <span class="material-symbols-outlined text-[20px]">link_off</span>
+                        Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="delete-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity">
+    <div class="glass-ultra p-8 rounded-3xl w-full max-w-sm text-center border border-white/10 shadow-2xl transform transition-transform scale-95" id="delete-modal-content" style="background: rgba(31, 40, 51, 0.95); backdrop-filter: blur(20px);">
+        <span class="material-symbols-outlined text-5xl text-red-500 mb-4">link_off</span>
+        <h2 class="text-xl font-bold text-white mb-2">¿Romper vínculo?</h2>
+        <p class="text-white/60 mb-8 text-sm">Se desvinculará a <b>{{ colaboracion.artista.nombreartistico }}</b> de esta pista. Esta acción no afecta al artista ni a la canción original.</p>
+        <div class="flex gap-4">
+            <button onclick="closeModal()" class="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all">Cancelar</button>
+            <button id="btn-confirm-delete" onclick="confirmDelete()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const CSRF = '{{ csrf_token }}';
+    const COLAB_ID = {{ colaboracion.idcolaboracion }};
+    let editMode = false;
+
+    let originalCover = document.getElementById('cover-img') ? document.getElementById('cover-img').src : '';
+    let originalArtist = document.getElementById('artist-img') ? document.getElementById('artist-img').src : '';
+    let originalBg = document.getElementById('fixed-bg').style.backgroundImage;
+
+    function toggleEdit() {
+        editMode = !editMode;
+
+        document.getElementById('v-cancion').classList.toggle('hidden', editMode);
+        document.getElementById('f-cancion-wrap').classList.toggle('hidden', !editMode);
+
+        document.getElementById('v-artista').classList.toggle('hidden', editMode);
+        document.getElementById('f-artista-wrap').classList.toggle('hidden', !editMode);
+
+        document.getElementById('v-rol').classList.toggle('hidden', editMode);
+        document.getElementById('f-rol').classList.toggle('hidden', !editMode);
+
+        document.getElementById('btn-save').classList.toggle('hidden', !editMode);
+        document.getElementById('edit-banner').classList.toggle('active', editMode);
+
+        const icon  = document.getElementById('edit-icon');
+        const label = document.getElementById('edit-label');
+        const btn   = document.getElementById('btn-toggle-edit');
+
+        if (editMode) {
+            icon.textContent  = 'close';
+            label.textContent = 'Cancelar';
+            btn.classList.replace('bg-white/10', 'bg-red-500/20');
+            btn.classList.replace('hover:bg-white/20', 'hover:bg-red-500/30');
+            btn.classList.add('text-red-400');
+            btn.classList.remove('text-white');
+        } else {
+            icon.textContent  = 'edit';
+            label.textContent = 'Editar';
+            btn.classList.replace('bg-red-500/20', 'bg-white/10');
+            btn.classList.replace('hover:bg-red-500/30', 'hover:bg-white/20');
+            btn.classList.remove('text-red-400');
+            btn.classList.add('text-white');
+
+            if(document.getElementById('cover-img')) document.getElementById('cover-img').src = originalCover;
+            if(document.getElementById('artist-img')) document.getElementById('artist-img').src = originalArtist;
+            document.getElementById('fixed-bg').style.backgroundImage = originalBg;
+        }
+    }
+
+    function toggleDropdown(type) {
+        if(type !== 'cancion') document.getElementById('cancion-menu').classList.add('hidden');
+        if(type !== 'artista') document.getElementById('artista-menu').classList.add('hidden');
+        const menu = document.getElementById(`${type}-menu`);
+        menu.classList.toggle('hidden');
+        if (!menu.classList.contains('hidden')) document.getElementById(`${type}-search`).focus();
+    }
+
+    function filterDropdown(type) {
+        const query = document.getElementById(`${type}-search`).value.toLowerCase();
+        const items = document.getElementById(`${type}-list`).getElementsByClassName('item-option');
+        for (let item of items) {
+            const text = item.textContent || item.innerText;
+            item.style.display = (text.toLowerCase().indexOf(query) > -1) ? "" : "none";
+        }
+    }
+
+    function selectOption(type, id, displayText, imageUrl = '') {
+        document.getElementById(`f-${type}-hidden`).value = id;
+        document.getElementById(`${type}-display`).textContent = displayText;
+        document.getElementById(`${type}-menu`).classList.add('hidden');
+
+        if (type === 'cancion') {
+            if (document.getElementById('cover-img') && imageUrl) {
+                document.getElementById('cover-img').src = imageUrl;
+                document.getElementById('fixed-bg').style.backgroundImage = `url('${imageUrl}')`;
+            }
+        } else if (type === 'artista') {
+            if (document.getElementById('artist-img') && imageUrl) {
+                document.getElementById('artist-img').src = imageUrl;
+            }
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#f-cancion-wrap')) document.getElementById('cancion-menu')?.classList.add('hidden');
+        if (!e.target.closest('#f-artista-wrap')) document.getElementById('artista-menu')?.classList.add('hidden');
+    });
+
+    function showToast(msg, ok = true) {
+        const toast    = document.getElementById('toast');
+        const toastMsg = document.getElementById('toast-msg');
+        const toastIcon= document.getElementById('toast-icon');
+        toastMsg.textContent  = msg;
+        toastIcon.textContent = ok ? 'check_circle' : 'error';
+        toastIcon.className   = `material-symbols-outlined ${ok ? 'text-secondary' : 'text-red-400'}`;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    async function saveChanges() {
+        const btn = document.getElementById('btn-save');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Guardando...';
+
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', CSRF);
+        formData.append('cancion', document.getElementById('f-cancion-hidden').value);
+        formData.append('artista', document.getElementById('f-artista-hidden').value);
+        formData.append('rol', document.getElementById('f-rol').value);
+
+        try {
+            const res  = await fetch(`/catalogo/colaboraciones/${COLAB_ID}/edit/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF },
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                showToast('Colaboración actualizada correctamente.', true);
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast(data.message || 'Error al guardar.', false);
+            }
+        } catch (err) {
+            showToast('Error de conexión.', false);
+        } finally {
+            if(!btn.disabled) {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-outlined">save</span> Guardar Cambios';
+            }
+        }
+    }
+
+    function showDeleteModal() {
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => {
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }, 10);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 150);
+    }
+
+    async function confirmDelete() {
+        const btn = document.getElementById('btn-confirm-delete');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> Procesando...';
+
+        try {
+            const res = await fetch(`/catalogo/colaboraciones/${COLAB_ID}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF }
+            });
+            const data = await res.json();
+
+            if (res.ok && data.status === 'success') {
+                window.location.href = "{% url 'colabs_overview' %}";
+            } else {
+                showToast(data.message || 'Error al eliminar.', false);
+                closeModal();
+            }
+        } catch (error) {
+            showToast('Error de red.', false);
+            closeModal();
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Eliminar';
+        }
+    }
+</script>
+{% endblock %}

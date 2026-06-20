@@ -1,0 +1,505 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Canción{% endblock %}
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Catalog</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<a href="{% url 'songs_overview' %}" class="hover:text-primary transition-colors text-on-surface-variant">Canciones</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Detalles de Pista</span>
+{% endblock %}
+{% block content %}
+<style>
+    #fixed-bg {
+        position: fixed; inset: 0; z-index: -1;
+        background-color: #0B0C10;
+        background-size: cover; background-position: center;
+        filter: blur(12px) brightness(0.9);
+        transform: scale(1.05);
+        transition: background-image 0.8s ease-in-out;
+    }
+    #fixed-bg::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(to bottom, rgba(11,12,16,0.75) 0%, rgba(11,12,16,0.90) 100%);
+    }
+    .glass-ultra {
+        background: rgba(0,0,0,0.25);
+        backdrop-filter: blur(40px);
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .label-meta {
+        font-size: 0.7rem; font-weight: 800;
+        color: rgba(255,255,255,0.4);
+        text-transform: uppercase; margin-bottom: 0.5rem; display: block;
+    }
+    .read-field {
+        background: rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.05);
+        color: white; padding: 1rem; border-radius: 0.75rem;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .edit-input {
+        width: 100%;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(68,226,215,0.4);
+        color: white; padding: 1rem; border-radius: 0.75rem;
+        outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .edit-input:focus {
+        border-color: #44e2d7;
+        box-shadow: 0 0 0 3px rgba(68,226,215,0.15);
+    }
+    select.edit-input option { background-color: #1a1b20; color: white; }
+
+    #toast {
+        position: fixed; bottom: 2rem; right: 2rem; z-index: 9999;
+        transition: all 0.3s ease; transform: translateY(100px); opacity: 0;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #edit-banner {
+        display: none; background: rgba(68,226,215,0.08); border: 1px solid rgba(68,226,215,0.2);
+    }
+    #edit-banner.active { display: flex; }
+</style>
+
+<div id="fixed-bg" {% if cancion.urlportada %}style="background-image: url('{{ cancion.urlportada }}');"{% endif %}></div>
+
+<div id="toast" class="glass-ultra px-6 py-4 rounded-2xl border border-white/10 flex items-center gap-3">
+    <span id="toast-icon" class="material-symbols-outlined text-secondary">check_circle</span>
+    <span id="toast-msg" class="text-white text-sm font-medium"></span>
+</div>
+
+<div class="w-full min-h-[calc(100vh-64px)] p-8">
+    <div class="max-w-6xl mx-auto">
+
+        <div class="mb-6 flex items-start justify-between gap-4">
+            <div>
+                <h1 class="text-4xl font-extrabold text-white" id="page-title">{{ cancion.titulocancion }}</h1>
+                <p class="text-white/40 text-sm mt-1">TRK-{{ cancion.idcancion }}</p>
+            </div>
+            <div id="edit-banner" class="items-center gap-2 px-4 py-2 rounded-xl text-secondary text-sm font-bold">
+                <span class="material-symbols-outlined text-base">edit</span>
+                Modo edición activo
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-8 items-start">
+
+            <div class="space-y-5">
+                <div class="aspect-square w-full max-w-[420px] mx-auto rounded-3xl border border-white/10 glass-ultra shadow-2xl overflow-hidden">
+                    <img id="cover-img" src="{{ cancion.urlportada|default:'' }}" class="w-full h-full object-cover">
+                </div>
+
+                <div id="url-portada-wrap" class="hidden">
+                    <label class="label-meta">URL Portada</label>
+                    <input type="text" id="f-urlportada" value="{{ cancion.urlportada|default:'' }}" class="edit-input font-mono text-sm" oninput="window.previewCover(this.value)">
+                </div>
+
+                <div class="glass-ultra p-8 rounded-3xl">
+                    <h3 class="text-sm font-semibold text-white/50 uppercase tracking-wider mb-5 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-base">stars</span> CARACTERÍSTICAS
+                    </h3>
+                    <div class="grid grid-cols-2 gap-5">
+                        <div>
+                            <label class="label-meta">Duración</label>
+
+                            <div id="v-duracionseg" class="read-field flex items-center justify-between">
+                                <span class="text-white/80">{{ cancion.duracionseg }} s</span>
+                                <span class="font-sans text-secondary font-bold tracking-wide text-sm">{{ duracion_formateada }}</span>
+                            </div>
+
+                            <div id="f-duracionseg-wrap" class="hidden">
+                                <div class="edit-input flex items-center !p-0 focus-within:!border-[#44e2d7] focus-within:!shadow-[0_0_0_3px_rgba(68,226,215,0.15)] overflow-hidden transition-all">
+                                    <input id="f-duracionseg" type="number" value="{{ cancion.duracionseg }}"
+                                           class="flex-1 bg-transparent border-none outline-none text-white p-4 m-0 w-full"
+                                           oninput="window.livePreviewDuration(this.value, 'read-preview-span')">
+                                    <div class="pr-4 pl-2 flex items-center justify-center pointer-events-none">
+                                        <span id="read-preview-span" class="font-sans text-secondary font-bold tracking-wide text-sm">{{ duracion_formateada }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="label-meta">Explícita</label>
+                            <div id="v-esexplicita" class="read-field">{% if cancion.esexplicita %}Sí{% else %}No{% endif %}</div>
+                            <select id="f-esexplicita" class="edit-input hidden">
+                                <option value="0" {% if not cancion.esexplicita %}selected{% endif %}>No</option>
+                                <option value="1" {% if cancion.esexplicita %}selected{% endif %}>Sí</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label-meta">Estado</label>
+                            <div id="v-estadopublicacion" class="read-field">{{ cancion.estadopublicacion }}</div>
+                            <select id="f-estadopublicacion" class="edit-input hidden">
+                                {% for e in estados %}<option value="{{ e }}" {% if cancion.estadopublicacion == e %}selected{% endif %}>{{ e }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label-meta">Género</label>
+                            <div id="v-genero" class="read-field">{{ cancion.genero.nombregenero|default:"—" }}</div>
+                            <select id="f-genero" class="edit-input hidden">
+                                {% for g in generos %}<option value="{{ g.idgenero }}" {% if cancion.genero_id == g.idgenero %}selected{% endif %}>{{ g.nombregenero }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="glass-ultra p-8 rounded-3xl space-y-8">
+
+                    <div>
+                        <h3 class="text-sm font-semibold text-white/50 uppercase tracking-wider mb-5 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-base">info</span> INFORMACIÓN GENERAL
+                        </h3>
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <label class="label-meta">Título</label>
+                                <div id="v-titulocancion" class="read-field">{{ cancion.titulocancion }}</div>
+                                <input id="f-titulocancion" type="text" value="{{ cancion.titulocancion }}" class="edit-input hidden">
+                            </div>
+                            <div>
+                                <label class="label-meta">Álbum</label>
+                                <div id="v-album" class="read-field">{{ cancion.album.tituloalbum|default:"N/A" }}</div>
+                                <select id="f-album" class="edit-input hidden" onchange="window.updateAlbumData(this.value)">
+                                    {% for a in albumes %}<option value="{{ a.idalbum }}" {% if cancion.album_id == a.idalbum %}selected{% endif %}>{{ a.tituloalbum }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="label-meta">Artista Base (Relacionado al Álbum)</label>
+                                <div id="v-artista" class="read-field opacity-60">{{ cancion.album.artista.nombreartistico|default:"N/A" }}</div>
+                            </div>
+                            <div>
+                                <label class="label-meta">ID de Canción</label>
+                                <div class="read-field font-mono opacity-60">{{ cancion.idcancion }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-white/10 pt-8">
+                        <div class="flex justify-between items-center mb-5">
+                            <h3 class="text-sm font-semibold text-white/50 uppercase tracking-wider flex items-center gap-2">
+                                <span class="material-symbols-outlined text-base">group</span> COLABORADORES
+                            </h3>
+                            <button type="button" id="btn-add-colab" onclick="window.addColabRow()" class="hidden flex items-center gap-2 px-3 py-1.5 bg-secondary/10 hover:bg-secondary/20 text-secondary border border-secondary/30 rounded-lg transition-colors text-xs font-bold">
+                                <span class="material-symbols-outlined text-[16px]">add</span> Añadir Invitado
+                            </button>
+                        </div>
+
+                        <div id="v-colaboradores" class="space-y-3">
+                            {% if colab_principal %}
+                            <div class="flex items-center gap-4 p-3 bg-black/40 rounded-xl border border-white/5">
+                                <img src="{{ colab_principal.artista.urlperfil|default:'' }}" class="w-12 h-12 rounded-full object-cover bg-surface-container border border-white/10">
+                                <div class="flex-1">
+                                    <div class="text-white font-bold text-sm">{{ colab_principal.artista.nombreartistico }}</div>
+                                    <div class="text-[10px] text-primary font-bold uppercase tracking-widest mt-0.5">Principal</div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% for col in colabs_extra %}
+                            <div class="flex items-center gap-4 p-3 bg-black/20 rounded-xl border border-white/5">
+                                <img src="{{ col.artista.urlperfil|default:'' }}" class="w-10 h-10 rounded-full object-cover bg-surface-container border border-white/5">
+                                <div class="flex-1">
+                                    <div class="text-white font-medium text-sm">{{ col.artista.nombreartistico }}</div>
+                                    <div class="text-[10px] {% if col.rolartista == 'Remixer' %}text-yellow-500{% else %}text-secondary{% endif %} font-bold uppercase tracking-widest mt-0.5">{{ col.rolartista }}</div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="text-white/40 text-sm italic">No hay invitados registrados.</div>
+                            {% endfor %}
+                        </div>
+
+                        <div id="f-colaboradores-wrap" class="hidden space-y-3">
+                            <div class="flex items-center gap-4 p-4 bg-black/20 rounded-xl border border-white/5">
+                                <div class="flex-1 text-sm text-white/60 flex items-center">
+                                    <span class="material-symbols-outlined text-[18px] mr-3">star</span>
+                                    {{ colab_principal.artista.nombreartistico|default:cancion.album.artista.nombreartistico }}
+                                </div>
+                                <div class="w-1/3 text-sm text-primary font-bold text-right pr-2">Principal</div>
+                            </div>
+                            <div id="colabs-container" class="space-y-3">
+                                {% for col in colabs_extra %}
+                                <div class="colab-row flex items-center gap-2 sm:gap-3">
+                                    <select name="colab_artistas" class="edit-input flex-[3] min-w-0 truncate text-xs sm:text-sm p-3">
+                                        <option value="" disabled>Seleccione artista...</option>
+                                        {% for a in artistas %}<option value="{{ a.idartista }}" {% if col.artista_id == a.idartista %}selected{% endif %}>{{ a.nombreartistico }}</option>{% endfor %}
+                                    </select>
+                                    <select name="colab_roles" class="edit-input flex-[2] min-w-0 text-xs sm:text-sm p-3">
+                                        <option value="Invitado" {% if col.rolartista == 'Invitado' %}selected{% endif %}>Invitado</option>
+                                        <option value="Remixer" {% if col.rolartista == 'Remixer' %}selected{% endif %}>Remixer</option>
+                                    </select>
+                                    <button type="button" onclick="this.closest('.colab-row').remove()" class="flex-shrink-0 p-3 text-white/40 hover:text-red-400 bg-black/30 border border-white/10 rounded-xl transition-all flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-[18px] sm:text-[20px]">delete</span>
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-white/10 pt-8">
+                        <h3 class="text-sm font-semibold text-white/50 uppercase tracking-wider mb-5 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-base">link</span> ENLACES
+                        </h3>
+                        <div class="space-y-5">
+                            <div>
+                                <label class="label-meta">Spotify URL</label>
+                                <div class="read-field font-mono text-xs break-all opacity-70">{{ cancion.spotifyurlapi|default:"No disponible" }}</div>
+                            </div>
+                            <div>
+                                <label class="label-meta">URL Portada (actual)</label>
+                                <div class="read-field font-mono text-xs break-all opacity-70">{{ cancion.urlportada|default:"No disponible" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end items-center gap-4 pt-2">
+                    <a href="{% url 'songs_overview' %}" class="px-8 py-4 text-white/60 hover:text-white transition-all text-sm font-medium">Volver</a>
+                    <button id="btn-toggle-edit" onclick="window.toggleEdit()" class="inline-flex items-center gap-2 px-8 py-4 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-all text-sm">
+                        <span class="material-symbols-outlined text-[20px]" id="edit-icon">edit</span>
+                        <span id="edit-label">Editar</span>
+                    </button>
+                    <button id="btn-save" onclick="window.saveChanges()" class="hidden inline-flex items-center gap-2 px-8 py-4 bg-secondary text-black font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-secondary/20 text-sm">
+                        <span class="material-symbols-outlined text-[20px]">save</span> Guardar Cambios
+                    </button>
+                    <button onclick="window.showDeleteModal()" class="inline-flex items-center gap-2 px-8 py-4 bg-red-500/20 text-red-400 font-bold rounded-xl hover:bg-red-500/30 transition-all text-sm">
+                        <span class="material-symbols-outlined text-[20px]">delete</span> Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="delete-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity">
+    <div class="glass-ultra p-8 rounded-3xl w-full max-w-sm text-center border border-white/10 shadow-2xl transform transition-transform scale-95" id="delete-modal-content">
+        <span class="material-symbols-outlined text-5xl text-red-500 mb-4">delete_forever</span>
+        <h2 id="delete-modal-title" class="text-xl font-bold text-white mb-2">¿Eliminar canción?</h2>
+        <p class="text-white/60 mb-8 text-sm">Esta acción no se puede deshacer. Se borrará la pista y sus asociaciones de playlist y favoritas.</p>
+        <div class="flex gap-4">
+            <button onclick="window.closeModal()" class="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all">Cancelar</button>
+            <button onclick="window.deleteTrack()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.TRACK_CSRF = '{{ csrf_token }}';
+    window.CANCION_ID = {{ cancion.idcancion }};
+    window.editMode = false;
+
+    window.TRACK_FIELDS = [
+        ['v-titulocancion',    'f-titulocancion'],
+        ['v-album',            'f-album'],
+        ['v-duracionseg',      'f-duracionseg'],
+        ['v-esexplicita',      'f-esexplicita'],
+        ['v-estadopublicacion','f-estadopublicacion'],
+        ['v-genero',           'f-genero'],
+        ['v-colaboradores',    'f-colaboradores-wrap']
+    ];
+
+    window.albumsData = {
+        {% for a in albumes %}
+        "{{ a.idalbum }}": {
+            "cover": "{{ a.urlportada|default:''|escapejs }}",
+            "artist": "{{ a.artista.nombreartistico|default:'N/A'|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    // ESTRUCTURA CORREGIDA: Uso de min-w-0, flex-[3] y flex-shrink-0 en la plantilla JS
+    window.colabTemplate = `
+        <div class="colab-row flex items-center gap-2 sm:gap-3 animate-in fade-in slide-in-from-top-2">
+            <select name="colab_artistas" class="edit-input flex-[3] min-w-0 truncate text-xs sm:text-sm p-3">
+                <option value="" disabled selected>Seleccione artista...</option>
+                {% for a in artistas %}<option value="{{ a.idartista }}">{{ a.nombreartistico|escapejs }}</option>{% endfor %}
+            </select>
+            <select name="colab_roles" class="edit-input flex-[2] min-w-0 text-xs sm:text-sm p-3">
+                <option value="Invitado" selected>Invitado</option>
+                <option value="Remixer">Remixer</option>
+            </select>
+            <button type="button" onclick="this.closest('.colab-row').remove()" class="flex-shrink-0 p-3 text-white/40 hover:text-red-400 bg-black/30 border border-white/10 rounded-xl transition-all flex items-center justify-center">
+                <span class="material-symbols-outlined text-[18px] sm:text-[20px]">delete</span>
+            </button>
+        </div>
+    `;
+
+    window.updateAlbumData = function(albumId) {
+        var data = window.albumsData[albumId];
+        if (data) {
+            document.getElementById('f-urlportada').value = data.cover;
+            if (data.cover) {
+                document.getElementById('cover-img').src = data.cover;
+                document.getElementById('fixed-bg').style.backgroundImage = `url('${data.cover}')`;
+            }
+            if (document.getElementById('v-artista')) {
+                document.getElementById('v-artista').textContent = data.artist;
+            }
+        }
+    };
+
+    window.previewCover = function(url) {
+        if (url && url.length > 5) {
+            document.getElementById('cover-img').src = url;
+            document.getElementById('fixed-bg').style.backgroundImage = `url('${url}')`;
+        }
+    };
+
+    window.toggleEdit = function() {
+        window.editMode = !window.editMode;
+
+        window.TRACK_FIELDS.forEach(function(pair) {
+            document.getElementById(pair[0]).classList.toggle('hidden', window.editMode);
+            document.getElementById(pair[1]).classList.toggle('hidden', !window.editMode);
+        });
+
+        document.getElementById('url-portada-wrap').classList.toggle('hidden', !window.editMode);
+        document.getElementById('btn-save').classList.toggle('hidden', !window.editMode);
+        document.getElementById('btn-add-colab').classList.toggle('hidden', !window.editMode);
+        document.getElementById('edit-banner').classList.toggle('active', window.editMode);
+
+        var icon  = document.getElementById('edit-icon');
+        var label = document.getElementById('edit-label');
+        var btn   = document.getElementById('btn-toggle-edit');
+
+        if (window.editMode) {
+            icon.textContent  = 'close';
+            label.textContent = 'Cancelar';
+            btn.classList.replace('bg-white/10', 'bg-red-500/20');
+            btn.classList.replace('hover:bg-white/20', 'hover:bg-red-500/30');
+            btn.classList.add('text-red-400');
+            btn.classList.remove('text-white');
+        } else {
+            icon.textContent  = 'edit';
+            label.textContent = 'Editar';
+            btn.classList.replace('bg-red-500/20', 'bg-white/10');
+            btn.classList.replace('hover:bg-red-500/30', 'hover:bg-white/20');
+            btn.classList.remove('text-red-400');
+            btn.classList.add('text-white');
+
+            setTimeout(function() { window.location.reload(); }, 100);
+        }
+    };
+
+    window.addColabRow = function() {
+        document.getElementById('colabs-container').insertAdjacentHTML('beforeend', window.colabTemplate);
+    };
+
+    window.showToastTrack = function(msg, ok) {
+        if(typeof ok === 'undefined') ok = true;
+        var toast    = document.getElementById('toast');
+        var toastMsg = document.getElementById('toast-msg');
+        var toastIcon= document.getElementById('toast-icon');
+        toastMsg.textContent  = msg;
+        toastIcon.textContent = ok ? 'check_circle' : 'error';
+        toastIcon.className   = `material-symbols-outlined ${ok ? 'text-secondary' : 'text-red-400'}`;
+        toast.classList.add('show');
+        setTimeout(function() { toast.classList.remove('show'); }, 3000);
+    };
+
+    window.saveChanges = async function() {
+        var btn = document.getElementById('btn-save');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Guardando...';
+
+        var formData = new FormData();
+        formData.append('csrfmiddlewaretoken', window.TRACK_CSRF);
+        formData.append('titulocancion',      document.getElementById('f-titulocancion').value);
+        formData.append('album',              document.getElementById('f-album').value);
+        formData.append('genero',             document.getElementById('f-genero').value);
+        formData.append('duracionseg',        document.getElementById('f-duracionseg').value);
+        formData.append('estadopublicacion',  document.getElementById('f-estadopublicacion').value);
+        formData.append('urlportada',         document.getElementById('f-urlportada').value);
+
+        if (document.getElementById('f-esexplicita').value === '1') {
+            formData.append('esexplicita', 'on');
+        }
+
+        var colabArtistas = document.querySelectorAll('select[name="colab_artistas"]');
+        var colabRoles = document.querySelectorAll('select[name="colab_roles"]');
+
+        colabArtistas.forEach(function(select, index) {
+            if (select.value) {
+                formData.append('colab_artistas', select.value);
+                formData.append('colab_roles', colabRoles[index].value);
+            }
+        });
+
+        try {
+            var res  = await fetch(`/catalogo/canciones/${window.CANCION_ID}/edit/`, {
+                method: 'POST',
+                body: formData
+            });
+            var data = await res.json();
+
+            if (data.status === 'success') {
+                window.showToastTrack('Cambios guardados correctamente.', true);
+                setTimeout(function() { window.location.reload(); }, 600);
+            } else {
+                window.showToastTrack(data.message || 'Error al guardar.', false);
+            }
+        } catch (err) {
+            window.showToastTrack('Error de conexión.', false);
+        } finally {
+            if(!btn.disabled) {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-outlined">save</span> Guardar Cambios';
+            }
+        }
+    };
+
+    window.showDeleteModal = function() {
+        var modal = document.getElementById('delete-modal');
+        var content = document.getElementById('delete-modal-content');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(function() {
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }, 10);
+    };
+
+    window.closeModal = function() {
+        var modal = document.getElementById('delete-modal');
+        var content = document.getElementById('delete-modal-content');
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+        setTimeout(function() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 150);
+    };
+
+    window.deleteTrack = async function() {
+        var btn = document.querySelector('#delete-modal-content button.bg-red-600');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> Eliminando...';
+
+        var res = await fetch(`/catalogo/canciones/${window.CANCION_ID}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': window.TRACK_CSRF }
+        });
+        if (res.ok) {
+            window.location.href = "{% url 'songs_overview' %}";
+        } else {
+            window.showToastTrack('Error al eliminar.', false);
+            window.closeModal();
+            btn.disabled = false;
+            btn.innerHTML = 'Eliminar';
+        }
+    };
+
+    window.livePreviewDuration = function(segundos, targetId) {
+        var totalSegundos = parseInt(segundos) || 0;
+        var minutos = Math.floor(totalSegundos / 60);
+        var restantes = totalSegundos % 60;
+        var segundosFormateados = restantes < 10 ? '0' + restantes : restantes;
+
+        document.getElementById(targetId).textContent = minutos + ':' + segundosFormateados;
+    };
+</script>
+{% endblock %}

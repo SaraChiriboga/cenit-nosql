@@ -1,0 +1,445 @@
+{% load static %}
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>CÉNIT | {% block title %}Dashboard{% endblock %}</title>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0B0C10; }
+        .glass-panel { background: rgba(31, 40, 51, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glow-cyan { box-shadow: 0 0 12px rgba(69, 243, 255, 0.15); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0B0C10; }
+        ::-webkit-scrollbar-thumb { background: #1F2833; border-radius: 10px; }
+
+        /* Submenu animation */
+        .submenu {
+            overflow: hidden;
+            max-height: 0;
+            transition: none;
+        }
+
+        .submenu.ready {
+            transition: max-height 0.3s ease-out;
+        }
+
+        .submenu.open {
+            max-height: 400px;
+            opacity: 1;
+        }
+        .submenu-arrow {
+            transition: transform 0.3s ease;
+        }
+        .submenu-arrow.rotated {
+            transform: rotate(90deg);
+        }
+
+        /* Active submenu item */
+        .submenu-item.active {
+            color: #44e2d7;
+            background: rgba(68, 226, 215, 0.08);
+            border-left: 2px solid #44e2d7;
+        }
+    </style>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#292a2e", "secondary": "#44e2d7", "surface": "#121317",
+                        "error": "#ffb4ab", "inverse-surface": "#e3e2e8", "on-secondary-fixed-variant": "#00504b",
+                        "surface-container-low": "#1a1b20", "on-tertiary": "#28313c", "surface-container-highest": "#343439",
+                        "surface-variant": "#343439", "tertiary-fixed-dim": "#bec7d6", "on-background": "#e3e2e8",
+                        "on-tertiary-fixed-variant": "#3e4753", "on-error": "#690005", "on-primary-fixed": "#002022",
+                        "surface-bright": "#38393e", "on-primary-container": "#006c72", "surface-tint": "#0cdbe7",
+                        "tertiary": "#f9faff", "on-surface": "#e3e2e8", "inverse-primary": "#00696f",
+                        "secondary-fixed": "#62f9ee", "error-container": "#93000a", "on-secondary-fixed": "#00201e",
+                        "on-primary": "#00363a", "surface-dim": "#121317", "secondary-fixed-dim": "#3cdcd1",
+                        "primary-container": "#45f3ff", "tertiary-fixed": "#dae3f2", "primary": "#ebfeff",
+                        "on-surface-variant": "#bac9ca", "on-tertiary-container": "#59626f", "on-tertiary-fixed": "#131c27",
+                        "background": "#121317", "outline-variant": "#3b494a", "on-secondary": "#003734",
+                        "tertiary-container": "#d5deed", "surface-container": "#1f1f24", "inverse-on-surface": "#2f3035",
+                        "surface-container-lowest": "#0d0e12", "outline": "#849395", "on-secondary-container": "#004c48",
+                        "on-primary-fixed-variant": "#004f54", "primary-fixed-dim": "#0cdbe7", "secondary-container": "#00c5bb",
+                        "on-error-container": "#ffdad6", "primary-fixed": "#75f5ff"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"], "body-lg": ["Inter"], "body-md": ["Inter"], "headline-xl": ["Inter"],
+                        "label-md": ["Inter"], "label-sm": ["Inter"], "headline-lg": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="icon" type="image/svg+xml" href="{% static 'logo.svg' %}">
+</head>
+<body class="text-on-surface">
+
+    {% with url_name=request.resolver_match.url_name|default:'' %}
+    {% with catalog_urls="songs_overview artists_overview albums_overview genre_overview colabs_overview add_track" %}
+
+    <aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-container/80 backdrop-blur-xl border-r border-white/10 flex flex-col py-5 z-50 overflow-y-auto">
+
+        <div class="w-full flex justify-center mb-5">
+            <svg class="h-14 w-auto" width="200" height="60" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 30L25 10L40 30L25 50L10 30Z" stroke="#45F3FF" stroke-width="2" fill="none"/>
+              <path d="M18 30L25 20L32 30L25 40L18 30Z" fill="#45F3FF"/>
+              <text x="55" y="42" fill="white" font-family="Inter, sans-serif" font-weight="800" font-size="28" letter-spacing="2">CÉNIT</text>
+            </svg>
+        </div>
+
+        <nav class="flex-1 flex flex-col gap-1 px-3">
+
+            <div>
+                <button id="catalog-toggle"
+                    class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
+                           {% if url_name in catalog_urls %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                    <span class="material-symbols-outlined text-[20px]">subscriptions</span>
+                    <span class="font-body-md text-body-md flex-1 text-left">Catalog</span>
+                    <span class="material-symbols-outlined text-[16px] submenu-arrow transition-transform duration-200
+                          {% if url_name in catalog_urls %}rotated{% endif %}" id="catalog-arrow">chevron_right</span>
+                </button>
+
+                <div class="submenu {% if url_name in catalog_urls %}open{% endif %}" id="catalog-submenu">
+                    <div class="ml-4 pl-3 border-l border-white/10 mt-1 flex flex-col gap-0.5 pb-2">
+
+                        <a href="{% url 'songs_overview' %}" class="submenu-item px-3 py-2 rounded-r-lg text-sm transition-all {% if 'songs' in url_name %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">music_note</span> Canciones
+                        </a>
+                        <a href="{% url 'artists_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if 'artists' in url_name %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">person</span> Artistas
+                        </a>
+                        <a href="{% url 'albums_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if 'albums' in url_name %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">album</span> Álbumes
+                        </a>
+                        <a href="{% url 'genre_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if 'genre' in url_name %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">category</span> Géneros
+                        </a>
+                        <a href="{% url 'colabs_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if 'colabs' in url_name %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">group_work</span> Colaboraciones
+                        </a>
+
+                        <div class="h-px bg-white/10 my-2"></div>
+                        <span class="text-xs text-on-surface-variant/60 px-3 py-1 uppercase tracking-wider font-bold">Reportes</span>
+
+                        <a href="{% url 'reporte_top_10' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if request.resolver_match.url_name == 'reporte_top_10' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px] text-yellow-500">trophy</span> Top 10 Mensual
+                        </a>
+
+                        <a href="{% url 'reporte_auditoria_catalogo' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if request.resolver_match.url_name == 'reporte_auditoria_catalogo' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px] text-error">health_and_safety</span> Auditoría de Metadatos
+                        </a>
+
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button id="usuarios-toggle"
+                    class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
+                           {% if 'usuarios' in request.resolver_match.app_name %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                    <span class="material-symbols-outlined text-[20px]">group</span>
+                    <span class="font-body-md text-body-md flex-1 text-left">Users & Access</span>
+                    <span class="material-symbols-outlined text-[16px] submenu-arrow transition-transform duration-200
+                          {% if 'usuarios' in request.resolver_match.app_name %}rotated{% endif %}" id="usuarios-arrow">chevron_right</span>
+                </button>
+
+                <div class="submenu {% if 'usuarios' in request.resolver_match.app_name %}open{% endif %}" id="usuarios-submenu">
+                    <div class="ml-4 pl-3 border-l border-white/10 mt-1 flex flex-col gap-0.5 pb-2">
+
+                        <a href="{% url 'users_overview' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'users_overview' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">manage_accounts</span>
+                            Gestión de Cuentas
+                        </a>
+
+                        <div class="h-px bg-white/10 my-2"></div>
+                        <span class="text-xs text-on-surface-variant/60 px-3 py-1 uppercase tracking-wider font-bold">Control de Acceso</span>
+
+                        <a href="{% url 'roles_overview' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'roles_overview' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
+                            Roles y Permisos
+                        </a>
+
+                        <div class="h-px bg-white/10 my-2"></div>
+                        <span class="text-xs text-on-surface-variant/60 px-3 py-1 uppercase tracking-wider font-bold">Actividad</span>
+
+                        <a href="{% url 'auditoria_list' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'auditoria_list' or request.resolver_match.url_name == 'auditoria_add' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">policy</span>
+                            Auditoría
+                        </a>
+
+                        <a href="{% url 'seguimiento_list' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'seguimiento_list' or request.resolver_match.url_name == 'seguimiento_add' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">person_add</span>
+                            Seguimientos
+                        </a>
+
+                        <a href="{% url 'favorita_list' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'favorita_list' or request.resolver_match.url_name == 'favorita_add' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">favorite</span>
+                            Favoritas
+                        </a>
+
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button id="subscriptions-toggle"
+                    class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
+                           {% if 'suscripciones' in request.resolver_match.app_name %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                    <span class="material-symbols-outlined text-[20px]">payments</span>
+                    <span class="font-body-md text-body-md flex-1 text-left">Subscriptions</span>
+                    <span class="material-symbols-outlined text-[16px] submenu-arrow transition-transform duration-200
+                          {% if 'suscripciones' in request.resolver_match.app_name %}rotated{% endif %}" id="subscriptions-arrow">chevron_right</span>
+                </button>
+
+                <div class="submenu {% if 'suscripciones' in request.resolver_match.app_name %}open{% endif %}" id="subscriptions-submenu">
+                    <div class="ml-4 pl-3 border-l border-white/10 mt-1 flex flex-col gap-0.5 pb-2">
+
+                        <a href="{% url 'plan_list' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'plan_list' or request.resolver_match.url_name == 'plan_add' or request.resolver_match.url_name == 'plan_edit' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">card_membership</span>
+                            Planes
+                        </a>
+
+                        <a href="{% url 'promocion_list' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'promocion_list' or request.resolver_match.url_name == 'promocion_add' or request.resolver_match.url_name == 'promocion_edit' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">local_offer</span>
+                            Promociones
+                        </a>
+
+                        <a href="{% url 'suscripcion_list' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'suscripcion_list' or request.resolver_match.url_name == 'suscripcion_add' or request.resolver_match.url_name == 'suscripcion_edit' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">subscriptions</span>
+                            Suscripciones
+                        </a>
+
+                        <a href="{% url 'notificacion_list' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'notificacion_list' or request.resolver_match.url_name == 'notificacion_add' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">notifications</span>
+                            Notificaciones
+                        </a>
+
+                        <a href="{% url 'playlist_list' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'playlist_list' or request.resolver_match.url_name == 'playlist_add' or request.resolver_match.url_name == 'playlist_edit' or request.resolver_match.url_name == 'playlist_canciones' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">playlist_play</span>
+                            Playlists
+                        </a>
+
+                        <a href="{% url 'estadistica_list' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'estadistica_list' or request.resolver_match.url_name == 'estadistica_add' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">bar_chart</span>
+                            Estadísticas
+                        </a>
+
+                        <div class="h-px bg-white/10 my-2"></div>
+
+                        <span class="text-xs text-on-surface-variant/60 px-3 py-1 uppercase tracking-wider font-bold">Reportes</span>
+
+                        <a href="{% url 'reporte_vencimientos' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'reporte_vencimientos' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px]">schedule</span>
+                            Vencimientos (5 días)
+                        </a>
+
+                        <a href="{% url 'reporte_promociones_vencidas' %}"
+                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
+                                  {% if request.resolver_match.url_name == 'reporte_promociones_vencidas' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[16px] text-error">warning</span>
+                            Promociones vencidas
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+        </nav>
+
+        <div class="mt-auto px-6 border-t border-white/5 pt-8">
+            <div class="flex items-center gap-3 p-3 rounded-lg bg-surface-container-highest/40 mb-6">
+                <div class="w-10 h-10 rounded-full overflow-hidden bg-secondary/20 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-secondary">smart_toy</span>
+                </div>
+                <div>
+                    <div class="font-label-md text-label-md text-on-surface">{{ request.user.username|default:"CENIT-SA"|upper }}</div>
+                    <div class="font-label-sm text-label-sm text-on-surface-variant">Admin Console</div>
+                </div>
+                <div class="ml-auto">
+                    <span class="material-symbols-outlined text-secondary text-[20px]">verified</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <button class="flex items-center gap-4 text-on-surface-variant hover:text-on-surface px-3 py-2 transition-all">
+                    <span class="material-symbols-outlined">dark_mode</span>
+                    <span class="font-label-md text-label-md">Theme Settings</span>
+                </button>
+                <button class="flex items-center gap-4 text-on-surface-variant hover:text-on-surface px-3 py-2 transition-all">
+                    <span class="material-symbols-outlined">help</span>
+                    <span class="font-label-md text-label-md">Support</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <header class="fixed top-0 right-0 w-[calc(100%-280px)] h-16 bg-background/80 backdrop-blur-lg border-b border-white/5 flex justify-between items-center px-10 z-40">
+        <div class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md">
+            {% block breadcrumb %}
+            <a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+            {% endblock %}
+        </div>
+
+        <div class="flex items-center gap-8">
+            <div class="relative group">
+                <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <span class="material-symbols-outlined text-on-surface-variant text-[20px]">search</span>
+                </div>
+                <input class="bg-surface-container-low border border-outline-variant/30 rounded-full pl-10 pr-4 py-1.5 w-64 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md" placeholder="Search data... (⌘K)" type="text"/>
+            </div>
+            <div class="flex items-center gap-6 text-on-surface-variant">
+                <button class="relative hover:text-secondary transition-all">
+                    <span class="material-symbols-outlined">notifications</span>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-secondary rounded-full"></span>
+                </button>
+                <button class="hover:text-secondary transition-all">
+                    <span class="material-symbols-outlined">settings</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="ml-[280px] pt-24 px-10 pb-12">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // ── SUBMENÚ CATÁLOGO ──
+            const toggle = document.getElementById('catalog-toggle');
+            const submenu = document.getElementById('catalog-submenu');
+            const arrow = document.getElementById('catalog-arrow');
+
+            if (toggle && submenu && arrow) {
+                if (localStorage.getItem('catalogOpen') === 'true') {
+                    submenu.classList.add('open');
+                    arrow.classList.add('rotated');
+                }
+
+                toggle.addEventListener('click', () => {
+                    submenu.classList.toggle('open');
+                    arrow.classList.toggle('rotated');
+                    localStorage.setItem('catalogOpen', submenu.classList.contains('open'));
+                });
+            }
+
+            // ── SUBMENÚ SUSCRIPCIONES ──
+            const subsToggle = document.getElementById('subscriptions-toggle');
+            const subsSubmenu = document.getElementById('subscriptions-submenu');
+            const subsArrow = document.getElementById('subscriptions-arrow');
+
+            if (subsToggle && subsSubmenu && subsArrow) {
+                if (localStorage.getItem('subscriptionsOpen') === 'true') {
+                    subsSubmenu.classList.add('open');
+                    subsArrow.classList.add('rotated');
+                }
+
+                subsToggle.addEventListener('click', () => {
+                    subsSubmenu.classList.toggle('open');
+                    subsArrow.classList.toggle('rotated');
+                    localStorage.setItem('subscriptionsOpen', subsSubmenu.classList.contains('open'));
+                });
+            }
+        });
+
+        // ── ⌘K shortcut ──
+        window.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                const searchInput = document.querySelector('input[placeholder*="Search"]');
+                if (searchInput) searchInput.focus();
+            }
+        });
+
+        async function navegarSinCortes(url) {
+            document.body.style.transition = 'opacity 0.2s ease-in-out';
+            document.body.style.opacity = '0.6';
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Error en la red');
+                const html = await response.text();
+
+                const parser = new DOMParser();
+                const newDoc = parser.parseFromString(html, 'text/html');
+
+                document.body.innerHTML = newDoc.body.innerHTML;
+                window.history.pushState({}, '', url);
+
+                const scripts = document.body.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+
+                window.scrollTo(0, 0);
+                document.body.style.opacity = '1';
+            } catch (error) {
+                console.error("Fallo la carga silenciosa, haciendo redirección normal:", error);
+                window.location.href = url;
+            }
+        }
+
+        window.addEventListener('popstate', () => {
+            window.location.reload();
+        });
+
+        // ── SUBMENÚ USUARIOS Y ACCESOS ──
+            var usersToggle = document.getElementById('usuarios-toggle');
+            var usersSubmenu = document.getElementById('usuarios-submenu');
+            var usersArrow = document.getElementById('usuarios-arrow');
+
+            if (usersToggle && usersSubmenu && usersArrow) {
+                if (localStorage.getItem('usuariosOpen') === 'true') {
+                    usersSubmenu.classList.add('open');
+                    usersArrow.classList.add('rotated');
+                }
+
+                usersToggle.addEventListener('click', () => {
+                    usersSubmenu.classList.toggle('open');
+                    usersArrow.classList.toggle('rotated');
+                    localStorage.setItem('usuariosOpen', usersSubmenu.classList.contains('open'));
+                });
+            }
+    </script>
+    {% endwith %}
+    {% endwith %}
+</body>
+</html>

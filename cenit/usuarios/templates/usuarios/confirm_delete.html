@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Eliminar{% endblock %}
+
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<span class="text-on-surface">Eliminar</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto mt-16">
+    <div class="glass-panel rounded-2xl p-10 text-center">
+        <div class="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mx-auto mb-6">
+            <span class="material-symbols-outlined text-error text-[32px]">delete_forever</span>
+        </div>
+        <h2 class="text-xl font-semibold text-on-surface mb-2">¿Eliminar {{ tipo }}?</h2>
+        <p class="text-on-surface-variant mb-8">
+            Estás a punto de eliminar <span class="text-on-surface font-medium">{{ objeto }}</span>.
+            Esta acción no se puede deshacer.
+        </p>
+        <form method="post" class="flex justify-center gap-4">
+            {% csrf_token %}
+            <a href="{% url cancel_url %}"
+               class="px-6 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all text-sm font-medium">
+                Cancelar
+            </a>
+            <button type="submit"
+                    class="px-6 py-2.5 rounded-xl bg-error/90 hover:bg-error text-on-error text-sm font-medium transition-all">
+                Sí, eliminar
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+    

@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Género{% endblock %}
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Catalog</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<a href="{% url 'genre_overview' %}" class="hover:text-primary transition-colors text-on-surface-variant">Géneros</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Editar: {{ genero.nombregenero }}</span>
+{% endblock %}
+
+{% block content %}
+<style>
+    #fixed-bg {
+        position: fixed; inset: 0; z-index: -1;
+        background-color: #0B0C10;
+        background-image: radial-gradient(circle at 50% 0%, rgba(68, 226, 215, 0.15), transparent 60%);
+        background-size: cover; background-position: center;
+        background-attachment: fixed;
+        filter: blur(12px) brightness(0.9);
+        transform: scale(1.05);
+    }
+    #fixed-bg::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(to bottom, rgba(11, 12, 16, 0.8) 0%, rgba(11, 12, 16, 0.95) 100%);
+    }
+
+    .glass-ultra {
+        background: rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .edit-input {
+        width: 100%;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(68,226,215,0.4);
+        color: white; padding: 1rem; border-radius: 0.75rem;
+        outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .edit-input:focus {
+        border-color: #44e2d7;
+        box-shadow: 0 0 0 3px rgba(68,226,215,0.15);
+    }
+</style>
+
+<div id="fixed-bg"></div>
+
+<div class="w-full min-h-[calc(100vh-64px)] p-8">
+    <div class="max-w-5xl mx-auto">
+        <div class="mb-8 flex items-start justify-between gap-4">
+            <div>
+                <h1 class="text-4xl font-extrabold text-white" id="page-title">
+                    {{ genero.nombregenero }}
+                </h1>
+                <p class="text-white/40 text-sm mt-1">GEN-{{ genero.idgenero }}</p>
+            </div>
+            <div class="flex items-center gap-2 px-4 py-2 rounded-xl text-secondary text-sm font-bold bg-secondary/10 border border-secondary/20">
+                <span class="material-symbols-outlined text-base">edit_note</span>
+                Editando Categoría
+            </div>
+        </div>
+
+        <form id="edit-genre-form">
+
+            <div class="space-y-6">
+                <div class="glass-ultra p-8 rounded-3xl space-y-8">
+                    <div>
+                        <h3 class="text-sm font-semibold text-white/50 uppercase tracking-wider mb-5 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-base">info</span>
+                            INFORMACIÓN DEL GÉNERO
+                        </h3>
+                        <div class="grid grid-cols-1 gap-6">
+                            
+                            <div>
+                                <label class="block text-xs font-bold text-white/60 uppercase mb-2">Nombre de la Categoría</label>
+                                <input id="f-nombregenero" name="nombregenero" type="text"
+                                       value="{{ genero.nombregenero }}" required
+                                       class="edit-input font-bold text-lg">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-white/60 uppercase mb-2">Descripción / Características</label>
+                                <textarea id="f-descripcion" name="descripcion" rows="6" 
+                                          class="edit-input resize-none">{{ genero.descripcion|default:'' }}</textarea>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end items-center gap-4 pt-2">
+                    <a href="{% url 'genre_overview' %}"
+                       class="px-8 py-4 text-white/60 hover:text-white transition-all text-sm font-medium">
+                        Cancelar
+                    </a>
+
+                    <button type="submit" id="btn-save"
+                            class="inline-flex items-center gap-2 px-10 py-4 bg-secondary text-black font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-secondary/20 text-sm">
+                        <span class="material-symbols-outlined text-[20px]">save</span>
+                        Guardar Cambios
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    var CSRF_TOKEN = '{{ csrf_token }}';
+    var GENERO_ID = {{ genero.idgenero }};
+
+    function showToast(message, status) {
+        const isSuccess = status === 'success';
+        const toast = document.createElement('div');
+        toast.className = `fixed top-20 right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-lg border ${
+            isSuccess ? 'border-secondary/30 bg-surface-container text-secondary' : 'border-red-500/30 bg-surface-container text-red-400'
+        } shadow-2xl backdrop-blur-md transition-all duration-300`;
+        
+        toast.innerHTML = `
+            <span class="material-symbols-outlined text-[20px]">${isSuccess ? 'check_circle' : 'error'}</span>
+            <div>
+                <p class="text-xs font-black uppercase tracking-widest opacity-60">${isSuccess ? 'Éxito' : 'Error'}</p>
+                <p class="text-sm font-bold">${message}</p>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    }
+
+    document.getElementById('edit-genre-form').onsubmit = async (e) => {
+        e.preventDefault();
+
+        const btn = document.getElementById('btn-save');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Guardando...';
+
+        const formData = new FormData();
+        formData.append('nombregenero', document.getElementById('f-nombregenero').value);
+        formData.append('descripcion',  document.getElementById('f-descripcion').value);
+
+        try {
+            const res = await fetch(`/catalogo/generos/${GENERO_ID}/edit/`, {
+                method: 'POST', 
+                headers: { 'X-CSRFToken': CSRF_TOKEN },
+                body: formData
+            });
+            const data = await res.json();
+
+            if (res.ok && data.status === 'success') {
+                showToast('Género actualizado correctamente.', 'success');
+                // Actualiza el título de la página visualmente
+                document.getElementById('page-title').textContent = document.getElementById('f-nombregenero').value;
+            } else {
+                showToast(data.message || 'Error al guardar los cambios.', 'error');
+            }
+        } catch (err) {
+            showToast('Error de conexión con el servidor.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined">save</span> Guardar Cambios';
+        }
+    }
+</script>
+{% endblock %}

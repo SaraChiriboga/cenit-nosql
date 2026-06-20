@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Informe D — Promociones expiradas activas{% endblock %}
+
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<span class="text-on-surface">Promociones expiradas activas</span>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <div class="flex items-center gap-3 mb-1">
+            <span class="px-2 py-0.5 rounded-lg bg-error/10 text-error text-xs font-medium">Informe D</span>
+            <h1 class="text-2xl font-semibold text-on-surface">Promociones expiradas aún activas</h1>
+        </div>
+        <p class="text-on-surface-variant text-sm">
+            Al <span class="text-on-surface">{{ ahora|date:"d/m/Y H:i" }}</span>
+            · {{ vencidas|length }} resultado{{ vencidas|length|pluralize:"s" }}
+        </p>
+    </div>
+</div>
+
+{% if vencidas %}
+<div class="mb-4 flex items-start gap-3 px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm">
+    <span class="material-symbols-outlined text-[18px] mt-0.5 shrink-0">warning</span>
+    <span>Estas promociones tienen fecha de expiración pasada pero siguen marcadas como activas. Considera desactivarlas.</span>
+</div>
+
+<div class="glass-panel rounded-2xl overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-white/5 text-on-surface-variant text-xs uppercase tracking-wider">
+                <th class="text-left px-6 py-4 font-medium">ID</th>
+                <th class="text-left px-6 py-4 font-medium">Descripción</th>
+                <th class="text-left px-6 py-4 font-medium">Plan</th>
+                <th class="text-left px-6 py-4 font-medium">Descuento</th>
+                <th class="text-left px-6 py-4 font-medium">Fecha expiración</th>
+                <th class="text-left px-6 py-4 font-medium">Vencida hace</th>
+                <th class="text-right px-6 py-4 font-medium">Acción</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+            {% for promo in vencidas %}
+            <tr class="hover:bg-white/3 transition-colors">
+                <td class="px-6 py-4 text-on-surface-variant font-mono">{{ promo.idpromo }}</td>
+                <td class="px-6 py-4 text-on-surface font-medium">{{ promo.descripcion }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ promo.tiposuscripcion }}</td>
+                <td class="px-6 py-4 text-secondary font-mono">{{ promo.porcentajedesc }}%</td>
+                <td class="px-6 py-4 text-error font-medium">{{ promo.fechaexpira|date:"d/m/Y H:i" }}</td>
+                <td class="px-6 py-4">
+                    <span class="flex items-center gap-1.5 text-error text-xs font-medium">
+                        <span class="material-symbols-outlined text-[16px]">timer_off</span>
+                        {{ promo.fechaexpira|timesince }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <a href="{% url 'promocion_edit' promo.idpromo %}"
+                       class="px-3 py-1.5 rounded-lg bg-error/10 text-error hover:bg-error/20 text-xs font-medium transition-all inline-flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">edit</span>
+                        Desactivar
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="glass-panel rounded-2xl p-16 text-center">
+    <span class="material-symbols-outlined text-[48px] block mb-3 text-green-400 opacity-60">check_circle</span>
+    <p class="text-on-surface font-medium">Todo en orden</p>
+    <p class="text-on-surface-variant text-sm mt-1">No hay promociones expiradas marcadas como activas.</p>
+</div>
+{% endif %}
+{% endblock %}

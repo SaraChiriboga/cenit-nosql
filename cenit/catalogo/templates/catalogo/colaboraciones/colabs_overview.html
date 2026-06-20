@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Colaboraciones{% endblock %}
+
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Catalog</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Colaboraciones</span>
+{% endblock %}
+
+{% block content %}
+<section class="mb-12">
+    <div class="glass-panel rounded-xl overflow-hidden flex flex-col">
+
+        <div class="p-6 border-b border-white/5 flex flex-col lg:flex-row justify-between items-center gap-4 relative z-20">
+            <div class="flex flex-col lg:flex-row items-center gap-4 w-full lg:w-auto">
+                <h2 class="font-headline-md text-headline-md text-primary shrink-0">Colaboraciones</h2>
+
+                <form id="filter-form" method="GET" action="" class="relative flex-1 flex flex-col md:flex-row gap-3 w-full">
+
+                    <div class="relative w-full md:w-56 lg:w-48">
+                        <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                            <span class="material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+                        </div>
+                        <input name="q" value="{{ request.GET.q }}" class="w-full bg-surface-container border border-outline-variant/20 rounded-md pl-10 pr-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md placeholder:text-on-surface-variant/50" placeholder="Buscar..." type="text" onchange="document.getElementById('filter-form').submit();"/>
+                    </div>
+
+                    <select name="rol" class="w-full md:w-48 bg-surface-container border border-outline-variant/20 rounded-md px-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md cursor-pointer" onchange="document.getElementById('filter-form').submit();">
+                        <option value="">Todos los roles</option>
+                        <option value="Principal" {% if request.GET.rol == 'Principal' %}selected{% endif %}>Principal</option>
+                        <option value="Invitado" {% if request.GET.rol == 'Invitado' %}selected{% endif %}>Invitado</option>
+                        <option value="Remixer" {% if request.GET.rol == 'Remixer' %}selected{% endif %}>Remixer</option>
+                    </select>
+
+                    <select name="orden" class="w-full md:w-48 bg-surface-container border border-outline-variant/20 rounded-md px-4 py-2 text-on-surface focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all font-body-md text-body-md cursor-pointer" onchange="document.getElementById('filter-form').submit();">
+                        <option value="desc" {% if request.GET.orden == 'desc' %}selected{% endif %}>Más recientes</option>
+                        <option value="asc" {% if request.GET.orden == 'asc' %}selected{% endif %}>Más antiguas</option>
+                    </select>
+
+                    <button type="submit" class="hidden"></button>
+                </form>
+            </div>
+
+            <div class="flex gap-2 shrink-0 w-full lg:w-auto justify-end">
+                <a href="{% url 'add_colab' %}" class="bg-primary-container text-on-primary-container font-label-sm text-label-sm px-4 py-2 rounded-md transition-all font-bold">
+                    + Nueva Colaboración
+                </a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto relative z-10">
+            <table class="w-full text-left">
+                <thead class="bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold w-24">ID</th>
+                        <th class="px-6 py-4 font-semibold w-1/4">Visual</th>
+                        <th class="px-6 py-4 font-semibold">Detalles de Pista</th>
+                        <th class="px-6 py-4 font-semibold">Rol</th>
+                        <th class="px-6 py-4 font-semibold text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for col in colaboraciones %}
+                    <tr class="hover:bg-white/5 transition-colors group">
+                        <td class="px-6 py-4 font-mono text-on-surface-variant text-[13px]">COL-{{ col.idcolaboracion }}</td>
+
+                        <td class="px-6 py-4">
+                            <div class="relative w-12 h-12 flex-shrink-0">
+                                <div class="w-10 h-10 rounded-md border border-white/10 overflow-hidden bg-surface-container z-10 absolute top-0 left-0">
+                                    {% if col.cancion.album_idalbum.urlportada %}
+                                        <img src="{{ col.cancion.album_idalbum.urlportada }}" alt="Cover" class="w-full h-full object-cover">
+                                    {% elif col.cancion.album.urlportada %}
+                                        <img src="{{ col.cancion.album.urlportada }}" alt="Cover" class="w-full h-full object-cover">
+                                    {% else %}
+                                        <div class="w-full h-full flex items-center justify-center bg-secondary/10">
+                                            <span class="material-symbols-outlined text-[18px] text-secondary">music_note</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="w-6 h-6 rounded-full border border-background overflow-hidden bg-surface-container z-20 absolute -bottom-1 -right-1 shadow-lg ring-1 ring-white/10">
+                                    {% if col.artista.urlperfil %}
+                                        <img src="{{ col.artista.urlperfil }}" alt="Artist" class="w-full h-full object-cover">
+                                    {% else %}
+                                        <div class="w-full h-full flex items-center justify-center bg-black">
+                                            <span class="material-symbols-outlined text-[12px] text-white/50">person</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="px-6 py-4">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-on-surface">{{ col.cancion.titulocancion }}</span>
+                                <span class="text-xs text-on-surface-variant font-medium mt-0.5">
+                                    {% if col.rolartista|lower == 'principal' %}de{% else %}con{% endif %} {{ col.artista.nombreartistico }}
+                                </span>
+                            </div>
+                        </td>
+
+                        <td class="px-6 py-4">
+                            {% if col.rolartista|lower == 'principal' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-primary/10 text-primary border border-primary/20">Principal</span>
+                            {% elif col.rolartista|lower == 'invitado' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-secondary/10 text-secondary border border-secondary/20">Invitado</span>
+                            {% elif col.rolartista|lower == 'remixer' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">Remixer</span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-white/5 text-on-surface-variant border border-white/10">{{ col.rolartista }}</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            <div class="flex items-center justify-end gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
+                                <a href="javascript:void(0);"
+                                   onclick="navegarSinCortes('{% url 'read_colab' col.idcolaboracion %}')"
+                                   class="p-2 text-on-surface-variant hover:text-primary transition-colors"
+                                   title="Ver detalles">
+                                    <span class="material-symbols-outlined text-[20px]">visibility</span>
+                                </a>
+                                <a href="javascript:void(0);"
+                                   onclick="navegarSinCortes('{% url 'edit_colab' col.idcolaboracion %}')"
+                                   class="p-2 text-on-surface-variant hover:text-secondary transition-colors"
+                                   title="Editar">
+                                    <span class="material-symbols-outlined text-[20px]">edit</span>
+                                </a>
+                                <a href="javascript:void(0);"
+                                   onclick="window.showDeleteModal('{{ col.idcolaboracion }}', '{{ col.cancion.titulocancion|escapejs }} - {{ col.artista.nombreartistico|escapejs }}')"
+                                   class="p-2 text-on-surface-variant hover:text-error transition-colors"
+                                   title="Eliminar">
+                                    <span class="material-symbols-outlined text-[20px]">delete</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-16 text-center">
+                            <div class="flex flex-col items-center justify-center text-on-surface-variant">
+                                <span class="material-symbols-outlined text-6xl mb-4 opacity-50">group_work</span>
+                                <p class="font-medium text-lg text-on-surface">No hay colaboraciones registradas</p>
+                                <p class="text-sm mt-1">Intenta ajustar los filtros o comienza a vincular artistas con sus canciones.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="p-4 border-t border-white/5 flex justify-between items-center text-on-surface-variant font-label-sm text-label-sm">
+            <div>{{ colaboraciones.count }} colaboración{{ colaboraciones.count|pluralize:"es" }} encontrada{{ colaboraciones.count|pluralize:"s" }}</div>
+        </div>
+    </div>
+</section>
+
+<div id="delete-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity">
+    <div class="glass-ultra p-8 rounded-3xl w-full max-w-sm text-center border border-white/10 shadow-2xl transform transition-transform scale-95" id="delete-modal-content" style="background: rgba(31, 40, 51, 0.95); backdrop-filter: blur(20px);">
+        <span class="material-symbols-outlined text-5xl text-red-500 mb-4">link_off</span>
+
+        <h2 class="text-xl font-bold text-white mb-2">¿Romper vínculo?</h2>
+
+        <p id="delete-modal-title" class="text-white/60 mb-8 text-sm">¿Estás seguro de que deseas eliminar esta colaboración?</p>
+
+        <div class="flex gap-4">
+            <button onclick="window.closeModal()" class="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all">
+                Cancelar
+            </button>
+            <button id="btn-confirm-delete" onclick="window.confirmDelete()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                Eliminar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    var CSRF_TOKEN = '{{ csrf_token }}';
+    var colabToDeleteId = null;
+
+    window.showDeleteModal = function(id, descripcion) {
+        colabToDeleteId = id;
+        document.getElementById('delete-modal-title').innerHTML = `Se desvinculará a <b>${descripcion}</b>. Esta acción no afecta al artista ni a la pista original.`;
+
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        setTimeout(() => {
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }, 10);
+    }
+
+    window.closeModal = function() {
+        colabToDeleteId = null;
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 150);
+    }
+
+    window.showToast = function(message, status) {
+        const isSuccess = status === 'success';
+        const toast = document.createElement('div');
+        toast.className = `fixed top-20 right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-lg border ${
+            isSuccess ? 'border-secondary/30 bg-surface-container text-secondary' : 'border-red-500/30 bg-surface-container text-red-400'
+        } shadow-2xl backdrop-blur-md transition-all duration-300`;
+
+        toast.innerHTML = `
+            <span class="material-symbols-outlined text-[20px]">${isSuccess ? 'check_circle' : 'error'}</span>
+            <div>
+                <p class="text-xs font-black uppercase tracking-widest opacity-60">${isSuccess ? 'Éxito' : 'Error'}</p>
+                <p class="text-sm font-bold">${message}</p>
+            </div>
+        `;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    }
+
+    window.confirmDelete = async function() {
+        if (!colabToDeleteId) return;
+
+        const btn = document.getElementById('btn-confirm-delete');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> Borrando...';
+
+        try {
+            const urlBase = "{% url 'delete_colab' 999999 %}";
+            const fetchUrl = urlBase.replace('999999', colabToDeleteId);
+
+            const res = await fetch(fetchUrl, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN }
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.status === 'success') {
+                showToast('Colaboración eliminada correctamente.', 'success');
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                showToast(data.message || 'Error al intentar eliminar.', 'error');
+                window.closeModal();
+            }
+        } catch (error) {
+            showToast('Error de red al intentar eliminar.', 'error');
+            window.closeModal();
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Eliminar';
+        }
+    }
+</script>
+{% endblock %}

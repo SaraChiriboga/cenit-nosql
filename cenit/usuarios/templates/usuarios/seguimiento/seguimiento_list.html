@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Seguimientos{% endblock %}
+
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="mx-2 text-on-surface-variant">/</span>
+<span class="text-on-surface">Seguimientos</span>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <h1 class="text-2xl font-semibold text-on-surface">Seguimientos</h1>
+        <p class="text-on-surface-variant text-sm mt-1">{{ seguimientos|length }} seguimiento{{ seguimientos|length|pluralize:"s" }}</p>
+    </div>
+    <a href="{% url 'seguimiento_add' %}"
+       class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-secondary text-on-secondary font-medium text-sm hover:opacity-90 transition-all glow-cyan">
+        <span class="material-symbols-outlined text-[18px]">add</span>
+        Nuevo seguimiento
+    </a>
+</div>
+
+{% if messages %}
+<div class="mb-6 flex flex-col gap-2">
+    {% for msg in messages %}
+    <div class="flex items-center gap-3 px-4 py-3 rounded-xl
+        {% if msg.tags == 'success' %}bg-green-500/10 border border-green-500/20 text-green-400
+        {% else %}bg-error/10 border border-error/20 text-error{% endif %}">
+        <span class="material-symbols-outlined text-[18px]">
+            {% if msg.tags == 'success' %}check_circle{% else %}error{% endif %}
+        </span>
+        {{ msg }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="get" class="mb-6">
+    <div class="relative w-80">
+        <span class="absolute inset-y-0 left-3 flex items-center pointer-events-none material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+        <input name="q" value="{{ query }}" placeholder="Buscar por usuario o artista..."
+               class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl pl-10 pr-4 py-2 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
+    </div>
+</form>
+
+<div class="glass-panel rounded-2xl overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-white/5 text-on-surface-variant text-xs uppercase tracking-wider">
+                <th class="text-left px-6 py-4 font-medium">Usuario</th>
+                <th class="text-left px-6 py-4 font-medium">Artista</th>
+                <th class="text-left px-6 py-4 font-medium">País</th>
+                <th class="text-left px-6 py-4 font-medium">Fecha seguimiento</th>
+                <th class="text-right px-6 py-4 font-medium">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+            {% for seg in seguimientos %}
+            <tr class="hover:bg-white/3 transition-colors">
+                <td class="px-6 py-4 text-on-surface font-medium">{{ seg.usuario }}</td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        {% if seg.artista.urlperfil %}
+                        <img src="{{ seg.artista.urlperfil }}" alt="{{ seg.artista }}"
+                             class="w-9 h-9 rounded-full object-cover flex-shrink-0"/>
+                        {% else %}
+                        <div class="w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-[16px] text-on-surface-variant">person</span>
+                        </div>
+                        {% endif %}
+                        <span class="text-on-surface font-medium">{{ seg.artista }}</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ seg.artista.paisorigen }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ seg.fechaseguimiento|date:"d/m/Y H:i"|default:"—" }}</td>
+                <td class="px-6 py-4 text-right">
+                    <form method="post" action="{% url 'seguimiento_delete' %}" class="inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="usuario_id" value="{{ seg.usuario_id }}">
+                        <input type="hidden" name="artista_id" value="{{ seg.artista_id }}">
+                        <button type="submit"
+                                class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all"
+                                onclick="return confirm('¿Quitar este seguimiento?')">
+                            <span class="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="px-6 py-16 text-center text-on-surface-variant">
+                    <span class="material-symbols-outlined text-[40px] block mb-2 opacity-30">person_add</span>
+                    No hay seguimientos registrados.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

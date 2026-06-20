@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Agregar Artista{% endblock %}
+{% block breadcrumb %}
+<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Catalog</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<a href="{% url 'artists_overview' %}" class="hover:text-primary transition-colors text-on-surface-variant">Artistas</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Agregar Artista</span>
+{% endblock %}
+{% block content %}
+<style>
+    #fixed-bg {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background-color: #0B0C10;
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        transition: background-image 1s ease-in-out;
+        filter: blur(12px) brightness(0.9);
+        transform: scale(1.05);
+    }
+    #fixed-bg::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, rgba(11, 12, 16, 0.75) 0%, rgba(11, 12, 16, 0.90) 100%);
+    }
+
+    .glass-ultra {
+        background: rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .spotify-logo { width: 20px; height: 20px; flex-shrink: 0; }
+
+    #search_input:focus {
+        outline: none !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .search-container-custom:focus-within {
+        border: 1px solid #2DD4BF !important;
+        box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.2) !important;
+    }
+
+    input:not(#search_input):focus,
+    select:focus,
+    textarea:focus {
+        border-color: #2DD4BF !important;
+        box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.3) !important;
+        outline: none !important;
+    }
+
+    select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 1.2em;
+        padding-right: 2.5rem !important;
+        cursor: pointer;
+    }
+    select:hover { border-color: rgba(45, 212, 191, 0.5) !important; }
+    select option { background-color: #1A1B20; color: white; padding: 10px; }
+
+
+</style>
+
+<div id="fixed-bg"></div>
+
+<div id="page-container" class="w-full min-h-[calc(100vh-64px)] p-8">
+    <div class="max-w-[1800px] mx-auto h-full flex flex-col">
+        <div class="mb-8">
+            <h1 class="text-4xl font-extrabold text-white">Nuevo Artista</h1>
+            <p class="text-white/60">Registra un nuevo perfil musical en CÉNIT.</p>
+        </div>
+
+        <form id="artist-form" class="grid grid-cols-1 xl:grid-cols-4 gap-8 h-full">
+            <div class="xl:col-span-1 space-y-4">
+                <div class="aspect-square w-full rounded-full border border-white/10 glass-ultra flex items-center justify-center overflow-hidden shadow-2xl relative max-w-[300px] mx-auto">
+                    <img id="artist-image" src="" class="w-full h-full object-cover hidden">
+                    <span id="icon-empty" class="material-symbols-outlined text-7xl text-white/20">person</span>
+                </div>
+
+                <input type="text" name="urlperfil" id="urlperfil" placeholder="URL de la foto de perfil..."
+                       class="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white outline-none focus:border-secondary"
+                       oninput="applyStyles(this.value)">
+            </div>
+
+            <div class="xl:col-span-3 space-y-6">
+
+                <div class="p-4 bg-black/40 rounded-2xl border border-white/10 flex gap-4 items-center backdrop-blur-md">
+                    <svg class="spotify-logo ml-2" viewBox="0 0 24 24" fill="#1DB954" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                    </svg>
+
+                    <input type="text" id="search_input" placeholder="Buscar artista en Spotify para autocompletar..."
+                           class="flex-1 bg-transparent border-none text-white placeholder:text-white/40 outline-none">
+                    <button type="button" id="btn-search"
+                            class="bg-secondary text-background px-10 rounded-xl font-bold hover:brightness-110 transition-all">
+                        Buscar
+                    </button>
+                </div>
+
+                <div class="glass-ultra p-10 rounded-3xl grid grid-cols-1 md:grid-cols-2 gap-8 text-white">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Nombre Artístico</label>
+                        <input type="text" name="nombreartistico" id="nombreartistico" required
+                               class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30">
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Biografía / Notas</label>
+                        <textarea name="biografia" id="biografia" rows="3"
+                               class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30 resize-none"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">País de Origen</label>
+                        <input type="text" name="paisorigen" id="paisorigen" placeholder="Ej: Puerto Rico, Colombia..."
+                               class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 ring-secondary/30">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-white/60 uppercase mb-2">Estado Activo</label>
+                        <select name="estadoactivo" id="estadoactivo" class="w-full bg-black/30 border border-white/10 rounded-xl p-4 outline-none">
+                            {% for estado in estados %}
+                                <option value="{{ estado }}">{{ estado }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-6 pt-4">
+                    <a href="{% url 'artists_overview' %}" class="px-8 py-4 text-white/60 hover:text-white transition-all">Cancelar</a>
+                    <button type="submit"
+                            class="px-12 py-4 bg-secondary text-background font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-secondary/20">
+                        Guardar Artista
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="results-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-4">
+    <div class="bg-black/90 w-full max-w-lg rounded-3xl p-8 border border-white/10">
+        <div class="flex items-center gap-3 mb-6">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#1DB954" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+            </svg>
+            <div>
+                <h3 class="text-white font-bold text-xl leading-none">Resultados</h3>
+                <p class="text-white/30 text-xs mt-0.5">Artistas en Spotify</p>
+            </div>
+        </div>
+
+        <div id="results-list" class="space-y-3 max-h-96 overflow-y-auto"></div>
+        <button onclick="document.getElementById('results-modal').classList.add('hidden')"
+                class="mt-8 w-full py-3 bg-white/5 rounded-xl font-bold text-white/70 hover:bg-white/10">
+            Cerrar
+        </button>
+    </div>
+</div>
+
+<script>
+    const fixedBg   = document.getElementById('fixed-bg');
+    const artistImg = document.getElementById('artist-image');
+    const iconEmpty = document.getElementById('icon-empty');
+
+    // Cambia la imagen y el fondo
+    function applyStyles(url) {
+        if (url && url.length > 5) {
+            fixedBg.style.backgroundImage = `url('${url}')`;
+            artistImg.src = url;
+            artistImg.classList.remove('hidden');
+            iconEmpty.classList.add('hidden');
+        } else {
+            fixedBg.style.backgroundImage = 'none';
+            artistImg.classList.add('hidden');
+            iconEmpty.classList.remove('hidden');
+        }
+    }
+
+    // Buscador AJAX
+    document.getElementById('btn-search').onclick = async () => {
+        const q = document.getElementById('search_input').value;
+        const list = document.getElementById('results-list');
+        list.innerHTML = '<p class="text-white/50 text-center py-4">Buscando...</p>';
+        document.getElementById('results-modal').classList.remove('hidden');
+
+        try {
+            const res = await fetch("{% url 'search_artist_spotify_ajax' %}?q=" + encodeURIComponent(q));
+            const data = await res.json();
+
+            list.innerHTML = '';
+            
+            if (data.length === 0) {
+                list.innerHTML = '<p class="text-white/50 text-center py-4">No se encontraron artistas.</p>';
+                return;
+            }
+
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "flex items-center gap-4 p-4 bg-black/40 hover:bg-secondary/20 cursor-pointer rounded-2xl border border-white/5 transition-all";
+                div.innerHTML = `
+                    <img src="${item.image || ''}" class="w-16 h-16 rounded-full object-cover flex-shrink-0 bg-white/5">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-bold text-white truncate">${item.name}</div>
+                        <div class="text-xs text-white/40 mt-0.5 truncate">${item.genres || 'Sin género definido'}</div>
+                    </div>`;
+                
+                div.onclick = () => {
+                    document.getElementById('nombreartistico').value = item.name;
+                    document.getElementById('biografia').value = item.genres; // Usamos los géneros como notas iniciales
+                    document.getElementById('urlperfil').value = item.image;
+                    
+                    applyStyles(item.image);
+                    document.getElementById('results-modal').classList.add('hidden');
+                };
+                list.appendChild(div);
+            });
+        } catch (err) {
+            list.innerHTML = '<p class="text-red-400 text-center py-4">Error de conexión con Spotify.</p>';
+        }
+    }
+
+    // Lógica de guardado AJAX con Toast
+    document.getElementById('artist-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+
+        try {
+            const res = await fetch("{% url 'artista_add' %}", {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+
+            const data = await res.json();
+            showToast(data.message, data.status);
+
+            if (data.status === 'success') {
+                form.reset();
+                applyStyles('');
+            }
+        } catch (error) {
+            showToast("Error crítico al comunicarse con el servidor", "error");
+        }
+    };
+
+    function showToast(message, status) {
+            const isSuccess = status === 'success';
+            const toast = document.createElement('div');
+            toast.className = `fixed top-20 right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-lg border ${
+                isSuccess
+                    ? 'border-secondary/30 bg-surface-container text-secondary'
+                    : 'border-red-500/30 bg-surface-container text-red-400'
+            } shadow-2xl backdrop-blur-md`;
+            toast.innerHTML = `
+                <span class="material-symbols-outlined text-[20px]">${isSuccess ? 'check_circle' : 'error'}</span>
+                <div>
+                    <p class="text-xs font-black uppercase tracking-widest opacity-60">${isSuccess ? 'Éxito' : 'Error'}</p>
+                    <p class="text-sm font-bold">${message}</p>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+</script>
+{% endblock %}
