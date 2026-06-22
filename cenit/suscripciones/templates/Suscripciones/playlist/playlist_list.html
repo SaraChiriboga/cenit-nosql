@@ -57,17 +57,17 @@
             {% for pl in playlists %}
             <tr class="hover:bg-white/3 transition-colors">
                 <td class="px-6 py-4 text-on-surface font-medium">{{ pl.nombre }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ pl.usuario|default:"—" }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ pl.fechacreacion|date:"d/m/Y" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ pl.usuario_nombre_nombre|default:"—" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ pl.fechaCreacion|date:"d/m/Y" }}</td>
                 <td class="px-6 py-4">
-                    {% if pl.esprivada %}
+                    {% if pl.esPrivada %}
                     <span class="material-symbols-outlined text-[18px] text-on-surface-variant">lock</span>
                     {% else %}
                     <span class="material-symbols-outlined text-[18px] text-secondary">lock_open</span>
                     {% endif %}
                 </td>
                 <td class="px-6 py-4">
-                    {% if pl.espublicada %}
+                    {% if pl.esPublicada %}
                     <span class="px-2 py-1 rounded-lg bg-secondary/10 text-secondary text-xs font-medium">Sí</span>
                     {% else %}
                     <span class="px-2 py-1 rounded-lg bg-white/5 text-on-surface-variant text-xs font-medium">No</span>
@@ -75,16 +75,16 @@
                 </td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-2">
-                        <a href="{% url 'playlist_canciones' pl.idplaylist %}"
+                        <a href="{% url 'playlist_canciones' pl.id %}"
                            class="p-2 rounded-lg text-on-surface-variant hover:text-secondary hover:bg-secondary/10 transition-all"
                            title="Ver canciones">
                             <span class="material-symbols-outlined text-[18px]">queue_music</span>
                         </a>
-                        <a href="{% url 'playlist_edit' pl.idplaylist %}"
+                        <a href="{% url 'playlist_edit' pl.id %}"
                            class="p-2 rounded-lg text-on-surface-variant hover:text-secondary hover:bg-secondary/10 transition-all">
                             <span class="material-symbols-outlined text-[18px]">edit</span>
                         </a>
-                        <a href="{% url 'playlist_delete' pl.idplaylist %}"
+                        <a href="{% url 'playlist_delete' pl.id %}"
                            class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all">
                             <span class="material-symbols-outlined text-[18px]">delete</span>
                         </a>

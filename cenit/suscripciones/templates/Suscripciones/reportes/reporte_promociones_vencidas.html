@@ -43,19 +43,19 @@
         <tbody class="divide-y divide-white/5">
             {% for promo in vencidas %}
             <tr class="hover:bg-white/3 transition-colors">
-                <td class="px-6 py-4 text-on-surface-variant font-mono">{{ promo.idpromo }}</td>
+                <td class="px-6 py-4 text-on-surface-variant font-mono">{{ promo.promo_id }}</td>
                 <td class="px-6 py-4 text-on-surface font-medium">{{ promo.descripcion }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ promo.tiposuscripcion }}</td>
-                <td class="px-6 py-4 text-secondary font-mono">{{ promo.porcentajedesc }}%</td>
-                <td class="px-6 py-4 text-error font-medium">{{ promo.fechaexpira|date:"d/m/Y H:i" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ promo.tipoSuscripcion.nombrePlan }}</td>
+                <td class="px-6 py-4 text-secondary font-mono">{{ promo.porcentajeDesc }}%</td>
+                <td class="px-6 py-4 text-error font-medium">{{ promo.fechaExpira|date:"d/m/Y H:i" }}</td>
                 <td class="px-6 py-4">
                     <span class="flex items-center gap-1.5 text-error text-xs font-medium">
                         <span class="material-symbols-outlined text-[16px]">timer_off</span>
-                        {{ promo.fechaexpira|timesince }}
+                        {{ promo.fechaExpira|timesince }}
                     </span>
                 </td>
                 <td class="px-6 py-4 text-right">
-                    <a href="{% url 'promocion_edit' promo.idpromo %}"
+                    <a href="{% url 'promocion_edit' promo.promo_id %}"
                        class="px-3 py-1.5 rounded-lg bg-error/10 text-error hover:bg-error/20 text-xs font-medium transition-all inline-flex items-center gap-1">
                         <span class="material-symbols-outlined text-[14px]">edit</span>
                         Desactivar

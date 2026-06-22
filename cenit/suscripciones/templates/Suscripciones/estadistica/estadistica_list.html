@@ -55,11 +55,11 @@
         <tbody class="divide-y divide-white/5">
             {% for e in estadisticas %}
             <tr class="hover:bg-white/3 transition-colors">
-                <td class="px-6 py-4 text-on-surface-variant font-mono">{{ e.idestat }}</td>
+                <td class="px-6 py-4 text-on-surface-variant font-mono">{{ e.id }}</td>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                        {% if e.cancion.urlportada %}
-                        <img src="{{ e.cancion.urlportada }}" alt="{{ e.cancion }}"
+                        {% if e.cancion_nombre_portada %}
+                        <img src="{{ e.cancion_nombre_portada }}" alt="{{ e.cancion_nombre_nombre }}"
                              class="w-9 h-9 rounded-lg object-cover flex-shrink-0"/>
                         {% else %}
                         <div class="w-9 h-9 rounded-lg bg-surface-container-low flex items-center justify-center flex-shrink-0">
@@ -67,20 +67,20 @@
                         </div>
                         {% endif %}
                         <div class="flex flex-col">
-                            <span class="text-on-surface font-medium">{{ e.cancion }}</span>
-                            <span class="text-on-surface-variant text-xs">{{ e.cancion.album }}</span>
+                            <span class="text-on-surface font-medium">{{ e.cancion_nombre_nombre }}</span>
+                            <span class="text-on-surface-variant text-xs">{{ e.cancion_nombre_album }}</span>
                         </div>
                     </div>
                 </td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ e.fechareporte|date:"d/m/Y" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ e.fechaReporte|date:"d/m/Y" }}</td>
                 <td class="px-6 py-4">
                     <span class="flex items-center gap-2 text-secondary font-mono font-medium">
                         <span class="material-symbols-outlined text-[16px]">play_circle</span>
-                        {{ e.totalrepros }}
+                        {{ e.totalRepros }}
                     </span>
                 </td>
                 <td class="px-6 py-4 text-right">
-                    <a href="{% url 'estadistica_delete' e.idestat %}"
+                    <a href="{% url 'estadistica_delete' e.id %}"
                        class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all inline-flex">
                         <span class="material-symbols-outlined text-[18px]">delete</span>
                     </a>

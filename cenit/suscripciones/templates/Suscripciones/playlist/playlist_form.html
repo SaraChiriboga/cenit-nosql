@@ -44,7 +44,7 @@
 
         <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Imagen portada (URL)</label>
-            <input type="text" name="imagenportada" value="{{ playlist.imagenportada|default:'' }}"
+            <input type="text" name="imagenportada" value="{{ playlist.imagenPortada|default:'' }}"
                    class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
         </div>
 
@@ -54,8 +54,8 @@
                     class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
                 <option value="">— Sin usuario —</option>
                 {% for u in usuarios %}
-                <option value="{{ u.idusuario }}"
-                    {% if playlist.usuario_id == u.idusuario %}selected{% endif %}>
+                <option value="{{ u.id }}"
+                    {% if playlist.usuario_id == u.id %}selected{% endif %}>
                     {{ u.nombre }} {{ u.apellido }}
                 </option>
                 {% endfor %}
@@ -65,13 +65,13 @@
         <div class="flex gap-6">
             <label class="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" name="esprivada"
-                       {% if playlist.esprivada %}checked{% endif %}
+                       {% if playlist.esPrivada %}checked{% endif %}
                        class="w-4 h-4 rounded accent-secondary"/>
                 <span class="text-sm text-on-surface">Privada</span>
             </label>
             <label class="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" name="espublicada"
-                       {% if playlist.espublicada %}checked{% endif %}
+                       {% if playlist.esPublicada %}checked{% endif %}
                        class="w-4 h-4 rounded accent-secondary"/>
                 <span class="text-sm text-on-surface">Publicada</span>
             </label>

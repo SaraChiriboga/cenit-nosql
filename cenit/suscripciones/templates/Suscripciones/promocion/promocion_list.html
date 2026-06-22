@@ -58,12 +58,12 @@
             {% for promo in promociones %}
             <tr class="hover:bg-white/3 transition-colors">
                 <td class="px-6 py-4 text-on-surface font-medium">{{ promo.descripcion }}</td>
-                <td class="px-6 py-4 text-secondary font-mono">{{ promo.porcentajedesc }}%</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ promo.tiposuscripcion }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ promo.fechainicio|date:"d/m/Y" }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ promo.fechaexpira|date:"d/m/Y"|default:"—" }}</td>
+                <td class="px-6 py-4 text-secondary font-mono">{{ promo.porcentajeDesc }}%</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ promo.tipoSuscripcion.nombrePlan }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ promo.fechaInicio|date:"d/m/Y" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ promo.fechaExpira|date:"d/m/Y"|default:"—" }}</td>
                 <td class="px-6 py-4">
-                    {% if promo.estadoactivo %}
+                    {% if promo.estadoActivo %}
                     <span class="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium">Activa</span>
                     {% else %}
                     <span class="px-2 py-1 rounded-lg bg-white/5 text-on-surface-variant text-xs font-medium">Inactiva</span>
@@ -71,11 +71,11 @@
                 </td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-2">
-                        <a href="{% url 'promocion_edit' promo.idpromo %}"
+                        <a href="{% url 'promocion_edit' promo.promo_id %}"
                            class="p-2 rounded-lg text-on-surface-variant hover:text-secondary hover:bg-secondary/10 transition-all">
                             <span class="material-symbols-outlined text-[18px]">edit</span>
                         </a>
-                        <a href="{% url 'promocion_delete' promo.idpromo %}"
+                        <a href="{% url 'promocion_delete' promo.promo_id %}"
                            class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all">
                             <span class="material-symbols-outlined text-[18px]">delete</span>
                         </a>

@@ -52,7 +52,7 @@
                     class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
                 <option value="">— Selecciona —</option>
                 {% for u in usuarios %}
-                <option value="{{ u.idusuario }}">{{ u.nombre }} {{ u.apellido }}</option>
+                <option value="{{ u.id }}">{{ u.nombre }} {{ u.apellido }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -63,7 +63,7 @@
                     class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
                 <option value="">— Selecciona —</option>
                 {% for p in promociones %}
-                <option value="{{ p.idpromo }}">{{ p.descripcion }}</option>
+                <option value="{{ p.promo_id }}">{{ p.descripcion }}</option>
                 {% endfor %}
             </select>
         </div>

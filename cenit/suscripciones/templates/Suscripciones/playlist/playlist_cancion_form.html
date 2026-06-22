@@ -6,7 +6,7 @@
 <span class="mx-2 text-on-surface-variant">/</span>
 <a href="{% url 'playlist_list' %}" class="hover:text-primary transition-colors">Playlists</a>
 <span class="mx-2 text-on-surface-variant">/</span>
-<a href="{% url 'playlist_canciones' playlist.idplaylist %}" class="hover:text-primary transition-colors">{{ playlist.nombre }}</a>
+<a href="{% url 'playlist_canciones' playlist.id %}" class="hover:text-primary transition-colors">{{ playlist.nombre }}</a>
 <span class="mx-2 text-on-surface-variant">/</span>
 <span class="text-on-surface">Agregar canción</span>
 {% endblock %}
@@ -37,7 +37,7 @@
                     class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
                 <option value="">— Selecciona una canción —</option>
                 {% for c in canciones %}
-                <option value="{{ c.idcancion }}">{{ c.titulocancion }}</option>
+                <option value="{{ c.cancion_id }}">{{ c.tituloCancion }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -49,7 +49,7 @@
         </div>
 
         <div class="flex justify-end gap-3 pt-2">
-            <a href="{% url 'playlist_canciones' playlist.idplaylist %}"
+            <a href="{% url 'playlist_canciones' playlist.id %}"
                class="px-5 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all text-sm font-medium">
                 Cancelar
             </a>

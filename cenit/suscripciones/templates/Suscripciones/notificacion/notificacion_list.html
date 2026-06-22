@@ -57,20 +57,20 @@
             {% for n in notificaciones %}
             <tr class="hover:bg-white/3 transition-colors">
                 <td class="px-6 py-4">
-                    {% if n.tiponotif == 'Pago Exitoso' %}
-                    <span class="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium">{{ n.tiponotif }}</span>
-                    {% elif n.tiponotif == 'Nuevo Lanzamiento' %}
-                    <span class="px-2 py-1 rounded-lg bg-secondary/10 text-secondary text-xs font-medium">{{ n.tiponotif }}</span>
+                    {% if n.tipoNotif == 'Pago Exitoso' %}
+                    <span class="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium">{{ n.tipoNotif }}</span>
+                    {% elif n.tipoNotif == 'Nuevo Lanzamiento' %}
+                    <span class="px-2 py-1 rounded-lg bg-secondary/10 text-secondary text-xs font-medium">{{ n.tipoNotif }}</span>
                     {% else %}
-                    <span class="px-2 py-1 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs font-medium">{{ n.tiponotif }}</span>
+                    <span class="px-2 py-1 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs font-medium">{{ n.tipoNotif }}</span>
                     {% endif %}
                 </td>
-                <td class="px-6 py-4 text-on-surface">{{ n.usuario }}</td>
+                <td class="px-6 py-4 text-on-surface">{{ n.usuario_nombre_nombre }}</td>
                 <td class="px-6 py-4 text-on-surface-variant max-w-xs truncate">{{ n.mensaje }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ n.fechaenvio|date:"d/m/Y H:i" }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ n.promocion }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ n.fechaEnvio|date:"d/m/Y H:i" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ n.promocion_desc_desc }}</td>
                 <td class="px-6 py-4 text-right">
-                    <a href="{% url 'notificacion_delete' n.idnotificacion %}"
+                    <a href="{% url 'notificacion_delete' n.id %}"
                        class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all inline-flex">
                         <span class="material-symbols-outlined text-[18px]">delete</span>
                     </a>

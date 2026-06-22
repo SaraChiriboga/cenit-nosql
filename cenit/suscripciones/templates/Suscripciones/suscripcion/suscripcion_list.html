@@ -58,12 +58,12 @@
         <tbody class="divide-y divide-white/5">
             {% for s in suscripciones %}
             <tr class="hover:bg-white/3 transition-colors">
-                <td class="px-6 py-4 text-on-surface-variant font-mono">{{ s.idsuscripcion }}</td>
-                <td class="px-6 py-4 text-on-surface">{{ s.usuario|default:"—" }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ s.tiposuscripcion }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ s.fechainicio|date:"d/m/Y" }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ s.fechafin|date:"d/m/Y" }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ s.promocion|default:"—" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant font-mono">{{ s.id }}</td>
+                <td class="px-6 py-4 text-on-surface">{{ s.usuario_nombre_nombre|default:"—" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ s.tipoSuscripcion.nombrePlan }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ s.fechaInicio|date:"d/m/Y" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ s.fechaFin|date:"d/m/Y" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ s.promocion.descripcion.descripcion|default:'—' }}</td>
                 <td class="px-6 py-4">
                     {% if s.estado == 'Activa' %}
                     <span class="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium">Activa</span>
@@ -75,11 +75,11 @@
                 </td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-2">
-                        <a href="{% url 'suscripcion_edit' s.pk %}"
+                        <a href="{% url 'suscripcion_edit' s.id %}"
                            class="p-2 rounded-lg text-on-surface-variant hover:text-secondary hover:bg-secondary/10 transition-all">
                             <span class="material-symbols-outlined text-[18px]">edit</span>
                         </a>
-                        <a href="{% url 'suscripcion_delete' s.pk %}"
+                        <a href="{% url 'suscripcion_delete' s.id %}"
                            class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all">
                             <span class="material-symbols-outlined text-[18px]">delete</span>
                         </a>

@@ -18,7 +18,7 @@
             {% if playlist.descripcion %} · {{ playlist.descripcion }}{% endif %}
         </p>
     </div>
-    <a href="{% url 'playlist_cancion_agregar' playlist.idplaylist %}"
+    <a href="{% url 'playlist_cancion_agregar' playlist.id %}"
        class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-secondary text-on-secondary font-medium text-sm hover:opacity-90 transition-all glow-cyan">
         <span class="material-symbols-outlined text-[18px]">playlist_add</span>
         Agregar canción
@@ -52,13 +52,13 @@
             {% for entrada in entradas %}
             <tr class="hover:bg-white/3 transition-colors">
                 <td class="px-6 py-4 text-on-surface-variant font-mono">{{ entrada.orden }}</td>
-                <td class="px-6 py-4 text-on-surface font-medium">{{ entrada.cancion }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ entrada.fechaadicion|date:"d/m/Y H:i" }}</td>
+                <td class="px-6 py-4 text-on-surface font-medium">{{ entrada.cancion_nombre_nombre }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ entrada.fechaAdicion|date:"d/m/Y H:i" }}</td>
                 <td class="px-6 py-4 text-right">
-                    <form method="post" action="{% url 'playlist_cancion_quitar' playlist.idplaylist %}"
+                    <form method="post" action="{% url 'playlist_cancion_quitar' playlist.id %}"
                           onsubmit="return confirm('¿Quitar esta canción de la playlist?')">
                         {% csrf_token %}
-                        <input type="hidden" name="cancion_id" value="{{ entrada.cancion_id }}"/>
+                        <input type="hidden" name="cancion_id" value="{{ entrada.idCancion }}"/>
                         <button type="submit"
                                 class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all">
                             <span class="material-symbols-outlined text-[18px]">remove_circle</span>

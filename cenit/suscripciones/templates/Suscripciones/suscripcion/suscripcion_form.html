@@ -36,8 +36,8 @@
                     class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
                 <option value="">— Sin usuario —</option>
                 {% for u in usuarios %}
-                <option value="{{ u.idusuario }}"
-                    {% if suscripcion.usuario_id == u.idusuario %}selected{% endif %}>
+                <option value="{{ u.id }}"
+                    {% if suscripcion.usuario_id == u.id %}selected{% endif %}>
                     {{ u.nombre }} {{ u.apellido }}
                 </option>
                 {% endfor %}
@@ -50,9 +50,9 @@
                     class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
                 <option value="">— Selecciona —</option>
                 {% for plan in planes %}
-                <option value="{{ plan.idtipo }}"
-                    {% if suscripcion.tiposuscripcion_id == plan.idtipo %}selected{% endif %}>
-                    {{ plan.nombreplan }}
+                <option value="{{ plan.tipo_id }}"
+                    {% if suscripcion.tiposuscripcion_id == plan.tipo_id %}selected{% endif %}>
+                    {{ plan.nombrePlan }}
                 </option>
                 {% endfor %}
             </select>
@@ -64,8 +64,8 @@
                     class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all">
                 <option value="">— Sin promoción —</option>
                 {% for promo in promociones %}
-                <option value="{{ promo.idpromo }}"
-                    {% if suscripcion.promocion_id == promo.idpromo %}selected{% endif %}>
+                <option value="{{ promo.promo_id }}"
+                    {% if suscripcion.promocion_id == promo.promo_id %}selected{% endif %}>
                     {{ promo.descripcion }}
                 </option>
                 {% endfor %}
@@ -76,13 +76,13 @@
             <div class="flex flex-col gap-1.5">
                 <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Fecha inicio</label>
                 <input type="datetime-local" name="fechainicio"
-                       value="{{ suscripcion.fechainicio|date:'Y-m-d\TH:i'|default:'' }}" required
+                       value="{{ suscripcion.fechaInicio|date:'Y-m-d\TH:i'|default:'' }}" required
                        class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
             </div>
             <div class="flex flex-col gap-1.5">
                 <label class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Fecha fin</label>
                 <input type="datetime-local" name="fechafin"
-                       value="{{ suscripcion.fechafin|date:'Y-m-d\TH:i'|default:'' }}" required
+                       value="{{ suscripcion.fechaFin|date:'Y-m-d\TH:i'|default:'' }}" required
                        class="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-on-surface text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all"/>
             </div>
         </div>
