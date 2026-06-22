@@ -18,8 +18,167 @@ from django.views.decorators.http import require_POST
 from weasyprint import HTML
 
 from cenit import settings
+from django.db import connection
 from .models import Cancion, Artista, Album, Genero, Colaboracion
 from .spotify_service import SpotifyClient
+import pymongo
+from bson import ObjectId
+
+# Configuración de MongoDB
+MONGODB_URI = getattr(settings, "MONGODB_URI", "mongodb://localhost:27017/")
+MONGODB_NAME = getattr(settings, "MONGODB_NAME", "Cenit")
+
+mongo_client = pymongo.MongoClient(MONGODB_URI)
+db = mongo_client[MONGODB_NAME]
+
+def map_genero(doc, cache=None):
+    if not doc: return None
+    return {
+        'idgenero': doc.get('genero_id'),
+        'genero_id': doc.get('genero_id'),
+        'nombregenero': doc.get('nombreGenero'),
+        'descripcion': doc.get('descripcion'),
+    }
+
+def map_artista(doc, cache=None):
+    if not doc: return None
+    return {
+        'idartista': doc.get('artista_id'),
+        'artista_id': doc.get('artista_id'),
+        'nombreartistico': doc.get('nombreArtistico'),
+        'biografia': doc.get('biografia'),
+        'paisorigen': doc.get('paisOrigen'),
+        'estadoactivo': doc.get('estadoActivo'),
+        'fecharegistro': doc.get('fechaRegistro'),
+        'urlperfil': doc.get('urlPerfil'),
+    }
+
+def map_album(doc, cache=None):
+    if not doc: return None
+    
+    album_id = doc.get('album_id')
+    if cache and album_id is not None:
+        cached_album = cache.get('albumes', {}).get(int(album_id))
+        if cached_album:
+            return cached_album
+            
+    artista_data = doc.get('artista')
+    if not artista_data and doc.get('artista_id') is not None:
+        art_id = int(doc.get('artista_id'))
+        if cache and art_id in cache.get('artistas', {}):
+            artista_data = cache['artistas'][art_id]
+        else:
+            art_doc = db["Artista"].find_one({"artista_id": art_id})
+            artista_data = map_artista(art_doc, cache)
+            if cache:
+                if 'artistas' not in cache: cache['artistas'] = {}
+                cache['artistas'][art_id] = artista_data
+    elif isinstance(artista_data, dict):
+        artista_data = map_artista(artista_data, cache)
+        
+    return {
+        'idalbum': doc.get('album_id'),
+        'album_id': doc.get('album_id'),
+        'tituloalbum': doc.get('tituloAlbum'),
+        'fechalanzamiento': doc.get('fechaLanzamiento'),
+        'urlportada': doc.get('urlPortada'),
+        'artista_id': doc.get('artista_id'),
+        'artista': artista_data,
+    }
+
+def map_cancion(doc, cache=None):
+    if not doc: return None
+    
+    album_data = doc.get('album')
+    if not album_data and doc.get('album_id') is not None:
+        alb_id = int(doc.get('album_id'))
+        if cache and alb_id in cache.get('albumes', {}):
+            album_data = cache['albumes'][alb_id]
+        else:
+            alb_doc = db["Album"].find_one({"album_id": alb_id})
+            album_data = map_album(alb_doc, cache)
+            if cache:
+                if 'albumes' not in cache: cache['albumes'] = {}
+                cache['albumes'][alb_id] = album_data
+    elif isinstance(album_data, dict):
+        album_data = map_album(album_data, cache)
+        
+    genero_data = doc.get('genero')
+    if not genero_data and doc.get('genero_id') is not None:
+        gen_id = int(doc.get('genero_id'))
+        if cache and gen_id in cache.get('generos', {}):
+            genero_data = cache['generos'][gen_id]
+        else:
+            gen_doc = db["Genero"].find_one({"genero_id": gen_id})
+            genero_data = map_genero(gen_doc, cache)
+            if cache:
+                if 'generos' not in cache: cache['generos'] = {}
+                cache['generos'][gen_id] = genero_data
+    elif isinstance(genero_data, dict):
+        genero_data = map_genero(genero_data, cache)
+        
+    return {
+        'idcancion': doc.get('cancion_id'),
+        'cancion_id': doc.get('cancion_id'),
+        'titulocancion': doc.get('tituloCancion'),
+        'duracionseg': doc.get('duracionSeg'),
+        'esexplicita': doc.get('esExplicita'),
+        'estadopublicacion': doc.get('estadoPublicacion'),
+        'urlportada': doc.get('urlPortada'),
+        'urlspotifyapi': doc.get('urlSpotifyAPI'),
+        'album_id': doc.get('album_id'),
+        'genero_id': doc.get('genero_id'),
+        'album': album_data,
+        'genero': genero_data,
+        'colaboradores': doc.get('colaboradores', []),
+    }
+
+def get_db_cache():
+    cache = {
+        'artistas': {},
+        'generos': {},
+        'albumes': {}
+    }
+    try:
+        # Pre-populate in bulk to avoid all further queries
+        for doc in db["Artista"].find():
+            aid = doc.get("artista_id")
+            if aid is not None:
+                cache['artistas'][int(aid)] = {
+                    'idartista': doc.get('artista_id'),
+                    'artista_id': doc.get('artista_id'),
+                    'nombreartistico': doc.get('nombreArtistico'),
+                    'biografia': doc.get('biografia'),
+                    'paisorigen': doc.get('paisOrigen'),
+                    'estadoactivo': doc.get('estadoActivo'),
+                    'fecharegistro': doc.get('fechaRegistro'),
+                    'urlperfil': doc.get('urlPerfil'),
+                }
+                
+        for doc in db["Genero"].find():
+            gid = doc.get("genero_id")
+            if gid is not None:
+                cache['generos'][int(gid)] = {
+                    'idgenero': doc.get('genero_id'),
+                    'genero_id': doc.get('genero_id'),
+                    'nombregenero': doc.get('nombreGenero'),
+                    'descripcion': doc.get('descripcion'),
+                }
+                
+        for doc in db["Album"].find():
+            alb_id = doc.get("album_id")
+            if alb_id is not None:
+                cache['albumes'][int(alb_id)] = map_album(doc, cache)
+    except Exception as e:
+        print(f"Error pre-populating db cache: {e}")
+    return cache
+
+def fn_FormatearDuracion(seconds):
+    if not seconds:
+        return "00:00"
+    mins = int(seconds) // 60
+    secs = int(seconds) % 60
+    return f"{mins:02d}:{secs:02d}"
 
 ESTADOS_PUBLICACION = ['Borrador', 'Programada', 'Publicada']
 # ══════════════════════════════════════════
@@ -28,24 +187,37 @@ ESTADOS_PUBLICACION = ['Borrador', 'Programada', 'Publicada']
 
 @login_required
 def songs_overview(request):
-    canciones = Cancion.objects.select_related('album').all()
-
     query = request.GET.get('q', '').strip()
     estado = request.GET.get('estado', '')
     orden = request.GET.get('orden', 'desc')
 
+    pipeline = []
+    match_filter = {}
     if query:
-        canciones = canciones.filter(titulocancion__icontains=query)
-
+        match_filter["tituloCancion"] = {"$regex": query, "$options": "i"}
     if estado:
-        # Aquí verificamos exacto el estado, si quieres hacer match con mayúsculas/minúsculas usa `iexact`
-        canciones = canciones.filter(estadopublicacion__iexact=estado)
+        match_filter["estadoPublicacion"] = estado
+    if match_filter:
+        pipeline.append({"$match": match_filter})
 
-    # Ordenamiento basado en la fecha de lanzamiento del álbum relacionado (o idcancion si prefieres)
-    if orden == 'asc':
-        canciones = canciones.order_by('album__fechalanzamiento')
-    else:
-        canciones = canciones.order_by('-album__fechalanzamiento')
+    pipeline.extend([
+        {
+            "$lookup": {
+                "from": "Album",
+                "localField": "album_id",
+                "foreignField": "album_id",
+                "as": "album"
+            }
+        },
+        {"$unwind": {"path": "$album", "preserveNullAndEmptyArrays": True}}
+    ])
+
+    sort_dir = -1 if orden == 'desc' else 1
+    pipeline.append({"$sort": {"album.fechaLanzamiento": sort_dir}})
+
+    docs = list(db["Cancion"].aggregate(pipeline))
+    cache = get_db_cache()
+    canciones = [map_cancion(d, cache) for d in docs]
 
     context = {
         'canciones': canciones,
@@ -54,17 +226,18 @@ def songs_overview(request):
     return render(request, 'catalogo/canciones/songs_overview.html', context)
 
 
-from django.db import connection  # Asegúrate de importar esto
-
-
 @login_required
 @csrf_exempt
 def add_track_ajax(request):
     if request.method == 'GET':
+        cache = get_db_cache()
+        albumes = sorted(cache['albumes'].values(), key=lambda x: x['tituloalbum'] or '')
+        generos = sorted(cache['generos'].values(), key=lambda x: x['nombregenero'] or '')
+        artistas = sorted(cache['artistas'].values(), key=lambda x: x['nombreartistico'] or '')
         return render(request, 'catalogo/canciones/add_track.html', {
-            'albumes': Album.objects.all(),
-            'generos': Genero.objects.all(),
-            'artistas': Artista.objects.all(),
+            'albumes': albumes,
+            'generos': generos,
+            'artistas': artistas,
         })
 
     if request.method == 'POST':
@@ -80,41 +253,58 @@ def add_track_ajax(request):
             if not titulo or not album_id:
                 return JsonResponse({'status': 'error', 'message': 'Faltan campos obligatorios.'}, status=400)
 
+            album_id = int(album_id)
+            genero_id = int(genero_id) if genero_id else 0
+
             # Validar si ya existe
-            if Cancion.objects.filter(titulocancion__iexact=titulo, album_id=album_id).exists():
+            if db["Cancion"].find_one({"tituloCancion": {"$regex": f"^{titulo}$", "$options": "i"}, "album_id": album_id}):
                 return JsonResponse({'status': 'error', 'message': 'La canción ya existe en este álbum.'}, status=400)
 
-            with transaction.atomic():
-                with connection.cursor() as cursor:
-                    # 1. Insertar la canción y recuperar su ID en una sola instrucción usando OUTPUT
-                    cursor.execute("""
-                        INSERT INTO [Catalogo].[Cancion] 
-                        (tituloCancion, duracionSeg, esExplicita, estadoPublicacion, urlPortada, Album_idAlbum, Genero_idGenero, spotifyUrlAPI)
-                        OUTPUT inserted.idCancion
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """, [titulo, duracion or 0, 1 if es_explicita else 0, 'Borrador', url_portada, album_id, genero_id,
-                          spotify_url])
+            # Auto-increment id
+            max_doc = db["Cancion"].find_one(sort=[("cancion_id", -1)])
+            cancion_id = (max_doc["cancion_id"] + 1) if max_doc else 1
 
-                    # 2. Capturar el ID que devolvió el OUTPUT
-                    cancion_id = cursor.fetchone()[0]
+            colab_artistas = request.POST.getlist('colab_artistas')
+            colab_roles = request.POST.getlist('colab_roles')
+            colaboradores_list = []
+            for art_id, rol in zip(colab_artistas, colab_roles):
+                if art_id and rol:
+                    art_id = int(art_id)
+                    art_doc = db["Artista"].find_one({"artista_id": art_id})
+                    if art_doc:
+                        colaboradores_list.append({
+                            "artista_id": art_id,
+                            "nombreArtista": art_doc.get("nombreArtistico"),
+                            "rolArtista": rol
+                        })
 
-                    # 3. Procesar los colaboradores dinámicos
-                    colab_artistas = request.POST.getlist('colab_artistas')
-                    colab_roles = request.POST.getlist('colab_roles')
+            # Ensure the album's main artist is added as Principal if not already present
+            album_doc = db["Album"].find_one({"album_id": album_id})
+            if album_doc and album_doc.get("artista_id") is not None:
+                main_art_id = int(album_doc["artista_id"])
+                has_principal = any(c.get("artista_id") == main_art_id and c.get("rolArtista") == "Principal" for c in colaboradores_list)
+                if not has_principal:
+                    colaboradores_list = [c for c in colaboradores_list if c.get("rolArtista") != "Principal"]
+                    main_art_doc = db["Artista"].find_one({"artista_id": main_art_id})
+                    if main_art_doc:
+                        colaboradores_list.insert(0, {
+                            "artista_id": main_art_id,
+                            "nombreArtista": main_art_doc.get("nombreArtistico"),
+                            "rolArtista": "Principal"
+                        })
 
-                    for artista_id, rol in zip(colab_artistas, colab_roles):
-                        if artista_id and rol:
-                            # Validar que no se duplique el mismo artista en la misma canción
-                            cursor.execute("""
-                                SELECT idColaboracion FROM [Catalogo].[Colaboracion] 
-                                WHERE Cancion_idCancion = %s AND Artista_idArtista = %s
-                            """, [cancion_id, artista_id])
-
-                            if not cursor.fetchone():
-                                cursor.execute("""
-                                    INSERT INTO [Catalogo].[Colaboracion] (Cancion_idCancion, Artista_idArtista, rolArtista)
-                                    VALUES (%s, %s, %s)
-                                """, [cancion_id, artista_id, rol])
+            db["Cancion"].insert_one({
+                "cancion_id": cancion_id,
+                "tituloCancion": titulo,
+                "duracionSeg": int(duracion) if duracion else 0,
+                "esExplicita": es_explicita,
+                "estadoPublicacion": "Borrador",
+                "urlPortada": url_portada,
+                "urlSpotifyAPI": spotify_url,
+                "album_id": album_id,
+                "genero_id": genero_id,
+                "colaboradores": colaboradores_list
+            })
 
             return JsonResponse({'status': 'success', 'message': 'Canción y colaboradores guardados correctamente.'})
 
@@ -123,18 +313,33 @@ def add_track_ajax(request):
 
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
+
 def sync_spotify_track(request, cancion_id):
-    cancion = get_object_or_404(Cancion, idcancion=cancion_id)
-    nombre_artista = cancion.album.artista.nombreartistico if cancion.album and cancion.album.artista else ""
+    cancion_doc = db["Cancion"].find_one({"cancion_id": int(cancion_id)})
+    if not cancion_doc:
+        messages.error(request, "Canción no encontrada.")
+        return redirect('songs_overview')
+
+    nombre_artista = ""
+    album_doc = db["Album"].find_one({"album_id": cancion_doc.get("album_id")})
+    if album_doc:
+        art_doc = db["Artista"].find_one({"artista_id": album_doc.get("artista_id")})
+        if art_doc:
+            nombre_artista = art_doc.get("nombreArtistico", "")
+
     spotify = SpotifyClient()
-    spotify_data = spotify.search_track_info(cancion.titulocancion, nombre_artista)
+    spotify_data = spotify.search_track_info(cancion_doc.get("tituloCancion"), nombre_artista)
     if spotify_data:
-        cancion.spotifyurlapi = spotify_data['spotify_url']
-        cancion.urlportada = spotify_data['album_cover_url']
-        cancion.save(update_fields=['spotifyurlapi', 'urlportada'])
-        messages.success(request, f"'{cancion.titulocancion}' sincronizada.")
+        db["Cancion"].update_one(
+            {"cancion_id": int(cancion_id)},
+            {"$set": {
+                "urlSpotifyAPI": spotify_data['spotify_url'],
+                "urlPortada": spotify_data['album_cover_url']
+            }}
+        )
+        messages.success(request, f"'{cancion_doc.get('tituloCancion')}' sincronizada.")
     else:
-        messages.error(request, f"No se pudo sincronizar '{cancion.titulocancion}'.")
+        messages.error(request, f"No se pudo sincronizar '{cancion_doc.get('tituloCancion')}'.")
     return redirect('songs_overview')
 
 
@@ -153,21 +358,15 @@ def search_spotify_ajax(request):
 def check_existence(request):
     tipo = request.GET.get('tipo')
     nombre = request.GET.get('nombre', '').strip()
-
     existe = False
     if tipo == 'album':
-        from .models import Album
-        existe = Album.objects.filter(tituloalbum__iexact=nombre).exists()
+        existe = db["Album"].find_one({"tituloAlbum": {"$regex": f"^{nombre}$", "$options": "i"}}) is not None
     elif tipo == 'genero':
-        from .models import Genero
-        existe = Genero.objects.filter(nombregenero__iexact=nombre).exists()
+        existe = db["Genero"].find_one({"nombreGenero": {"$regex": f"^{nombre}$", "$options": "i"}}) is not None
     elif tipo == 'cancion':
-        from .models import Cancion
-        existe = Cancion.objects.filter(titulocancion__iexact=nombre).exists()
-    elif tipo == 'artista':  # <--- AÑADE ESTO
-        from .models import Artista
-        existe = Artista.objects.filter(nombreartistico__iexact=nombre).exists()
-
+        existe = db["Cancion"].find_one({"tituloCancion": {"$regex": f"^{nombre}$", "$options": "i"}}) is not None
+    elif tipo == 'artista':
+        existe = db["Artista"].find_one({"nombreArtistico": {"$regex": f"^{nombre}$", "$options": "i"}}) is not None
     return JsonResponse({'existe': existe})
 
 
@@ -175,16 +374,19 @@ def check_existence(request):
 def delete_track(request, pk):
     if request.method == 'POST':
         try:
-            with transaction.atomic():
+            # 1. Eliminar pista principal de MongoDB
+            db["Cancion"].delete_one({"cancion_id": int(pk)})
+
+            # 2. De forma opcional, si existen dependencias en SQL Server, hacemos una limpieza
+            try:
+                from django.db import connection
                 with connection.cursor() as cursor:
-                    # 1. Eliminar dependencias en otros esquemas y tablas
                     cursor.execute("DELETE FROM [Catalogo].[Colaboracion] WHERE Cancion_idCancion = %s", [pk])
                     cursor.execute("DELETE FROM [Usuario].[CancionFavorita] WHERE Cancion_idCancion = %s", [pk])
                     cursor.execute("DELETE FROM [Usuario].[PlaylistCancion] WHERE Cancion_idCancion = %s", [pk])
                     cursor.execute("DELETE FROM [Auditoria].[EstadisticaDiaria] WHERE Cancion_idCancion = %s", [pk])
-
-                    # 2. Eliminar la pista principal
-                    cursor.execute("DELETE FROM [Catalogo].[Cancion] WHERE idCancion = %s", [pk])
+            except Exception:
+                pass
 
             return JsonResponse({'status': 'success'})
 
@@ -196,165 +398,151 @@ def delete_track(request, pk):
 
 @login_required
 def read_track(request, pk):
-    cancion = get_object_or_404(
-        Cancion.objects.select_related('album__artista', 'genero'),
-        idcancion=pk
-    )
-    colaboraciones = Colaboracion.objects.select_related('artista').filter(cancion_id=pk)
+    track_doc = db["Cancion"].find_one({"cancion_id": int(pk)})
+    if not track_doc:
+        return redirect('songs_overview')
 
-    # Ejecutamos la función escalar de SQL Server directamente
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT [Catalogo].[fn_FormatearDuracion](%s)", [cancion.duracionseg or 0])
-        duracion_formateada = cursor.fetchone()[0]
+    cache = get_db_cache()
+    cancion = map_cancion(track_doc, cache)
+    duracion_formateada = fn_FormatearDuracion(cancion.get('duracionseg', 0))
+
+    colaboradores = cancion.get('colaboradores', [])
+    colaboradores_mapped = []
+    for c in colaboradores:
+        art_id = c.get('artista_id')
+        url_perfil = ""
+        if art_id is not None:
+            cached_art = cache.get('artistas', {}).get(int(art_id))
+            if cached_art:
+                url_perfil = cached_art.get('urlperfil') or ""
+        colaboradores_mapped.append({
+            'idcolaboracion': None,
+            'rolartista': c.get('rolArtista'),
+            'artista': {
+                'idartista': art_id,
+                'nombreartistico': c.get('nombreArtista'),
+                'urlperfil': url_perfil,
+            }
+        })
+
+    colab_principal = next((c for c in colaboradores_mapped if c['rolartista'] == 'Principal'), None)
+    colabs_extra = [c for c in colaboradores_mapped if c['rolartista'] != 'Principal']
+
+    albumes = sorted(cache['albumes'].values(), key=lambda x: x['tituloalbum'] or '')
+    generos = sorted(cache['generos'].values(), key=lambda x: x['nombregenero'] or '')
+    artistas = sorted(cache['artistas'].values(), key=lambda x: x['nombreartistico'] or '')
 
     return render(request, 'catalogo/canciones/read_track.html', {
         'cancion': cancion,
-        'duracion_formateada': duracion_formateada,  # <-- Enviamos el tiempo amigable MM:SS
-        'albumes': Album.objects.all(),
-        'generos': Genero.objects.all(),
-        'artistas': Artista.objects.all(),
+        'duracion_formateada': duracion_formateada,
+        'albumes': albumes,
+        'generos': generos,
+        'artistas': artistas,
         'estados': ['Borrador', 'Programada', 'Publicada'],
-        'colab_principal': colaboraciones.filter(rolartista='Principal').first(),
-        'colabs_extra': colaboraciones.exclude(rolartista='Principal'),
+        'colab_principal': colab_principal,
+        'colabs_extra': colabs_extra,
     })
 
 
 @login_required
 def edit_track(request, pk):
-    cancion = get_object_or_404(Cancion, idcancion=pk)
+    track_doc = db["Cancion"].find_one({"cancion_id": int(pk)})
+    if not track_doc:
+        return redirect('songs_overview')
 
     if request.method == 'POST':
         url_portada_frontend = request.POST.get('urlportada')
         try:
-            with transaction.atomic():
-                with connection.cursor() as cursor:
-                    cursor.execute("""
-                        UPDATE [Catalogo].[Cancion]
-                        SET tituloCancion=%s, duracionSeg=%s, esExplicita=%s,
-                            estadoPublicacion=%s, Album_idAlbum=%s, Genero_idGenero=%s, urlPortada=%s
-                        WHERE idCancion=%s
-                    """, [
-                        request.POST.get('titulocancion'),
-                        request.POST.get('duracionseg'),
-                        1 if request.POST.get('esexplicita') == 'on' else 0,
-                        request.POST.get('estadopublicacion'),
-                        request.POST.get('album'),
-                        request.POST.get('genero'),
-                        url_portada_frontend,
-                        pk
-                    ])
+            colab_artistas = request.POST.getlist('colab_artistas')
+            colab_roles = request.POST.getlist('colab_roles')
+            colaboradores_list = []
+            for art_id, rol in zip(colab_artistas, colab_roles):
+                if art_id and rol:
+                    art_id = int(art_id)
+                    art_doc = db["Artista"].find_one({"artista_id": art_id})
+                    if art_doc:
+                        colaboradores_list.append({
+                            "artista_id": art_id,
+                            "nombreArtista": art_doc.get("nombreArtistico"),
+                            "rolArtista": rol
+                        })
 
-                    cursor.execute("""
-                        DELETE FROM [Catalogo].[Colaboracion] 
-                        WHERE Cancion_idCancion = %s AND rolArtista != 'Principal'
-                    """, [pk])
+            # Ensure the album's main artist is added as Principal if not already present
+            album_input_id = request.POST.get('album')
+            if album_input_id:
+                album_id = int(album_input_id)
+                album_doc = db["Album"].find_one({"album_id": album_id})
+                if album_doc and album_doc.get("artista_id") is not None:
+                    main_art_id = int(album_doc["artista_id"])
+                    has_principal = any(c.get("artista_id") == main_art_id and c.get("rolArtista") == "Principal" for c in colaboradores_list)
+                    if not has_principal:
+                        colaboradores_list = [c for c in colaboradores_list if c.get("rolArtista") != "Principal"]
+                        main_art_doc = db["Artista"].find_one({"artista_id": main_art_id})
+                        if main_art_doc:
+                            colaboradores_list.insert(0, {
+                                "artista_id": main_art_id,
+                                "nombreArtista": main_art_doc.get("nombreArtistico"),
+                                "rolArtista": "Principal"
+                            })
 
-                    colab_artistas = request.POST.getlist('colab_artistas')
-                    colab_roles = request.POST.getlist('colab_roles')
-
-                    for artista_id, rol in zip(colab_artistas, colab_roles):
-                        if artista_id and rol:
-                            cursor.execute("""
-                                SELECT idColaboracion FROM [Catalogo].[Colaboracion] 
-                                WHERE Cancion_idCancion = %s AND Artista_idArtista = %s
-                            """, [pk, artista_id])
-
-                            if not cursor.fetchone():
-                                cursor.execute("""
-                                    INSERT INTO [Catalogo].[Colaboracion] (Cancion_idCancion, Artista_idArtista, rolArtista)
-                                    VALUES (%s, %s, %s)
-                                """, [pk, artista_id, rol])
+            db["Cancion"].update_one(
+                {"cancion_id": int(pk)},
+                {"$set": {
+                    "tituloCancion": request.POST.get('titulocancion'),
+                    "duracionSeg": int(request.POST.get('duracionseg') or 0),
+                    "esExplicita": request.POST.get('esexplicita') == 'on',
+                    "estadoPublicacion": request.POST.get('estadopublicacion'),
+                    "album_id": int(request.POST.get('album')),
+                    "genero_id": int(request.POST.get('genero')),
+                    "urlPortada": url_portada_frontend,
+                    "colaboradores": colaboradores_list
+                }}
+            )
 
             return JsonResponse({'status': 'success', 'urlportada': url_portada_frontend})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
-    colaboraciones = Colaboracion.objects.filter(cancion_id=pk)
+    # Resolving references for GET
+    cache = get_db_cache()
+    cancion = map_cancion(track_doc, cache)
+    duracion_formateada = fn_FormatearDuracion(cancion.get('duracionseg', 0))
 
-    # Ejecutamos la función escalar de SQL Server para el modo edición clásico
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT [Catalogo].[fn_FormatearDuracion](%s)", [cancion.duracionseg or 0])
-        duracion_formateada = cursor.fetchone()[0]
+    colaboradores = cancion.get('colaboradores', [])
+    colaboradores_mapped = []
+    for c in colaboradores:
+        art_id = c.get('artista_id')
+        url_perfil = ""
+        if art_id is not None:
+            cached_art = cache.get('artistas', {}).get(int(art_id))
+            if cached_art:
+                url_perfil = cached_art.get('urlperfil') or ""
+        colaboradores_mapped.append({
+            'idcolaboracion': None,
+            'rolartista': c.get('rolArtista'),
+            'artista': {
+                'idartista': art_id,
+                'nombreartistico': c.get('nombreArtista'),
+                'urlperfil': url_perfil,
+            }
+        })
 
-    context = {
-        'cancion': cancion,
-        'duracion_formateada': duracion_formateada,  # <-- Enviamos aquí también
-        'albumes': Album.objects.all(),
-        'generos': Genero.objects.all(),
-        'artistas': Artista.objects.all(),
-        'estados': ['Borrador', 'Programada', 'Publicada'],
-        'colab_principal': colaboraciones.filter(rolartista='Principal').first(),
-        'colabs_extra': colaboraciones.exclude(rolartista='Principal'),
-    }
-    return render(request, 'catalogo/canciones/edit_track.html', context)
+    colab_principal = next((c for c in colaboradores_mapped if c['rolartista'] == 'Principal'), None)
+    colabs_extra = [c for c in colaboradores_mapped if c['rolartista'] != 'Principal']
 
-
-@login_required
-def edit_track(request, pk):
-    cancion = get_object_or_404(Cancion, idcancion=pk)
-
-    if request.method == 'POST':
-        url_portada_frontend = request.POST.get('urlportada')
-        try:
-            with transaction.atomic():
-                with connection.cursor() as cursor:
-                    cursor.execute("""
-                        UPDATE [Catalogo].[Cancion]
-                        SET tituloCancion=%s, duracionSeg=%s, esExplicita=%s,
-                            estadoPublicacion=%s, Album_idAlbum=%s, Genero_idGenero=%s, urlPortada=%s
-                        WHERE idCancion=%s
-                    """, [
-                        request.POST.get('titulocancion'),
-                        request.POST.get('duracionseg'),
-                        1 if request.POST.get('esexplicita') == 'on' else 0,
-                        request.POST.get('estadopublicacion'),
-                        request.POST.get('album'),
-                        request.POST.get('genero'),
-                        url_portada_frontend,
-                        pk
-                    ])
-
-                    cursor.execute("""
-                        DELETE FROM [Catalogo].[Colaboracion] 
-                        WHERE Cancion_idCancion = %s AND rolArtista != 'Principal'
-                    """, [pk])
-
-                    colab_artistas = request.POST.getlist('colab_artistas')
-                    colab_roles = request.POST.getlist('colab_roles')
-
-                    for artista_id, rol in zip(colab_artistas, colab_roles):
-                        if artista_id and rol:
-                            cursor.execute("""
-                                SELECT idColaboracion FROM [Catalogo].[Colaboracion] 
-                                WHERE Cancion_idCancion = %s AND Artista_idArtista = %s
-                            """, [pk, artista_id])
-
-                            if not cursor.fetchone():
-                                cursor.execute("""
-                                    INSERT INTO [Catalogo].[Colaboracion] (Cancion_idCancion, Artista_idArtista, rolArtista)
-                                    VALUES (%s, %s, %s)
-                                """, [pk, artista_id, rol])
-
-            return JsonResponse({'status': 'success', 'urlportada': url_portada_frontend})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-
-    colaboraciones = Colaboracion.objects.filter(cancion_id=pk)
-
-    # Ejecutamos la función escalar de SQL Server para el modo edición clásico
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT [Catalogo].[fn_FormatearDuracion](%s)", [cancion.duracionseg or 0])
-        duracion_formateada = cursor.fetchone()[0]
+    albumes = sorted(cache['albumes'].values(), key=lambda x: x['tituloalbum'] or '')
+    generos = sorted(cache['generos'].values(), key=lambda x: x['nombregenero'] or '')
+    artistas = sorted(cache['artistas'].values(), key=lambda x: x['nombreartistico'] or '')
 
     context = {
         'cancion': cancion,
-        'duracion_formateada': duracion_formateada,  # <-- Enviamos aquí también
-        'albumes': Album.objects.all(),
-        'generos': Genero.objects.all(),
-        'artistas': Artista.objects.all(),
+        'duracion_formateada': duracion_formateada,
+        'albumes': albumes,
+        'generos': generos,
+        'artistas': artistas,
         'estados': ['Borrador', 'Programada', 'Publicada'],
-        'colab_principal': colaboraciones.filter(rolartista='Principal').first(),
-        'colabs_extra': colaboraciones.exclude(rolartista='Principal'),
+        'colab_principal': colab_principal,
+        'colabs_extra': colabs_extra,
     }
     return render(request, 'catalogo/canciones/edit_track.html', context)
 
@@ -362,22 +550,19 @@ def edit_track(request, pk):
 #  ARTISTAS
 # ══════════════════════════════════════════
 def artists_overview(request):
-    artistas = Artista.objects.all()
-
     query = request.GET.get('q', '').strip()
     estado = request.GET.get('estado', '')
     orden = request.GET.get('orden', 'desc')
 
+    query_filter = {}
     if query:
-        artistas = artistas.filter(nombreartistico__icontains=query)
-
+        query_filter["nombreArtistico"] = {"$regex": query, "$options": "i"}
     if estado:
-        artistas = artistas.filter(estadoactivo=estado)
+        query_filter["estadoActivo"] = estado
 
-    if orden == 'asc':
-        artistas = artistas.order_by('fecharegistro')
-    else:
-        artistas = artistas.order_by('-fecharegistro')
+    sort_dir = -1 if orden == 'desc' else 1
+    docs = list(db["Artista"].find(query_filter).sort("fechaRegistro", sort_dir))
+    artistas = [map_artista(d) for d in docs]
 
     context = {
         'artistas': artistas,
@@ -385,49 +570,42 @@ def artists_overview(request):
     }
     return render(request, 'catalogo/artistas/artists_overview.html', context)
 
+
 @login_required
 def read_artist(request, pk):
-    artista = get_object_or_404(Artista, idartista=pk)
-
-    # Añadimos los estados exactos que permite tu SQL Server
+    art_doc = db["Artista"].find_one({"artista_id": int(pk)})
+    if not art_doc:
+        return redirect('artists_overview')
+    artista = map_artista(art_doc)
     estados_actividad = ['Vigente', 'Archivado']
-
     context = {
         'artista': artista,
         'estados': estados_actividad
     }
-
     return render(request, 'catalogo/artistas/read_artist.html', context)
+
 
 @login_required
 def edit_artist(request, pk):
-    artista = get_object_or_404(Artista, idartista=pk)
+    art_doc = db["Artista"].find_one({"artista_id": int(pk)})
+    if not art_doc:
+        return redirect('artists_overview')
 
     if request.method == 'POST':
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                UPDATE [Catalogo].[Artista]
-                SET nombreArtistico=%s, 
-                    biografia=%s, 
-                    paisOrigen=%s,
-                    estadoActivo=%s, 
-                    urlPerfil=%s
-                WHERE idArtista=%s
-            """, [
-                request.POST.get('nombreartistico'),
-                request.POST.get('biografia'),
-                request.POST.get('paisorigen'),
-                request.POST.get('estadoactivo'),
-                request.POST.get('urlperfil'),
-                pk
-            ])
-            # connection.commit() # Descomentar si tu SQL Server lo requiere
-
+        db["Artista"].update_one(
+            {"artista_id": int(pk)},
+            {"$set": {
+                "nombreArtistico": request.POST.get('nombreartistico'),
+                "biografia": request.POST.get('biografia'),
+                "paisOrigen": request.POST.get('paisorigen'),
+                "estadoActivo": request.POST.get('estadoactivo'),
+                "urlPerfil": request.POST.get('urlperfil')
+            }}
+        )
         return JsonResponse({'status': 'success'})
 
-    # Variables para los <select> del formulario
+    artista = map_artista(art_doc)
     estados_actividad = ['Vigente', 'Archivado']
-
     context = {
         'artista': artista,
         'estados': estados_actividad
@@ -439,51 +617,41 @@ def edit_artist(request, pk):
 def delete_artist(request, pk):
     if request.method == 'POST':
         try:
-            # transaction.atomic() asegura que se borre todo junto o no se borre nada
-            with transaction.atomic():
+            pk = int(pk)
+            # 1. Eliminar al artista de MongoDB
+            db["Artista"].delete_one({"artista_id": pk})
+
+            # 2. Encontrar álbumes del artista para poder eliminar sus canciones
+            albums = list(db["Album"].find({"artista_id": pk}))
+            album_ids = [a["album_id"] for a in albums]
+
+            # 3. Eliminar canciones de esos álbumes
+            db["Cancion"].delete_many({"album_id": {"$in": album_ids}})
+
+            # 4. Eliminar los álbumes en sí
+            db["Album"].delete_many({"artista_id": pk})
+
+            # 5. Sacar al artista de la lista de colaboradores en cualquier otra canción
+            db["Cancion"].update_many(
+                {},
+                {"$pull": {"colaboradores": {"artista_id": pk}}}
+            )
+
+            # Opcional: Eliminar de base de datos SQL relacional si existiesen
+            try:
+                from django.db import connection
                 with connection.cursor() as cursor:
-                    # 1. Eliminar Seguimientos del artista (ESQUEMA: Usuario)
                     cursor.execute("DELETE FROM [Usuario].[Seguimiento] WHERE Artista_idArtista = %s", [pk])
-
-                    # 2. Eliminar Colaboraciones donde este artista fue invitado (ESQUEMA: Catalogo)
                     cursor.execute("DELETE FROM [Catalogo].[Colaboracion] WHERE Artista_idArtista = %s", [pk])
-
-                    # --- PREPARAMOS LA SUBCONSULTA DE CANCIONES ---
-                    query_canciones = """
-                        SELECT idCancion FROM [Catalogo].[Cancion] c
-                        INNER JOIN [Catalogo].[Album] a ON c.Album_idAlbum = a.idAlbum
-                        WHERE a.Artista_idArtista = %s
-                    """
-
-                    # 3. Eliminar dependencias de las CANCIONES del artista respetando sus esquemas
-                    cursor.execute(
-                        f"DELETE FROM [Catalogo].[Colaboracion] WHERE Cancion_idCancion IN ({query_canciones})", [pk])
-                    cursor.execute(
-                        f"DELETE FROM [Usuario].[CancionFavorita] WHERE Cancion_idCancion IN ({query_canciones})", [pk])
-                    cursor.execute(
-                        f"DELETE FROM [Usuario].[PlaylistCancion] WHERE Cancion_idCancion IN ({query_canciones})", [pk])
-                    cursor.execute(
-                        f"DELETE FROM [Auditoria].[EstadisticaDiaria] WHERE Cancion_idCancion IN ({query_canciones})",
-                        [pk])
-
-                    # 4. Eliminar las Canciones en sí (ESQUEMA: Catalogo)
-                    cursor.execute("""
-                        DELETE FROM [Catalogo].[Cancion] 
-                        WHERE Album_idAlbum IN (SELECT idAlbum FROM [Catalogo].[Album] WHERE Artista_idArtista = %s)
-                    """, [pk])
-
-                    # 5. Eliminar los Álbumes (ESQUEMA: Catalogo)
-                    cursor.execute("DELETE FROM [Catalogo].[Album] WHERE Artista_idArtista = %s", [pk])
-
-                    # 6. Finalmente, Eliminar al Artista (ESQUEMA: Catalogo)
-                    cursor.execute("DELETE FROM [Catalogo].[Artista] WHERE idArtista = %s", [pk])
+            except Exception:
+                pass
 
             return JsonResponse({'status': 'success'})
-
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': f"Error al eliminar en cascada: {str(e)}"}, status=400)
 
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
 
 @login_required
 @csrf_exempt
@@ -505,15 +673,22 @@ def add_artist(request):
             if not nombre:
                 return JsonResponse({'status': 'error', 'message': 'Falta el nombre artístico.'}, status=400)
 
-            if Artista.objects.filter(nombreartistico__iexact=nombre).exists():
+            if db["Artista"].find_one({"nombreArtistico": {"$regex": f"^{nombre}$", "$options": "i"}}):
                 return JsonResponse({'status': 'error', 'message': 'El artista ya está registrado.'}, status=400)
 
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    INSERT INTO [Catalogo].[Artista] 
-                    (nombreArtistico, biografia, paisOrigen, estadoActivo, fechaRegistro, urlPerfil)
-                    VALUES (%s, %s, %s, %s, GETDATE(), %s)
-                """, [nombre, biografia, pais, estado, url_perfil])
+            # Auto-increment
+            max_doc = db["Artista"].find_one(sort=[("artista_id", -1)])
+            artista_id = (max_doc["artista_id"] + 1) if max_doc else 1
+
+            db["Artista"].insert_one({
+                "artista_id": artista_id,
+                "nombreArtistico": nombre,
+                "biografia": biografia,
+                "paisOrigen": pais,
+                "estadoActivo": estado,
+                "fechaRegistro": datetime.datetime.now(),
+                "urlPerfil": url_perfil
+            })
 
             return JsonResponse({'status': 'success', 'message': 'Artista guardado correctamente.'})
 
@@ -565,28 +740,39 @@ def search_artist_spotify_ajax(request):
 #  ÁLBUMES
 # ══════════════════════════════════════════
 def albums_overview(request):
-    # Base QuerySets
-    albumes = Album.objects.select_related('artista').all()
-    artistas = Artista.objects.all().order_by('nombreartistico')
+    cache = get_db_cache()
+    artistas = sorted(cache['artistas'].values(), key=lambda x: x['nombreartistico'] or '')
 
-    # Capturar parámetros de la URL
     query = request.GET.get('q', '').strip()
     artista_id = request.GET.get('artista', '')
     orden = request.GET.get('orden', 'desc')
 
-    # 1. Filtro por búsqueda de texto (en el título del álbum)
+    pipeline = []
+    match_filter = {}
     if query:
-        albumes = albumes.filter(tituloalbum__icontains=query)
-
-    # 2. Filtro exacto por ID de artista
+        match_filter["tituloAlbum"] = {"$regex": query, "$options": "i"}
     if artista_id:
-        albumes = albumes.filter(artista_id=artista_id)
+        match_filter["artista_id"] = int(artista_id)
+    if match_filter:
+        pipeline.append({"$match": match_filter})
 
-    # 3. Ordenamiento por fecha de lanzamiento
-    if orden == 'asc':
-        albumes = albumes.order_by('fechalanzamiento')
-    else:
-        albumes = albumes.order_by('-fechalanzamiento')  # El guion indica orden descendente
+    pipeline.extend([
+        {
+            "$lookup": {
+                "from": "Artista",
+                "localField": "artista_id",
+                "foreignField": "artista_id",
+                "as": "artista"
+            }
+        },
+        {"$unwind": {"path": "$artista", "preserveNullAndEmptyArrays": True}}
+    ])
+
+    sort_dir = -1 if orden == 'desc' else 1
+    pipeline.append({"$sort": {"fechaLanzamiento": sort_dir}})
+
+    docs = list(db["Album"].aggregate(pipeline))
+    albumes = [map_album(d, cache) for d in docs]
 
     context = {
         'albumes': albumes,
@@ -595,10 +781,11 @@ def albums_overview(request):
     }
     return render(request, 'catalogo/albumes/albums_overview.html', context)
 
+
 @login_required
 def add_album(request):
     if request.method == 'GET':
-        artistas = Artista.objects.all()
+        artistas = [map_artista(d) for d in db["Artista"].find().sort("nombreArtistico", 1)]
         return render(request, 'catalogo/albumes/add_album.html', {'artistas': artistas})
 
     if request.method == 'POST':
@@ -611,12 +798,23 @@ def add_album(request):
             if not titulo or not artista_id or not fecha_lanzamiento:
                 return JsonResponse({'status': 'error', 'message': 'Faltan campos obligatorios.'}, status=400)
 
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    INSERT INTO [Catalogo].[Album] 
-                    (tituloAlbum, fechaLanzamiento, urlPortada, Artista_idArtista)
-                    VALUES (%s, %s, %s, %s)
-                """, [titulo, fecha_lanzamiento, url_portada, artista_id])
+            # Auto-increment
+            max_doc = db["Album"].find_one(sort=[("album_id", -1)])
+            album_id = (max_doc["album_id"] + 1) if max_doc else 1
+
+            # Convert date
+            try:
+                dt = datetime.datetime.strptime(fecha_lanzamiento, "%Y-%m-%d")
+            except Exception:
+                dt = datetime.datetime.now()
+
+            db["Album"].insert_one({
+                "album_id": album_id,
+                "tituloAlbum": titulo,
+                "fechaLanzamiento": dt,
+                "urlPortada": url_portada,
+                "artista_id": int(artista_id)
+            })
 
             return JsonResponse({'status': 'success', 'message': 'Álbum guardado correctamente.'})
 
@@ -625,74 +823,77 @@ def add_album(request):
 
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
+
 @login_required
 def read_album(request, pk):
-    album = get_object_or_404(Album, idalbum=pk)
-    artistas = Artista.objects.all()
+    alb_doc = db["Album"].find_one({"album_id": int(pk)})
+    if not alb_doc:
+        return redirect('albums_overview')
+    cache = get_db_cache()
+    album = map_album(alb_doc, cache)
+    artistas = sorted(cache['artistas'].values(), key=lambda x: x['nombreartistico'] or '')
     return render(request, 'catalogo/albumes/read_album.html', {'album': album, 'artistas': artistas})
 
 
 @login_required
 def edit_album(request, pk):
-    album = get_object_or_404(Album, idalbum=pk)
+    alb_doc = db["Album"].find_one({"album_id": int(pk)})
+    if not alb_doc:
+        return redirect('albums_overview')
 
     if request.method == 'POST':
         try:
             url_portada = request.POST.get('urlportada')
-            with connection.cursor() as cursor:
-                # Quitamos Artista_idArtista del UPDATE
-                cursor.execute("""
-                    UPDATE [Catalogo].[Album]
-                    SET tituloAlbum=%s, 
-                        fechaLanzamiento=%s, 
-                        urlPortada=%s
-                    WHERE idAlbum=%s
-                """, [
-                    request.POST.get('tituloalbum'),
-                    request.POST.get('fechalanzamiento'),
-                    url_portada,
-                    pk
-                ])
+            fecha_lanzamiento = request.POST.get('fechalanzamiento')
+            try:
+                dt = datetime.datetime.strptime(fecha_lanzamiento, "%Y-%m-%d")
+            except Exception:
+                dt = datetime.datetime.now()
+
+            db["Album"].update_one(
+                {"album_id": int(pk)},
+                {"$set": {
+                    "tituloAlbum": request.POST.get('tituloalbum'),
+                    "fechaLanzamiento": dt,
+                    "urlPortada": url_portada
+                }}
+            )
             return JsonResponse({'status': 'success', 'urlportada': url_portada})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
-    # Para el GET, seguimos enviando los artistas por si necesitas mostrar el nombre
-    artistas = Artista.objects.all()
-    context = {'album': album, 'artistas': artistas}
-
-    # Esta vista se renderiza en edit_album.html o se maneja por AJAX en read_album.html
-    return render(request, 'catalogo/albumes/edit_album.html', context)
-
-    artistas = Artista.objects.all()
+    cache = get_db_cache()
+    album = map_album(alb_doc, cache)
+    artistas = sorted(cache['artistas'].values(), key=lambda x: x['nombreartistico'] or '')
     context = {'album': album, 'artistas': artistas}
     return render(request, 'catalogo/albumes/edit_album.html', context)
+
 
 @login_required
 def delete_album(request, pk):
     if request.method == 'POST':
         try:
-            with transaction.atomic():
+            pk = int(pk)
+            # 1. Eliminar el álbum de MongoDB
+            db["Album"].delete_one({"album_id": pk})
+
+            # 2. Eliminar todas las canciones del álbum
+            db["Cancion"].delete_many({"album_id": pk})
+
+            # Opcional: Eliminar de base de datos SQL relacional si existiesen
+            try:
+                from django.db import connection
                 with connection.cursor() as cursor:
-                    # Preparar subconsulta de canciones de este álbum
+                    # Preparar subconsulta de canciones de este álbum en SQL
                     query_canciones = "SELECT idCancion FROM [Catalogo].[Cancion] WHERE Album_idAlbum = %s"
-
-                    # 1. Limpiar dependencias de las canciones en otros esquemas
-                    cursor.execute(
-                        f"DELETE FROM [Catalogo].[Colaboracion] WHERE Cancion_idCancion IN ({query_canciones})", [pk])
-                    cursor.execute(
-                        f"DELETE FROM [Usuario].[CancionFavorita] WHERE Cancion_idCancion IN ({query_canciones})", [pk])
-                    cursor.execute(
-                        f"DELETE FROM [Usuario].[PlaylistCancion] WHERE Cancion_idCancion IN ({query_canciones})", [pk])
-                    cursor.execute(
-                        f"DELETE FROM [Auditoria].[EstadisticaDiaria] WHERE Cancion_idCancion IN ({query_canciones})",
-                        [pk])
-
-                    # 2. Eliminar las canciones del álbum
+                    cursor.execute(f"DELETE FROM [Catalogo].[Colaboracion] WHERE Cancion_idCancion IN ({query_canciones})", [pk])
+                    cursor.execute(f"DELETE FROM [Usuario].[CancionFavorita] WHERE Cancion_idCancion IN ({query_canciones})", [pk])
+                    cursor.execute(f"DELETE FROM [Usuario].[PlaylistCancion] WHERE Cancion_idCancion IN ({query_canciones})", [pk])
+                    cursor.execute(f"DELETE FROM [Auditoria].[EstadisticaDiaria] WHERE Cancion_idCancion IN ({query_canciones})", [pk])
                     cursor.execute("DELETE FROM [Catalogo].[Cancion] WHERE Album_idAlbum = %s", [pk])
-
-                    # 3. Eliminar el álbum
                     cursor.execute("DELETE FROM [Catalogo].[Album] WHERE idAlbum = %s", [pk])
+            except Exception:
+                pass
 
             return JsonResponse({'status': 'success'})
         except Exception as e:
@@ -744,17 +945,20 @@ def search_album_spotify_ajax(request):
 
 @login_required
 def genre_overview(request):
-    query = request.GET.get('q', '')
+    query = request.GET.get('q', '').strip()
+    query_filter = {}
     if query:
-        generos = Genero.objects.filter(nombregenero__icontains=query)
-    else:
-        generos = Genero.objects.all()
+        query_filter["nombreGenero"] = {"$regex": query, "$options": "i"}
+
+    docs = list(db["Genero"].find(query_filter).sort("nombreGenero", 1))
+    generos = [map_genero(d) for d in docs]
 
     context = {
         'generos': generos,
         'query': query
     }
     return render(request, 'catalogo/generos/genre_overview.html', context)
+
 
 @login_required
 def add_genre(request):
@@ -764,25 +968,25 @@ def add_genre(request):
 
     if request.method == 'POST':
         try:
-            # Capturamos y limpiamos espacios extra al inicio o final
             nombre = request.POST.get('nombregenero', '').strip()
             descripcion = request.POST.get('descripcion', '').strip()
 
             if not nombre:
                 return JsonResponse({'status': 'error', 'message': 'El nombre del género es obligatorio.'}, status=400)
 
-            with connection.cursor() as cursor:
-                # 1. VERIFICACIÓN DE DUPLICADOS (Case-insensitive)
-                cursor.execute("SELECT idGenero FROM [Catalogo].[Genero] WHERE LOWER(nombreGenero) = LOWER(%s)", [nombre])
-                if cursor.fetchone():
-                    # Si encuentra un resultado, frena todo y lanza el error al Toast
-                    return JsonResponse({'status': 'error', 'message': f'El género "{nombre}" ya está registrado en el catálogo.'}, status=400)
+            # Check duplicate (case-insensitive)
+            if db["Genero"].find_one({"nombreGenero": {"$regex": f"^{nombre}$", "$options": "i"}}):
+                return JsonResponse({'status': 'error', 'message': f'El género "{nombre}" ya está registrado en el catálogo.'}, status=400)
 
-                # 2. INSERCIÓN (Si pasó la prueba anterior)
-                cursor.execute("""
-                    INSERT INTO [Catalogo].[Genero] (nombreGenero, descripcion)
-                    VALUES (%s, %s)
-                """, [nombre, descripcion])
+            # Auto-increment
+            max_doc = db["Genero"].find_one(sort=[("genero_id", -1)])
+            genero_id = (max_doc["genero_id"] + 1) if max_doc else 1
+
+            db["Genero"].insert_one({
+                "genero_id": genero_id,
+                "nombreGenero": nombre,
+                "descripcion": descripcion
+            })
 
             return JsonResponse({'status': 'success', 'message': 'Género registrado correctamente.'})
 
@@ -791,32 +995,36 @@ def add_genre(request):
 
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
+
 @login_required
 def read_genre(request, pk):
-    genero = get_object_or_404(Genero, idgenero=pk)
+    gen_doc = db["Genero"].find_one({"genero_id": int(pk)})
+    if not gen_doc:
+        return redirect('genre_overview')
+    genero = map_genero(gen_doc)
     return render(request, 'catalogo/generos/read_genre.html', {'genero': genero})
+
 
 @login_required
 def edit_genre(request, pk):
-    genero = get_object_or_404(Genero, idgenero=pk)
+    gen_doc = db["Genero"].find_one({"genero_id": int(pk)})
+    if not gen_doc:
+        return redirect('genre_overview')
 
     if request.method == 'POST':
         try:
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    UPDATE [Catalogo].[Genero]
-                    SET nombreGenero = %s,
-                        descripcion = %s
-                    WHERE idGenero = %s
-                """, [
-                    request.POST.get('nombregenero'),
-                    request.POST.get('descripcion'),
-                    pk
-                ])
+            db["Genero"].update_one(
+                {"genero_id": int(pk)},
+                {"$set": {
+                    "nombreGenero": request.POST.get('nombregenero'),
+                    "descripcion": request.POST.get('descripcion')
+                }}
+            )
             return JsonResponse({'status': 'success', 'message': 'Género actualizado correctamente.'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
+    genero = map_genero(gen_doc)
     return render(request, 'catalogo/generos/edit_genre.html', {'genero': genero})
 
 
@@ -824,41 +1032,45 @@ def edit_genre(request, pk):
 def delete_genre(request, pk):
     if request.method == 'POST':
         try:
-            with transaction.atomic():
+            pk = int(pk)
+            # 1. Buscar si ya existe el género de respaldo
+            default_gen_doc = db["Genero"].find_one({"nombreGenero": "Sin género asignado"})
+            if default_gen_doc:
+                default_id = default_gen_doc["genero_id"]
+            else:
+                # Si no existe, lo creamos
+                max_doc = db["Genero"].find_one(sort=[("genero_id", -1)])
+                default_id = (max_doc["genero_id"] + 1) if max_doc else 1
+                db["Genero"].insert_one({
+                    "genero_id": default_id,
+                    "nombreGenero": "Sin género asignado",
+                    "descripcion": "Categoría temporal para canciones cuyo género original fue eliminado."
+                })
+
+            # 2. Protección: Evitar eliminar el de respaldo
+            if pk == default_id:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Protección de sistema: No se puede eliminar el género de respaldo global.'
+                }, status=400)
+
+            # 3. Traspasar canciones al género comodín
+            db["Cancion"].update_many(
+                {"genero_id": pk},
+                {"$set": {"genero_id": default_id}}
+            )
+
+            # 4. Eliminar el género
+            db["Genero"].delete_one({"genero_id": pk})
+
+            # Opcional: Eliminar de base de datos SQL si existiesen
+            try:
+                from django.db import connection
                 with connection.cursor() as cursor:
-                    # 1. Buscar si ya existe el género de respaldo
-                    cursor.execute(
-                        "SELECT idGenero FROM [Catalogo].[Genero] WHERE nombreGenero = 'Sin género asignado'")
-                    row = cursor.fetchone()
-
-                    if row:
-                        default_id = row[0]
-                    else:
-                        # Si no existe, lo creamos de forma automática en una fila nueva
-                        cursor.execute("""
-                            INSERT INTO [Catalogo].[Genero] (nombreGenero, descripcion)
-                            VALUES ('Sin género asignado', 'Categoría temporal para canciones cuyo género original fue eliminado.')
-                        """)
-                        # Capturamos el ID asignado por el IDENTITY de SQL Server
-                        cursor.execute("SELECT SCOPE_IDENTITY()")
-                        default_id = int(cursor.fetchone()[0])
-
-                    # 2. Protección integral: Evitar que se elimine el mismísimo registro de respaldo
-                    if int(pk) == default_id:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Protección de sistema: No se puede eliminar el género de respaldo global.'
-                        }, status=400)
-
-                    # 3. Traspasar las canciones al género comodín (Evita el borrado de tracks)
-                    cursor.execute("""
-                        UPDATE [Catalogo].[Cancion]
-                        SET Genero_idGenero = %s
-                        WHERE Genero_idGenero = %s
-                    """, [default_id, pk])
-
-                    # 4. Una vez liberadas las amarras, eliminamos el género original de forma segura
+                    cursor.execute("UPDATE [Catalogo].[Cancion] SET Genero_idGenero = %s WHERE Genero_idGenero = %s", [default_id, pk])
                     cursor.execute("DELETE FROM [Catalogo].[Genero] WHERE idGenero = %s", [pk])
+            except Exception:
+                pass
 
             return JsonResponse({'status': 'success'})
         except Exception as e:
@@ -870,135 +1082,7 @@ def delete_genre(request, pk):
 # ══════════════════════════════════════════
 #  COLABORACIONES
 # ══════════════════════════════════════════
-def colabs_overview(request):
-    colaboraciones = Colaboracion.objects.select_related('cancion', 'artista', 'cancion__album').all()
 
-    query = request.GET.get('q', '').strip()
-    rol = request.GET.get('rol', '')
-    orden = request.GET.get('orden', 'desc')
-
-    if query:
-        # Búsqueda combinada: puede buscar por nombre de artista o título de canción
-        colaboraciones = colaboraciones.filter(
-            Q(artista__nombreartistico__icontains=query) |
-            Q(cancion__titulocancion__icontains=query)
-        )
-
-    if rol:
-        colaboraciones = colaboraciones.filter(rolartista__iexact=rol)
-
-    # Ordenamiento basado en idcolaboracion (o puedes usar fechas si tu modelo las tiene)
-    if orden == 'asc':
-        colaboraciones = colaboraciones.order_by('idcolaboracion')
-    else:
-        colaboraciones = colaboraciones.order_by('-idcolaboracion')
-
-    context = {
-        'colaboraciones': colaboraciones,
-        'query': query,
-    }
-    return render(request, 'catalogo/colaboraciones/colabs_overview.html', context)
-
-
-@login_required
-def add_colab(request):
-    if request.method == 'GET':
-        context = {
-            'canciones': Cancion.objects.all(),
-            'artistas': Artista.objects.all(),
-        }
-        return render(request, 'catalogo/colaboraciones/add_colab.html', context)
-
-    if request.method == 'POST':
-        try:
-            id_cancion = request.POST.get('cancion')
-            id_artista = request.POST.get('artista')
-            rol_obtenido = request.POST.get('rol', '').strip()  # Lo recibimos del form como 'rol'
-
-            if not all([id_cancion, id_artista, rol_obtenido]):
-                return JsonResponse({'status': 'error', 'message': 'Todos los campos son obligatorios.'}, status=400)
-
-            with connection.cursor() as cursor:
-                # Verificación de duplicado
-                cursor.execute("""
-                    SELECT idColaboracion FROM [Catalogo].[Colaboracion] 
-                    WHERE Cancion_idCancion = %s AND Artista_idArtista = %s
-                """, [id_cancion, id_artista])
-
-                if cursor.fetchone():
-                    return JsonResponse(
-                        {'status': 'error', 'message': 'Este artista ya está vinculado a esta canción.'}, status=400)
-
-                # INSERCIÓN CORREGIDA (Apuntando a rolArtista)
-                cursor.execute("""
-                    INSERT INTO [Catalogo].[Colaboracion] (Cancion_idCancion, Artista_idArtista, rolArtista)
-                    VALUES (%s, %s, %s)
-                """, [id_cancion, id_artista, rol_obtenido])
-
-            return JsonResponse({'status': 'success', 'message': 'Colaboración registrada.'})
-
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-
-    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
-
-@login_required
-def read_colab(request, pk):
-    colaboracion = get_object_or_404(Colaboracion.objects.select_related('cancion', 'artista'), idcolaboracion=pk)
-    # Mandamos las listas para el modo edición inline
-    context = {
-        'colaboracion': colaboracion,
-        'canciones': Cancion.objects.all(),
-        'artistas': Artista.objects.all(),
-    }
-    return render(request, 'catalogo/colaboraciones/read_colab.html', context)
-
-
-@login_required
-def edit_colab(request, pk):
-    colaboracion = get_object_or_404(Colaboracion.objects.select_related('cancion', 'artista'), idcolaboracion=pk)
-
-    if request.method == 'GET':
-        context = {
-            'colaboracion': colaboracion,
-            'canciones': Cancion.objects.all(),
-            'artistas': Artista.objects.all(),
-        }
-        return render(request, 'catalogo/colaboraciones/edit_colab.html', context)
-
-    if request.method == 'POST':
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    UPDATE [Catalogo].[Colaboracion]
-                    SET Cancion_idCancion = %s,
-                        Artista_idArtista = %s,
-                        rolArtista = %s
-                    WHERE idColaboracion = %s
-                """, [
-                    request.POST.get('cancion'),
-                    request.POST.get('artista'),
-                    request.POST.get('rol'),
-                    pk
-                ])
-            return JsonResponse({'status': 'success', 'message': 'Colaboración actualizada.'})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-
-    return colabs_overview(request)
-
-@login_required
-def delete_colab(request, pk):
-    if request.method == 'POST':
-        try:
-            with connection.cursor() as cursor:
-                # La eliminación aquí es sencilla porque nadie depende de esta tabla intermedia
-                cursor.execute("DELETE FROM [Catalogo].[Colaboracion] WHERE idColaboracion = %s", [pk])
-            return JsonResponse({'status': 'success'})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': f"Error: {str(e)}"}, status=400)
-
-    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 
 # ══════════════════════════════════════════
@@ -1024,14 +1108,87 @@ def _contexto_base(request):
     }
 
 
+def obtener_ranking_popularidad_mensual():
+    query_stats = """
+        SELECT Cancion_idCancion, SUM(totalRepros) AS total_escuchas_mes
+        FROM Auditoria.EstadisticaDiaria
+        WHERE fechaReporte >= DATEADD(MONTH, -1, GETDATE())
+        GROUP BY Cancion_idCancion
+        ORDER BY total_escuchas_mes DESC
+    """
+    stats = _obtener_datos_sql(query_stats)
+    
+    ranking = []
+    cache = get_db_cache()
+    for row in stats:
+        track_id = row.get("Cancion_idCancion")
+        repros = row.get("total_escuchas_mes")
+        if track_id is None:
+            continue
+            
+        track_doc = db["Cancion"].find_one({"cancion_id": int(track_id)})
+        if track_doc:
+            cancion = map_cancion(track_doc, cache)
+            nombre_artista = "Desconocido"
+            if cancion.get("album") and cancion["album"].get("artista"):
+                nombre_artista = cancion["album"]["artista"].get("nombreartistico", "Desconocido")
+            
+            ranking.append({
+                "tituloCancion": cancion.get("titulocancion"),
+                "nombreArtistico": nombre_artista,
+                "total_escuchas_mes": repros
+            })
+            
+            if len(ranking) >= 10:
+                break
+    return ranking
+
+
+def vw_AuditoriaMetadatosIncompletos():
+    canciones = list(db["Cancion"].find())
+    album_ids = {a["album_id"] for a in db["Album"].find({}, {"album_id": 1})}
+    genero_ids = {g["genero_id"] for g in db["Genero"].find({}, {"genero_id": 1})}
+    
+    default_gen_doc = db["Genero"].find_one({"nombreGenero": "Sin género asignado"})
+    default_gen_id = default_gen_doc["genero_id"] if default_gen_doc else None
+    
+    inconsistencias = []
+    for c in canciones:
+        c_id = c.get("cancion_id")
+        titulo = c.get("tituloCancion")
+        gen_id = c.get("genero_id")
+        alb_id = c.get("album_id")
+        
+        is_inconsistent = False
+        estatus_genero = "Correcto"
+        estatus_jerarquia = "Correcto"
+        
+        if not gen_id or gen_id not in genero_ids or gen_id == default_gen_id:
+            is_inconsistent = True
+            estatus_genero = "SIN GÉNERO"
+            
+        if not alb_id or alb_id not in album_ids:
+            is_inconsistent = True
+            estatus_jerarquia = "Sin Álbum vinculado"
+            
+        if is_inconsistent:
+            inconsistencias.append({
+                'idCancion': c_id,
+                'tituloCancion': titulo,
+                'EstatusGenero': estatus_genero,
+                'EstatusJerarquia': estatus_jerarquia
+            })
+    return inconsistencias
+
+
 # ── VISTAS BASE DE REPORTE (PANTALLA) ──
 @login_required
 def reporte_top_10(request):
     canciones = []
     try:
-        canciones = _obtener_datos_sql("EXEC Auditoria.sp_RankingPopularidadMensual")
+        canciones = obtener_ranking_popularidad_mensual()
     except Exception as e:
-        messages.error(request, f"Error SQL: {str(e)}")
+        messages.error(request, f"Error: {str(e)}")
     return render(request, 'catalogo/reportes/reporte_top_10.html', {'canciones': canciones})
 
 
@@ -1039,9 +1196,9 @@ def reporte_top_10(request):
 def reporte_auditoria_catalogo(request):
     inconsistencias = []
     try:
-        inconsistencias = _obtener_datos_sql("SELECT * FROM Catalogo.vw_AuditoriaMetadatosIncompletos")
+        inconsistencias = vw_AuditoriaMetadatosIncompletos()
     except Exception as e:
-        messages.error(request, f"Error SQL: {str(e)}")
+        messages.error(request, f"Error: {str(e)}")
     return render(request, 'catalogo/reportes/reporte_auditoria.html', {'inconsistencias': inconsistencias})
 
 
@@ -1049,7 +1206,7 @@ def reporte_auditoria_catalogo(request):
 @login_required
 def exportar_top_10_pdf(request):
     try:
-        canciones = _obtener_datos_sql("EXEC Auditoria.sp_RankingPopularidadMensual")
+        canciones = obtener_ranking_popularidad_mensual()
         context = {**_contexto_base(request), 'canciones': canciones, 'periodo': 'Últimos 30 días'}
 
         html_string = render_to_string('catalogo/reportes/pdf_top_10.html', context, request=request)
@@ -1067,7 +1224,7 @@ def exportar_top_10_pdf(request):
 @login_required
 def enviar_top_10_correo(request):
     try:
-        canciones = _obtener_datos_sql("EXEC Auditoria.sp_RankingPopularidadMensual")
+        canciones = obtener_ranking_popularidad_mensual()
         context = {**_contexto_base(request), 'canciones': canciones, 'periodo': 'Últimos 30 días'}
 
         html_string = render_to_string('catalogo/reportes/pdf_top_10.html', context, request=request)
@@ -1091,7 +1248,7 @@ def enviar_top_10_correo(request):
 @login_required
 def exportar_auditoria_pdf(request):
     try:
-        inconsistencias = _obtener_datos_sql("SELECT * FROM Catalogo.vw_AuditoriaMetadatosIncompletos")
+        inconsistencias = vw_AuditoriaMetadatosIncompletos()
         context = {**_contexto_base(request), 'inconsistencias': inconsistencias}
 
         html_string = render_to_string('catalogo/reportes/pdf_auditoria.html', context, request=request)
@@ -1107,7 +1264,7 @@ def exportar_auditoria_pdf(request):
 @login_required
 def enviar_auditoria_correo(request):
     try:
-        inconsistencias = _obtener_datos_sql("SELECT * FROM Catalogo.vw_AuditoriaMetadatosIncompletos")
+        inconsistencias = vw_AuditoriaMetadatosIncompletos()
         context = {**_contexto_base(request), 'inconsistencias': inconsistencias}
 
         html_string = render_to_string('catalogo/reportes/pdf_auditoria.html', context, request=request)

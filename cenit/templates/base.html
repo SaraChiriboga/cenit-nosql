@@ -86,9 +86,8 @@
 <body class="text-on-surface">
 
     {% with url_name=request.resolver_match.url_name|default:'' %}
-    {% with catalog_urls="songs_overview artists_overview albums_overview genre_overview colabs_overview add_track" %}
-
-    <aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-container/80 backdrop-blur-xl border-r border-white/10 flex flex-col py-5 z-50 overflow-y-auto">
+    {% with catalog_urls="songs_overview artists_overview albums_overview genre_overview add_track" %}
+    <aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-container/80 backdrop-blur-xl border-r border-white/10 flex flex-col py-5 z-50 overflow-y-auto">
 
         <div class="w-full flex justify-center mb-5">
             <svg class="h-14 w-auto" width="200" height="60" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -103,40 +102,37 @@
             <div>
                 <button id="catalog-toggle"
                     class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
-                           {% if url_name in catalog_urls %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                           {% if '/catalogo/' in request.path %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                     <span class="material-symbols-outlined text-[20px]">subscriptions</span>
                     <span class="font-body-md text-body-md flex-1 text-left">Catalog</span>
                     <span class="material-symbols-outlined text-[16px] submenu-arrow transition-transform duration-200
-                          {% if url_name in catalog_urls %}rotated{% endif %}" id="catalog-arrow">chevron_right</span>
+                          {% if '/catalogo/' in request.path %}rotated{% endif %}" id="catalog-arrow">chevron_right</span>
                 </button>
 
-                <div class="submenu {% if url_name in catalog_urls %}open{% endif %}" id="catalog-submenu">
+                <div class="submenu {% if '/catalogo/' in request.path %}open{% endif %}" id="catalog-submenu">
                     <div class="ml-4 pl-3 border-l border-white/10 mt-1 flex flex-col gap-0.5 pb-2">
 
-                        <a href="{% url 'songs_overview' %}" class="submenu-item px-3 py-2 rounded-r-lg text-sm transition-all {% if 'songs' in url_name %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                        <a href="{% url 'songs_overview' %}" class="submenu-item px-3 py-2 rounded-r-lg text-sm transition-all {% if '/catalogo/' in request.path and '/artistas/' not in request.path and '/albumes/' not in request.path and '/generos/' not in request.path and '/reportes/' not in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">music_note</span> Canciones
                         </a>
-                        <a href="{% url 'artists_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if 'artists' in url_name %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                        <a href="{% url 'artists_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if '/artistas/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">person</span> Artistas
                         </a>
-                        <a href="{% url 'albums_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if 'albums' in url_name %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                        <a href="{% url 'albums_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if '/albumes/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">album</span> Álbumes
                         </a>
-                        <a href="{% url 'genre_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if 'genre' in url_name %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                        <a href="{% url 'genre_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if '/generos/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">category</span> Géneros
-                        </a>
-                        <a href="{% url 'colabs_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if 'colabs' in url_name %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
-                            <span class="material-symbols-outlined text-[16px]">group_work</span> Colaboraciones
                         </a>
 
                         <div class="h-px bg-white/10 my-2"></div>
                         <span class="text-xs text-on-surface-variant/60 px-3 py-1 uppercase tracking-wider font-bold">Reportes</span>
 
-                        <a href="{% url 'reporte_top_10' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if request.resolver_match.url_name == 'reporte_top_10' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                        <a href="{% url 'reporte_top_10' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if '/reportes/top-10/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px] text-yellow-500">trophy</span> Top 10 Mensual
                         </a>
 
-                        <a href="{% url 'reporte_auditoria_catalogo' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if request.resolver_match.url_name == 'reporte_auditoria_catalogo' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                        <a href="{% url 'reporte_auditoria_catalogo' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if '/reportes/auditoria-metadatos/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px] text-error">health_and_safety</span> Auditoría de Metadatos
                         </a>
 
@@ -147,19 +143,19 @@
             <div>
                 <button id="usuarios-toggle"
                     class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
-                           {% if 'usuarios' in request.resolver_match.app_name %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                           {% if '/usuarios/' in request.path %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                     <span class="material-symbols-outlined text-[20px]">group</span>
                     <span class="font-body-md text-body-md flex-1 text-left">Users & Access</span>
                     <span class="material-symbols-outlined text-[16px] submenu-arrow transition-transform duration-200
-                          {% if 'usuarios' in request.resolver_match.app_name %}rotated{% endif %}" id="usuarios-arrow">chevron_right</span>
+                          {% if '/usuarios/' in request.path %}rotated{% endif %}" id="usuarios-arrow">chevron_right</span>
                 </button>
 
-                <div class="submenu {% if 'usuarios' in request.resolver_match.app_name %}open{% endif %}" id="usuarios-submenu">
+                <div class="submenu {% if '/usuarios/' in request.path %}open{% endif %}" id="usuarios-submenu">
                     <div class="ml-4 pl-3 border-l border-white/10 mt-1 flex flex-col gap-0.5 pb-2">
 
                         <a href="{% url 'users_overview' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'users_overview' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/usuarios/' in request.path and '/roles/' not in request.path and '/auditoria/' not in request.path and '/seguimientos/' not in request.path and '/favoritas/' not in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">manage_accounts</span>
                             Gestión de Cuentas
                         </a>
@@ -169,7 +165,7 @@
 
                         <a href="{% url 'roles_overview' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'roles_overview' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/roles/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
                             Roles y Permisos
                         </a>
@@ -179,21 +175,21 @@
 
                         <a href="{% url 'auditoria_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'auditoria_list' or request.resolver_match.url_name == 'auditoria_add' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/auditoria/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">policy</span>
                             Auditoría
                         </a>
 
                         <a href="{% url 'seguimiento_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'seguimiento_list' or request.resolver_match.url_name == 'seguimiento_add' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/seguimientos/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">person_add</span>
                             Seguimientos
                         </a>
 
                         <a href="{% url 'favorita_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'favorita_list' or request.resolver_match.url_name == 'favorita_add' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/favoritas/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">favorite</span>
                             Favoritas
                         </a>
@@ -205,54 +201,54 @@
             <div>
                 <button id="subscriptions-toggle"
                     class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
-                           {% if 'suscripciones' in request.resolver_match.app_name %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                           {% if '/suscripciones/' in request.path %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                     <span class="material-symbols-outlined text-[20px]">payments</span>
                     <span class="font-body-md text-body-md flex-1 text-left">Subscriptions</span>
                     <span class="material-symbols-outlined text-[16px] submenu-arrow transition-transform duration-200
-                          {% if 'suscripciones' in request.resolver_match.app_name %}rotated{% endif %}" id="subscriptions-arrow">chevron_right</span>
+                          {% if '/suscripciones/' in request.path %}rotated{% endif %}" id="subscriptions-arrow">chevron_right</span>
                 </button>
 
-                <div class="submenu {% if 'suscripciones' in request.resolver_match.app_name %}open{% endif %}" id="subscriptions-submenu">
+                <div class="submenu {% if '/suscripciones/' in request.path %}open{% endif %}" id="subscriptions-submenu">
                     <div class="ml-4 pl-3 border-l border-white/10 mt-1 flex flex-col gap-0.5 pb-2">
 
                         <a href="{% url 'plan_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'plan_list' or request.resolver_match.url_name == 'plan_add' or request.resolver_match.url_name == 'plan_edit' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/planes/' in request.path or '/plan/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">card_membership</span>
                             Planes
                         </a>
 
                         <a href="{% url 'promocion_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'promocion_list' or request.resolver_match.url_name == 'promocion_add' or request.resolver_match.url_name == 'promocion_edit' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/promociones/' in request.path or '/promocion/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">local_offer</span>
                             Promociones
                         </a>
 
                         <a href="{% url 'suscripcion_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'suscripcion_list' or request.resolver_match.url_name == 'suscripcion_add' or request.resolver_match.url_name == 'suscripcion_edit' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/suscripciones/' in request.path and '/plan' not in request.path and '/promocion' not in request.path and '/notificacion/' not in request.path and '/playlist/' not in request.path and '/estadistica/' not in request.path and '/reporte/' not in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">subscriptions</span>
                             Suscripciones
                         </a>
 
                         <a href="{% url 'notificacion_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'notificacion_list' or request.resolver_match.url_name == 'notificacion_add' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/notificacion/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">notifications</span>
                             Notificaciones
                         </a>
 
                         <a href="{% url 'playlist_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'playlist_list' or request.resolver_match.url_name == 'playlist_add' or request.resolver_match.url_name == 'playlist_edit' or request.resolver_match.url_name == 'playlist_canciones' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/playlist/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">playlist_play</span>
                             Playlists
                         </a>
 
                         <a href="{% url 'estadistica_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'estadistica_list' or request.resolver_match.url_name == 'estadistica_add' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/estadistica/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">bar_chart</span>
                             Estadísticas
                         </a>
@@ -263,21 +259,21 @@
 
                         <a href="{% url 'reporte_vencimientos' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'reporte_vencimientos' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/reporte-vencimientos/' in request.path or '/reportes/vencimientos/' in request.path or request.resolver_match.url_name == 'reporte_vencimientos' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">schedule</span>
                             Vencimientos (5 días)
                         </a>
 
                         <a href="{% url 'reporte_promociones_vencidas' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if request.resolver_match.url_name == 'reporte_promociones_vencidas' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/reporte-promociones-vencidas/' in request.path or '/reportes/promociones-vencidas/' in request.path or request.resolver_match.url_name == 'reporte_promociones_vencidas' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px] text-error">warning</span>
                             Promociones vencidas
                         </a>
                     </div>
                 </div>
             </div>
-            
+
         </nav>
 
         <div class="mt-auto px-6 border-t border-white/5 pt-8">

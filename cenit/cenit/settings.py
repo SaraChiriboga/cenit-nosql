@@ -21,8 +21,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 credentials_path = os.path.join(BASE_DIR, 'admin.json')
 
 # credentials config from json
-with open(credentials_path) as f:
+with open(credentials_path, encoding='utf-8') as f:
     db_config = json.load(f)
+
+MONGODB_URI = db_config.pop("MONGODB_URI", "mongodb://localhost:27017/")
+MONGODB_NAME = db_config.pop("MONGODB_NAME", "Cenit")
 
 
 # Quick-start development settings - unsuitable for production
