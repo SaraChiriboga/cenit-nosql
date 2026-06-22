@@ -79,7 +79,18 @@
                 {% for i in inconsistencias %}
                 <tr class="hover:bg-error/5 transition-colors">
                     <td class="p-5 font-mono text-white/40 print:text-gray-500">TRK-{{ i.idCancion }}</td>
-                    <td class="p-5 font-bold text-white print:text-black">{{ i.tituloCancion }}</td>
+                    <td class="p-5 font-bold text-white print:text-black">
+                        <div class="flex items-center gap-3">
+                            {% if i.urlPortada %}
+                                <img src="{{ i.urlPortada }}" class="w-10 h-10 rounded-lg object-cover bg-white/5 border border-white/10 no-print" alt="Portada">
+                            {% else %}
+                                <div class="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center no-print">
+                                    <span class="material-symbols-outlined text-[18px] text-red-400">broken_image</span>
+                                </div>
+                            {% endif %}
+                            <span>{{ i.tituloCancion }}</span>
+                        </div>
+                    </td>
 
                     <td class="p-5">
                         {% if i.EstatusGenero == 'SIN GÉNERO' %}

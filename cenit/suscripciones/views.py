@@ -3,6 +3,11 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
 from bson import ObjectId
+from django.conf import settings
+from django.core.mail import EmailMessage
+from django.http import JsonResponse, HttpResponse
+from django.template.loader import render_to_string
+from weasyprint import HTML
 
 from cenit.mongo_client import db
 from .models import MongoDoc, prepare_doc, parse_date
@@ -899,14 +904,16 @@ def estadistica_delete(request, pk):
 @login_required
 def reporte_vencimientos(request):
     """Informe B: Suscripciones que vencen en los próximos 5 días."""
-    hoy    = datetime.now()
-    limite = hoy + timedelta(days=5)
-    hoy_str    = hoy.strftime('%Y-%m-%dT%H:%M:%S')
-    limite_str = limite.strftime('%Y-%m-%dT%H:%M:%S')
-
     docs = list(suscripciones_col.find({
-        'estado':   'Activa',
-        'fechaFin': {'$gte': hoy_str, '$lte': limite_str},
+        'estado': 'Expirada',
+        'tipoSuscripcion.nombrePlan': {
+            '$in': [
+                'Premium Individual',
+                'Premium Duo',
+                'Premium Familiar',
+                'Premium Estudiante'
+            ]
+        }
     }).sort('fechaFin', 1))
 
     user_ids = {d.get('idUsuario') for d in docs if d.get('idUsuario')}
@@ -914,25 +921,24 @@ def reporte_vencimientos(request):
 
     for d in docs:
         prepare_doc(d)
-        d['usuario_nombre'] = user_names.get(d.get('idUsuario'), '—')
+        resolved_name = user_names.get(d.get('idUsuario'), '—')
+        d['usuario_nombre'] = resolved_name
+        d['usuario_nombre_nombre'] = resolved_name
 
     proximas = [MongoDoc(d) for d in docs]
     return render(request, 'Suscripciones/reportes/reporte_vencimientos.html', {
         'proximas': proximas,
-        'hoy':      hoy,
-        'limite':   limite,
+        'hoy':      datetime.now(),
+        'limite':   datetime.now() + timedelta(days=5),
     })
 
 
 @login_required
 def reporte_promociones_vencidas(request):
     """Informe D: Promociones expiradas que aún figuran como activas."""
-    ahora     = datetime.now()
-    ahora_str = ahora.strftime('%Y-%m-%dT%H:%M:%S')
-
     docs = list(promociones_col.find({
         'estadoActivo': True,
-        'fechaExpira':  {'$lt': ahora_str},
+        'porcentajeDesc': {'$gt': 20}
     }).sort('fechaExpira', 1))
 
     for d in docs:
@@ -941,5 +947,385 @@ def reporte_promociones_vencidas(request):
     vencidas = [MongoDoc(d) for d in docs]
     return render(request, 'Suscripciones/reportes/reporte_promociones_vencidas.html', {
         'vencidas': vencidas,
-        'ahora':    ahora,
+        'ahora':    datetime.now(),
     })
+
+
+# Helper to get base context for reports
+def _contexto_base(request):
+    return {
+        'fecha_generacion': datetime.now(),
+        'usuario_generador': (f"{request.user.get_full_name() or request.user.username} · {request.user.email}").strip(' ·'),
+        'version': 'v2.1.0',
+    }
+
+# ── EXPORTACIÓN SUSCRIPCIONES EXPIRADAS (VENCIMIENTOS) ──
+@login_required
+def exportar_vencimientos_pdf(request):
+    try:
+        docs = list(suscripciones_col.find({
+            'estado': 'Expirada',
+            'tipoSuscripcion.nombrePlan': {
+                '$in': [
+                    'Premium Individual',
+                    'Premium Duo',
+                    'Premium Familiar',
+                    'Premium Estudiante'
+                ]
+            }
+        }).sort('fechaFin', 1))
+        user_ids = {d.get('idUsuario') for d in docs if d.get('idUsuario')}
+        user_names = _lookup_usuarios(user_ids)
+        for d in docs:
+            prepare_doc(d)
+            resolved_name = user_names.get(d.get('idUsuario'), '—')
+            d['usuario_nombre'] = resolved_name
+            d['usuario_nombre_nombre'] = resolved_name
+        proximas = [MongoDoc(d) for d in docs]
+        
+        context = {
+            **_contexto_base(request),
+            'proximas': proximas,
+            'hoy':      datetime.now(),
+            'limite':   datetime.now() + timedelta(days=5),
+        }
+        html_string = render_to_string('Suscripciones/reportes/pdf_vencimientos.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="Suscripciones_Expiradas.pdf"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required
+def enviar_vencimientos_correo(request):
+    try:
+        docs = list(suscripciones_col.find({
+            'estado': 'Expirada',
+            'tipoSuscripcion.nombrePlan': {
+                '$in': [
+                    'Premium Individual',
+                    'Premium Duo',
+                    'Premium Familiar',
+                    'Premium Estudiante'
+                ]
+            }
+        }).sort('fechaFin', 1))
+        user_ids = {d.get('idUsuario') for d in docs if d.get('idUsuario')}
+        user_names = _lookup_usuarios(user_ids)
+        for d in docs:
+            prepare_doc(d)
+            resolved_name = user_names.get(d.get('idUsuario'), '—')
+            d['usuario_nombre'] = resolved_name
+            d['usuario_nombre_nombre'] = resolved_name
+        proximas = [MongoDoc(d) for d in docs]
+
+        context = {
+            **_contexto_base(request),
+            'proximas': proximas,
+            'hoy':      datetime.now(),
+            'limite':   datetime.now() + timedelta(days=5),
+        }
+        html_string = render_to_string('Suscripciones/reportes/pdf_vencimientos.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        destinatario = request.user.email or 'admin@cenit.com'
+        email = EmailMessage(
+            subject='CÉNIT — Informe de Suscripciones Expiradas',
+            body='Adjuntamos el informe detallado de suscripciones Premium inactivas/expiradas.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[destinatario],
+        )
+        email.attach('Suscripciones_Expiradas.pdf', pdf_file, 'application/pdf')
+        email.send()
+        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ── EXPORTACIÓN PROMOCIONES ALTO DESCUENTO ──
+@login_required
+def exportar_promociones_vencidas_pdf(request):
+    try:
+        docs = list(promociones_col.find({
+            'estadoActivo': True,
+            'porcentajeDesc': {'$gt': 20}
+        }).sort('fechaExpira', 1))
+        for d in docs:
+            prepare_doc(d)
+        vencidas = [MongoDoc(d) for d in docs]
+        
+        context = {
+            **_contexto_base(request),
+            'vencidas': vencidas,
+            'ahora':    datetime.now(),
+        }
+        html_string = render_to_string('Suscripciones/reportes/pdf_promociones_vencidas.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="Promociones_Alto_Descuento.pdf"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required
+def enviar_promociones_vencidas_correo(request):
+    try:
+        docs = list(promociones_col.find({
+            'estadoActivo': True,
+            'porcentajeDesc': {'$gt': 20}
+        }).sort('fechaExpira', 1))
+        for d in docs:
+            prepare_doc(d)
+        vencidas = [MongoDoc(d) for d in docs]
+
+        context = {
+            **_contexto_base(request),
+            'vencidas': vencidas,
+            'ahora':    datetime.now(),
+        }
+        html_string = render_to_string('Suscripciones/reportes/pdf_promociones_vencidas.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        destinatario = request.user.email or 'admin@cenit.com'
+        email = EmailMessage(
+            subject='CÉNIT — Promociones Activas con Alto Descuento',
+            body='Adjuntamos el informe ejecutivo de las promociones con descuento superior al 20%.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[destinatario],
+        )
+        email.attach('Promociones_Alto_Descuento.pdf', pdf_file, 'application/pdf')
+        email.send()
+        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ── REPORTE: USUARIOS PREMIUM ACTIVOS ──
+def obtener_usuarios_premium_activos():
+    users = list(db["usuarios"].find({
+        "estadoPlan": "Premium",
+        "estadoActivo": "Activo"
+    }))
+    for u in users:
+        u["id"] = str(u.get("_id"))
+        u["nombre_completo"] = f"{u.get('nombre', '')} {u.get('apellido', '')}"
+        if isinstance(u.get("fechaRegistro"), str):
+            u["fechaRegistro"] = parse_date(u["fechaRegistro"])
+    return users
+
+@login_required
+def reporte_usuarios_premium(request):
+    try:
+        usuarios = obtener_usuarios_premium_activos()
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        usuarios = []
+    return render(request, 'Suscripciones/reportes/reporte_usuarios_premium.html', {'usuarios': usuarios})
+
+@login_required
+def exportar_usuarios_premium_pdf(request):
+    try:
+        usuarios = obtener_usuarios_premium_activos()
+        context = {**_contexto_base(request), 'usuarios': usuarios}
+        html_string = render_to_string('Suscripciones/reportes/pdf_usuarios_premium.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="Usuarios_Premium_Activos.pdf"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required
+def enviar_usuarios_premium_correo(request):
+    try:
+        usuarios = obtener_usuarios_premium_activos()
+        context = {**_contexto_base(request), 'usuarios': usuarios}
+        html_string = render_to_string('Suscripciones/reportes/pdf_usuarios_premium.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        destinatario = request.user.email or 'admin@cenit.com'
+        email = EmailMessage(
+            subject='CÉNIT — Usuarios con Plan Premium Activo',
+            body='Adjuntamos el informe detallado de usuarios con suscripción Premium activa.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[destinatario],
+        )
+        email.attach('Usuarios_Premium_Activos.pdf', pdf_file, 'application/pdf')
+        email.send()
+        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ── REPORTE: CANDIDATOS A PLAN PREMIUM ──
+def obtener_candidatos_premium():
+    users = list(db["usuarios"].find({
+        "estadoPlan": "Free",
+        "estadoActivo": "Activo"
+    }).sort("fechaRegistro", -1))
+    for u in users:
+        u["id"] = str(u.get("_id"))
+        u["nombre_completo"] = f"{u.get('nombre', '')} {u.get('apellido', '')}"
+        if isinstance(u.get("fechaRegistro"), str):
+            u["fechaRegistro"] = parse_date(u["fechaRegistro"])
+    return users
+
+@login_required
+def reporte_usuarios_free(request):
+    try:
+        usuarios = obtener_candidatos_premium()
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        usuarios = []
+    return render(request, 'Suscripciones/reportes/reporte_usuarios_free.html', {'usuarios': usuarios})
+
+@login_required
+def exportar_usuarios_free_pdf(request):
+    try:
+        usuarios = obtener_candidatos_premium()
+        context = {**_contexto_base(request), 'usuarios': usuarios}
+        html_string = render_to_string('Suscripciones/reportes/pdf_usuarios_free.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="Candidatos_Plan_Premium.pdf"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required
+def enviar_usuarios_free_correo(request):
+    try:
+        usuarios = obtener_candidatos_premium()
+        context = {**_contexto_base(request), 'usuarios': usuarios}
+        html_string = render_to_string('Suscripciones/reportes/pdf_usuarios_free.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        destinatario = request.user.email or 'admin@cenit.com'
+        email = EmailMessage(
+            subject='CÉNIT — Candidatos a Conversión Premium (Plan Free)',
+            body='Adjuntamos el informe de usuarios activos en plan Free para campañas de conversión.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[destinatario],
+        )
+        email.attach('Candidatos_Plan_Premium.pdf', pdf_file, 'application/pdf')
+        email.send()
+        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ── REPORTE: INTENTOS DE ACCESO FALLIDOS ──
+def obtener_accesos_fallidos():
+    docs = list(db["auditoriaAcceso"].find({"resultado": "Fallido"}).sort("fechaHora", -1))
+    user_ids = {d.get("idUsuario") for d in docs if d.get("idUsuario")}
+    users = db["usuarios"].find({"id": {"$in": list(user_ids)}}, {"id": 1, "nombre": 1, "apellido": 1})
+    user_names = {u["id"]: f"{u.get('nombre', '')} {u.get('apellido', '')}" for u in users}
+    for d in docs:
+        d["id"] = str(d.get("_id"))
+        d["usuario_nombre"] = user_names.get(d.get("idUsuario"), f"Usuario {d.get('idUsuario', '—')}")
+        if isinstance(d.get("fechaHora"), str):
+            d["fechaHora"] = parse_date(d["fechaHora"])
+    return docs
+
+@login_required
+def reporte_accesos_fallidos(request):
+    try:
+        accesos = obtener_accesos_fallidos()
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        accesos = []
+    return render(request, 'Suscripciones/reportes/reporte_accesos_fallidos.html', {'accesos': accesos})
+
+@login_required
+def exportar_accesos_fallidos_pdf(request):
+    try:
+        accesos = obtener_accesos_fallidos()
+        context = {**_contexto_base(request), 'accesos': accesos}
+        html_string = render_to_string('Suscripciones/reportes/pdf_accesos_fallidos.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="Accesos_Fallidos_Audit.pdf"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required
+def enviar_accesos_fallidos_correo(request):
+    try:
+        accesos = obtener_accesos_fallidos()
+        context = {**_contexto_base(request), 'accesos': accesos}
+        html_string = render_to_string('Suscripciones/reportes/pdf_accesos_fallidos.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        destinatario = request.user.email or 'admin@cenit.com'
+        email = EmailMessage(
+            subject='CÉNIT — Auditoría de Intentos de Acceso Fallidos',
+            body='Adjuntamos la auditoría de seguridad detallando los intentos fallidos de inicio de sesión.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[destinatario],
+        )
+        email.attach('Accesos_Fallidos_Audit.pdf', pdf_file, 'application/pdf')
+        email.send()
+        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ── REPORTE: ACCIONES DE ADMINISTRACIÓN ──
+def obtener_acciones_admin():
+    docs = list(db["auditoriaAcceso"].find({
+        "accion": {
+            "$in": [
+                "CAMBIO_CONTRASENA",
+                "CAMBIO_PLAN",
+                "ADMIN_ACCION"
+            ]
+        }
+    }).sort("fechaHora", -1))
+    user_ids = {d.get("idUsuario") for d in docs if d.get("idUsuario")}
+    users = db["usuarios"].find({"id": {"$in": list(user_ids)}}, {"id": 1, "nombre": 1, "apellido": 1})
+    user_names = {u["id"]: f"{u.get('nombre', '')} {u.get('apellido', '')}" for u in users}
+    for d in docs:
+        d["id"] = str(d.get("_id"))
+        d["usuario_nombre"] = user_names.get(d.get("idUsuario"), f"Usuario {d.get('idUsuario', '—')}")
+        if isinstance(d.get("fechaHora"), str):
+            d["fechaHora"] = parse_date(d["fechaHora"])
+    return docs
+
+@login_required
+def reporte_acciones_admin(request):
+    try:
+        acciones = obtener_acciones_admin()
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        acciones = []
+    return render(request, 'Suscripciones/reportes/reporte_acciones_admin.html', {'acciones': acciones})
+
+@login_required
+def exportar_acciones_admin_pdf(request):
+    try:
+        acciones = obtener_acciones_admin()
+        context = {**_contexto_base(request), 'acciones': acciones}
+        html_string = render_to_string('Suscripciones/reportes/pdf_acciones_admin.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="Acciones_Administracion_Audit.pdf"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required
+def enviar_acciones_admin_correo(request):
+    try:
+        acciones = obtener_acciones_admin()
+        context = {**_contexto_base(request), 'acciones': acciones}
+        html_string = render_to_string('Suscripciones/reportes/pdf_acciones_admin.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        destinatario = request.user.email or 'admin@cenit.com'
+        email = EmailMessage(
+            subject='CÉNIT — Auditoría de Acciones de Administración',
+            body='Adjuntamos la auditoría detallada de acciones administrativas críticas en la plataforma.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[destinatario],
+        )
+        email.attach('Acciones_Administracion_Audit.pdf', pdf_file, 'application/pdf')
+        email.send()
+        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

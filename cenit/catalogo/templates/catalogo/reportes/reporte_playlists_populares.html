@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Playlists Populares{% endblock %}
+{% block breadcrumb %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface-variant">Catalog</span>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Playlists Populares</span>
+{% endblock %}
+
+{% block content %}
+<div class="w-full">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-white/5 pb-6 no-print">
+        <div>
+            <h1 class="text-4xl font-extrabold text-white flex items-center gap-3">
+                Playlists Populares
+            </h1>
+            <p class="text-on-surface-variant mt-2 text-sm">Playlists públicas que contienen un catálogo robusto (5 o más canciones registradas).</p>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <button onclick="window.print()" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 text-sm font-medium transition-all">
+                <span class="material-symbols-outlined text-[18px]">print</span> Imprimir
+            </button>
+            <a href="{% url 'exportar_playlists_populares_pdf' %}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-secondary text-black hover:scale-105 rounded-xl text-sm font-bold transition-transform shadow-lg shadow-secondary/10">
+                <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> Descargar PDF
+            </a>
+            <button onclick="window.enviarReporteCorreo('{% url 'enviar_playlists_populares_correo' %}')" id="btn-mail" class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl border border-primary/20 text-sm font-medium transition-all">
+                <span class="material-symbols-outlined text-[18px]">send</span> Enviar Email
+            </button>
+        </div>
+    </div>
+
+    <div class="glass-panel rounded-3xl overflow-hidden border border-white/5 shadow-2xl print:border-none print:shadow-none print:rounded-none">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-black/40 text-on-surface-variant text-xs uppercase tracking-wider font-bold">
+                    <th class="p-5 font-semibold w-24">ID Playlist</th>
+                    <th class="p-5 font-semibold">Nombre Playlist</th>
+                    <th class="p-5 font-semibold">Creador</th>
+                    <th class="p-5 font-semibold">Visibilidad</th>
+                    <th class="p-5 font-semibold text-right">Total Canciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5 text-sm text-white/90 print:divide-gray-200">
+                {% for p in playlists %}
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="p-5 font-mono text-white/40 print:text-gray-500">PLAY-{{ p.idPlaylist|default:p.id }}</td>
+                    <td class="p-5 font-bold text-white print:text-black">{{ p.nombre }}</td>
+                    <td class="p-5 text-white/70 print:text-gray-600">{{ p.owner_name }}</td>
+                    <td class="p-5">
+                        <span class="px-2 py-0.5 rounded bg-green-500/10 text-green-400 text-xs font-bold border border-green-500/20 uppercase tracking-wider">Pública</span>
+                    </td>
+                    <td class="p-5 text-right font-mono text-primary print:text-black font-bold">{{ p.total_canciones }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="p-12 text-center text-on-surface-variant italic">No existen playlists públicas con 5 o más canciones.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    window.enviarReporteCorreo = async function(url) {
+        var btn = document.getElementById('btn-mail');
+        var oldHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Enviando...';
+
+        try {
+            var res = await fetch(url);
+            var data = await res.json();
+            alert(data.status === 'success' ? '¡Éxito! ' + data.message : 'Error: ' + data.message);
+        } catch(e) {
+            alert('Fallo de red al despachar el informe.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = oldHtml;
+        }
+    }
+</script>
+{% endblock %}

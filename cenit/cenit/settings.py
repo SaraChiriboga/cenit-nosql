@@ -156,3 +156,7 @@ LOGIN_REDIRECT_URL = 'songs_overview'
 
 # A dónde ir después de cerrar sesión
 LOGOUT_REDIRECT_URL = 'landing'
+
+# Email backend configuration for local development
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'admin@cenit.com'

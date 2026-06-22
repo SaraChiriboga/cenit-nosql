@@ -102,14 +102,14 @@
             <div>
                 <button id="catalog-toggle"
                     class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
-                           {% if '/catalogo/' in request.path %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                           {% if '/catalogo/' in request.path and '/reportes/' not in request.path %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                     <span class="material-symbols-outlined text-[20px]">subscriptions</span>
                     <span class="font-body-md text-body-md flex-1 text-left">Catalog</span>
                     <span class="material-symbols-outlined text-[16px] submenu-arrow transition-transform duration-200
-                          {% if '/catalogo/' in request.path %}rotated{% endif %}" id="catalog-arrow">chevron_right</span>
+                          {% if '/catalogo/' in request.path and '/reportes/' not in request.path %}rotated{% endif %}" id="catalog-arrow">chevron_right</span>
                 </button>
 
-                <div class="submenu {% if '/catalogo/' in request.path %}open{% endif %}" id="catalog-submenu">
+                <div class="submenu {% if '/catalogo/' in request.path and '/reportes/' not in request.path %}open{% endif %}" id="catalog-submenu">
                     <div class="ml-4 pl-3 border-l border-white/10 mt-1 flex flex-col gap-0.5 pb-2">
 
                         <a href="{% url 'songs_overview' %}" class="submenu-item px-3 py-2 rounded-r-lg text-sm transition-all {% if '/catalogo/' in request.path and '/artistas/' not in request.path and '/albumes/' not in request.path and '/generos/' not in request.path and '/reportes/' not in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
@@ -123,17 +123,6 @@
                         </a>
                         <a href="{% url 'genre_overview' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if '/generos/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">category</span> Géneros
-                        </a>
-
-                        <div class="h-px bg-white/10 my-2"></div>
-                        <span class="text-xs text-on-surface-variant/60 px-3 py-1 uppercase tracking-wider font-bold">Reportes</span>
-
-                        <a href="{% url 'reporte_top_10' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if '/reportes/top-10/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
-                            <span class="material-symbols-outlined text-[16px] text-yellow-500">trophy</span> Top 10 Mensual
-                        </a>
-
-                        <a href="{% url 'reporte_auditoria_catalogo' %}" class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150 {% if '/reportes/auditoria-metadatos/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
-                            <span class="material-symbols-outlined text-[16px] text-error">health_and_safety</span> Auditoría de Metadatos
                         </a>
 
                     </div>
@@ -201,14 +190,14 @@
             <div>
                 <button id="subscriptions-toggle"
                     class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
-                           {% if '/suscripciones/' in request.path %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                           {% if '/suscripciones/' in request.path and '/reportes/' not in request.path %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                     <span class="material-symbols-outlined text-[20px]">payments</span>
                     <span class="font-body-md text-body-md flex-1 text-left">Subscriptions</span>
                     <span class="material-symbols-outlined text-[16px] submenu-arrow transition-transform duration-200
-                          {% if '/suscripciones/' in request.path %}rotated{% endif %}" id="subscriptions-arrow">chevron_right</span>
+                          {% if '/suscripciones/' in request.path and '/reportes/' not in request.path %}rotated{% endif %}" id="subscriptions-arrow">chevron_right</span>
                 </button>
 
-                <div class="submenu {% if '/suscripciones/' in request.path %}open{% endif %}" id="subscriptions-submenu">
+                <div class="submenu {% if '/suscripciones/' in request.path and '/reportes/' not in request.path %}open{% endif %}" id="subscriptions-submenu">
                     <div class="ml-4 pl-3 border-l border-white/10 mt-1 flex flex-col gap-0.5 pb-2">
 
                         <a href="{% url 'plan_list' %}"
@@ -253,23 +242,83 @@
                             Estadísticas
                         </a>
 
-                        <div class="h-px bg-white/10 my-2"></div>
+                    </div>
+                </div>
+            </div>
 
-                        <span class="text-xs text-on-surface-variant/60 px-3 py-1 uppercase tracking-wider font-bold">Reportes</span>
+            <div>
+                <button id="reportes-toggle"
+                    class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
+                           {% if '/reportes/' in request.path %}text-primary bg-primary/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                    <span class="material-symbols-outlined text-[20px]">analytics</span>
+                    <span class="font-body-md text-body-md flex-1 text-left">Reportes</span>
+                    <span class="material-symbols-outlined text-[16px] submenu-arrow transition-transform duration-200
+                          {% if '/reportes/' in request.path %}rotated{% endif %}" id="reportes-arrow">chevron_right</span>
+                </button>
+
+                <div class="submenu {% if '/reportes/' in request.path %}open{% endif %}" id="reportes-submenu">
+                    <div class="ml-3 pl-3 border-l border-white/10 mt-1 flex flex-col gap-0.5 pb-2">
+
+                        <!-- CATÁLOGO -->
+                        <div class="text-[9px] uppercase font-black text-white/30 tracking-widest mt-2 mb-1 pl-1">Catálogo</div>
+                        
+                        <a href="{% url 'reporte_top_10' %}" class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150 {% if '/reportes/top-10/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[14px] text-yellow-500">trophy</span> Top 10 Mensual
+                        </a>
+
+                        <a href="{% url 'reporte_canciones_genero' %}" class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150 {% if '/reportes/canciones-genero/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[14px] text-primary">library_music</span> Canciones por Género
+                        </a>
+
+                        <a href="{% url 'reporte_playlists_populares' %}" class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150 {% if '/reportes/playlists-populares/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[14px] text-secondary">playlist_play</span> Playlists Populares
+                        </a>
+
+                        <a href="{% url 'reporte_artistas_populares' %}" class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150 {% if '/reportes/artistas-populares/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[14px] text-yellow-500">star</span> Artistas más Seguidos
+                        </a>
+
+                        <!-- USUARIO -->
+                        <div class="text-[9px] uppercase font-black text-white/30 tracking-widest mt-2 mb-1 pl-1">Usuario</div>
+
+                        <a href="{% url 'reporte_usuarios_premium' %}" class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150 {% if '/reportes/usuarios-premium/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[14px] text-green-400">workspace_premium</span> Premium Activos
+                        </a>
+
+                        <a href="{% url 'reporte_usuarios_free' %}" class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150 {% if '/reportes/usuarios-free/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[14px] text-white/60">person_search</span> Candidatos a Premium
+                        </a>
+
+                        <!-- NEGOCIO -->
+                        <div class="text-[9px] uppercase font-black text-white/30 tracking-widest mt-2 mb-1 pl-1">Negocio</div>
 
                         <a href="{% url 'reporte_vencimientos' %}"
-                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if '/reporte-vencimientos/' in request.path or '/reportes/vencimientos/' in request.path or request.resolver_match.url_name == 'reporte_vencimientos' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
-                            <span class="material-symbols-outlined text-[16px]">schedule</span>
-                            Vencimientos (5 días)
+                           class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150
+                                  {% if '/reportes/vencimientos/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[14px] text-primary">schedule</span> Suscripciones Expiradas
                         </a>
 
                         <a href="{% url 'reporte_promociones_vencidas' %}"
-                           class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if '/reporte-promociones-vencidas/' in request.path or '/reportes/promociones-vencidas/' in request.path or request.resolver_match.url_name == 'reporte_promociones_vencidas' %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
-                            <span class="material-symbols-outlined text-[16px] text-error">warning</span>
-                            Promociones vencidas
+                           class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150
+                                  {% if '/reportes/promociones-vencidas/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[14px] text-error">sell</span> Promos de Alto Descuento
                         </a>
+
+                        <!-- AUDITORÍA -->
+                        <div class="text-[9px] uppercase font-black text-white/30 tracking-widest mt-2 mb-1 pl-1">Auditoría</div>
+
+                        <a href="{% url 'reporte_auditoria_catalogo' %}" class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150 {% if '/reportes/auditoria-metadatos/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[14px] text-error">health_and_safety</span> Auditoría de Metadatos
+                        </a>
+
+                        <a href="{% url 'reporte_accesos_fallidos' %}" class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150 {% if '/reportes/accesos-fallidos/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[14px] text-error">gpp_maybe</span> Accesos Fallidos
+                        </a>
+
+                        <a href="{% url 'reporte_acciones_admin' %}" class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150 {% if '/reportes/acciones-admin/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            <span class="material-symbols-outlined text-[14px] text-primary">admin_panel_settings</span> Acciones de Admin
+                        </a>
+
                     </div>
                 </div>
             </div>
@@ -369,6 +418,24 @@
                     subsSubmenu.classList.toggle('open');
                     subsArrow.classList.toggle('rotated');
                     localStorage.setItem('subscriptionsOpen', subsSubmenu.classList.contains('open'));
+                });
+            }
+
+            // ── SUBMENÚ REPORTES ──
+            const repToggle = document.getElementById('reportes-toggle');
+            const repSubmenu = document.getElementById('reportes-submenu');
+            const repArrow = document.getElementById('reportes-arrow');
+
+            if (repToggle && repSubmenu && repArrow) {
+                if (localStorage.getItem('reportesOpen') === 'true') {
+                    repSubmenu.classList.add('open');
+                    repArrow.classList.add('rotated');
+                }
+
+                repToggle.addEventListener('click', () => {
+                    repSubmenu.classList.toggle('open');
+                    repArrow.classList.toggle('rotated');
+                    localStorage.setItem('reportesOpen', repSubmenu.classList.contains('open'));
                 });
             }
         });

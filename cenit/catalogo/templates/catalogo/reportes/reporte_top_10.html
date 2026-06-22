@@ -78,7 +78,18 @@
                 {% for c in canciones %}
                 <tr class="hover:bg-white/5 transition-colors">
                     <td class="p-5 text-center font-black text-secondary text-lg rank-number">#{{ forloop.counter }}</td>
-                    <td class="p-5 font-bold text-white print:text-black">{{ c.tituloCancion }}</td>
+                    <td class="p-5 font-bold text-white print:text-black">
+                        <div class="flex items-center gap-3">
+                            {% if c.urlPortada %}
+                                <img src="{{ c.urlPortada }}" class="w-10 h-10 rounded-lg object-cover bg-white/5 border border-white/10 no-print" alt="Portada">
+                            {% else %}
+                                <div class="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center no-print">
+                                    <span class="material-symbols-outlined text-[18px] text-white/30">music_note</span>
+                                </div>
+                            {% endif %}
+                            <span>{{ c.tituloCancion }}</span>
+                        </div>
+                    </td>
                     <td class="p-5 text-white/70 print:text-gray-600">{{ c.nombreArtistico }}</td>
                     <td class="p-5 text-right font-mono text-primary print:text-black font-bold">{{ c.total_escuchas_mes }}</td>
                 </tr>

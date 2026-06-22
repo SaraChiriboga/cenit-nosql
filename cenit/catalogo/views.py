@@ -17,7 +17,7 @@ from django.db import transaction
 from django.views.decorators.http import require_POST
 from weasyprint import HTML
 
-from cenit import settings
+from django.conf import settings
 from django.db import connection
 from .models import Cancion, Artista, Album, Genero, Colaboracion
 from .spotify_service import SpotifyClient
@@ -1109,20 +1109,31 @@ def _contexto_base(request):
 
 
 def obtener_ranking_popularidad_mensual():
-    query_stats = """
-        SELECT Cancion_idCancion, SUM(totalRepros) AS total_escuchas_mes
-        FROM Auditoria.EstadisticaDiaria
-        WHERE fechaReporte >= DATEADD(MONTH, -1, GETDATE())
-        GROUP BY Cancion_idCancion
-        ORDER BY total_escuchas_mes DESC
-    """
-    stats = _obtener_datos_sql(query_stats)
+    stats = list(db["estadisticasDiarias"].aggregate([
+        {
+            "$match": {
+                "fechaReporte": "2026-04-20"
+            }
+        },
+        {
+            "$group": {
+                "_id": "$idCancion",
+                "totalReproduccionesMes": { "$sum": "$totalRepros" }
+            }
+        },
+        {
+            "$sort": { "totalReproduccionesMes": -1 }
+        },
+        {
+            "$limit": 10
+        }
+    ]))
     
     ranking = []
     cache = get_db_cache()
     for row in stats:
-        track_id = row.get("Cancion_idCancion")
-        repros = row.get("total_escuchas_mes")
+        track_id = row.get("_id")
+        repros = row.get("totalReproduccionesMes")
         if track_id is None:
             continue
             
@@ -1136,49 +1147,48 @@ def obtener_ranking_popularidad_mensual():
             ranking.append({
                 "tituloCancion": cancion.get("titulocancion"),
                 "nombreArtistico": nombre_artista,
-                "total_escuchas_mes": repros
+                "total_escuchas_mes": repros,
+                "urlPortada": cancion.get("urlportada")
             })
-            
-            if len(ranking) >= 10:
-                break
     return ranking
 
 
 def vw_AuditoriaMetadatosIncompletos():
-    canciones = list(db["Cancion"].find())
-    album_ids = {a["album_id"] for a in db["Album"].find({}, {"album_id": 1})}
-    genero_ids = {g["genero_id"] for g in db["Genero"].find({}, {"genero_id": 1})}
-    
-    default_gen_doc = db["Genero"].find_one({"nombreGenero": "Sin género asignado"})
-    default_gen_id = default_gen_doc["genero_id"] if default_gen_doc else None
+    canciones = list(db["Cancion"].find({
+        "estadoPublicacion": "Programada",
+        "$or": [
+            { "urlSpotifyAPI": { "$exists": False } },
+            { "urlSpotifyAPI": None },
+            { "urlPortada": { "$exists": False } },
+            { "urlPortada": None }
+        ]
+    }))
     
     inconsistencias = []
     for c in canciones:
         c_id = c.get("cancion_id")
         titulo = c.get("tituloCancion")
-        gen_id = c.get("genero_id")
-        alb_id = c.get("album_id")
         
-        is_inconsistent = False
+        spotify_url = c.get("urlSpotifyAPI")
+        portada_url = c.get("urlPortada")
+        
         estatus_genero = "Correcto"
         estatus_jerarquia = "Correcto"
         
-        if not gen_id or gen_id not in genero_ids or gen_id == default_gen_id:
-            is_inconsistent = True
+        if not spotify_url:
             estatus_genero = "SIN GÉNERO"
-            
-        if not alb_id or alb_id not in album_ids:
-            is_inconsistent = True
+        if not portada_url:
             estatus_jerarquia = "Sin Álbum vinculado"
             
-        if is_inconsistent:
-            inconsistencias.append({
-                'idCancion': c_id,
-                'tituloCancion': titulo,
-                'EstatusGenero': estatus_genero,
-                'EstatusJerarquia': estatus_jerarquia
-            })
+        inconsistencias.append({
+            'idCancion': c_id,
+            'tituloCancion': titulo,
+            'EstatusGenero': estatus_genero,
+            'EstatusJerarquia': estatus_jerarquia,
+            'urlPortada': portada_url
+        })
     return inconsistencias
+
 
 
 # ── VISTAS BASE DE REPORTE (PANTALLA) ──
@@ -1282,3 +1292,208 @@ def enviar_auditoria_correo(request):
         return JsonResponse({'status': 'success', 'message': f'Informe enviado a {destinatario}.'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ── REPORTE: CANCIONES POR GÉNERO ──
+def obtener_canciones_por_genero():
+    pipeline = [
+        {
+            "$lookup": {
+                "from": "Genero",
+                "localField": "genero_id",
+                "foreignField": "genero_id",
+                "as": "infoGenero"
+            }
+        },
+        { "$unwind": "$infoGenero" },
+        {
+            "$group": {
+                "_id": "$genero_id",
+                "nombreGenero": { "$first": "$infoGenero.nombreGenero" },
+                "totalCanciones": { "$sum": 1 }
+            }
+        },
+        { "$sort": { "totalCanciones": -1 } }
+    ]
+    results = list(db["Cancion"].aggregate(pipeline))
+    for r in results:
+        r['id'] = r.get('_id')
+    return results
+
+@login_required
+def reporte_canciones_genero(request):
+    try:
+        datos = obtener_canciones_por_genero()
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        datos = []
+    return render(request, 'catalogo/reportes/reporte_canciones_genero.html', {'datos': datos})
+
+@login_required
+def exportar_canciones_genero_pdf(request):
+    try:
+        datos = obtener_canciones_por_genero()
+        context = {**_contexto_base(request), 'datos': datos}
+        html_string = render_to_string('catalogo/reportes/pdf_canciones_genero.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="Canciones_por_Genero.pdf"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"Error al generar PDF: {str(e)}", status=500)
+
+@login_required
+def enviar_canciones_genero_correo(request):
+    try:
+        datos = obtener_canciones_por_genero()
+        context = {**_contexto_base(request), 'datos': datos}
+        html_string = render_to_string('catalogo/reportes/pdf_canciones_genero.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        destinatario = request.user.email or 'admin@cenit.com'
+        email = EmailMessage(
+            subject='CÉNIT — Distribución de Canciones por Género',
+            body='Adjuntamos el reporte de distribución de catálogo por género musical solicitado.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[destinatario],
+        )
+        email.attach('Canciones_por_Genero.pdf', pdf_file, 'application/pdf')
+        email.send()
+        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ── REPORTE: PLAYLISTS POPULARES ──
+def obtener_playlists_populares():
+    playlists = list(db["playlists"].find({
+        "esPublicada": True,
+        "canciones.4": { "$exists": True }
+    }))
+    user_ids = {p.get("idUsuario") for p in playlists if p.get("idUsuario")}
+    docs = db["usuarios"].find({"id": {"$in": list(user_ids)}}, {"id": 1, "nombre": 1, "apellido": 1})
+    user_names = {d["id"]: f"{d.get('nombre', '')} {d.get('apellido', '')}" for d in docs}
+    
+    for p in playlists:
+        p["id"] = str(p.get("_id"))
+        p["owner_name"] = user_names.get(p.get("idUsuario"), "Usuario Desconocido")
+        p["total_canciones"] = len(p.get("canciones", []))
+    return playlists
+
+@login_required
+def reporte_playlists_populares(request):
+    try:
+        playlists = obtener_playlists_populares()
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        playlists = []
+    return render(request, 'catalogo/reportes/reporte_playlists_populares.html', {'playlists': playlists})
+
+@login_required
+def exportar_playlists_populares_pdf(request):
+    try:
+        playlists = obtener_playlists_populares()
+        context = {**_contexto_base(request), 'playlists': playlists}
+        html_string = render_to_string('catalogo/reportes/pdf_playlists_populares.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="Playlists_Populares.pdf"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"Error al generar PDF: {str(e)}", status=500)
+
+@login_required
+def enviar_playlists_populares_correo(request):
+    try:
+        playlists = obtener_playlists_populares()
+        context = {**_contexto_base(request), 'playlists': playlists}
+        html_string = render_to_string('catalogo/reportes/pdf_playlists_populares.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        destinatario = request.user.email or 'admin@cenit.com'
+        email = EmailMessage(
+            subject='CÉNIT — Playlists Populares Publicadas',
+            body='Adjuntamos el informe de playlists populares con 5 o más canciones creadas en la plataforma.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[destinatario],
+        )
+        email.attach('Playlists_Populares.pdf', pdf_file, 'application/pdf')
+        email.send()
+        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+# ── REPORTE: ARTISTAS MÁS POPULARES (SEGUIDORES) ──
+def obtener_artistas_mas_seguidos():
+    pipeline = [
+        { "$match": { "activo": 1 } },
+        {
+            "$group": {
+                "_id": "$idArtista",
+                "nombreArtista": { "$first": "$nombreArtista" },
+                "totalSeguidores": { "$sum": 1 }
+            }
+        },
+        {
+            "$lookup": {
+                "from": "Artista",
+                "localField": "_id",
+                "foreignField": "artista_id",
+                "as": "infoArtista"
+            }
+        },
+        { "$unwind": { "path": "$infoArtista", "preserveNullAndEmptyArrays": True } },
+        { "$sort": { "totalSeguidores": -1 } }
+    ]
+    results = list(db["seguimientos"].aggregate(pipeline))
+    artists = []
+    for r in results:
+        info = r.get("infoArtista", {}) or {}
+        artists.append({
+            "nombreArtista": r.get("nombreArtista") or info.get("nombreArtistico") or "Desconocido",
+            "paisOrigen": info.get("paisOrigen") or "—",
+            "totalSeguidores": r.get("totalSeguidores")
+        })
+    return artists
+
+@login_required
+def reporte_artistas_populares(request):
+    try:
+        artistas = obtener_artistas_mas_seguidos()
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        artistas = []
+    return render(request, 'catalogo/reportes/reporte_artistas_populares.html', {'artistas': artistas})
+
+@login_required
+def exportar_artistas_populares_pdf(request):
+    try:
+        artistas = obtener_artistas_mas_seguidos()
+        context = {**_contexto_base(request), 'artistas': artistas}
+        html_string = render_to_string('catalogo/reportes/pdf_artistas_populares.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="Artistas_mas_Seguidos.pdf"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"Error al generar PDF: {str(e)}", status=500)
+
+@login_required
+def enviar_artistas_populares_correo(request):
+    try:
+        artistas = obtener_artistas_mas_seguidos()
+        context = {**_contexto_base(request), 'artistas': artistas}
+        html_string = render_to_string('catalogo/reportes/pdf_artistas_populares.html', context, request=request)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+        destinatario = request.user.email or 'admin@cenit.com'
+        email = EmailMessage(
+            subject='CÉNIT — Ranking de Artistas más Seguidos',
+            body='Adjuntamos el informe ejecutivo del ranking de artistas con mayor número de seguidores activos.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[destinatario],
+        )
+        email.attach('Artistas_mas_Seguidos.pdf', pdf_file, 'application/pdf')
+        email.send()
+        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+

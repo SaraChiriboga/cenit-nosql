@@ -43,6 +43,18 @@ urlpatterns = [
     path('reportes/top-10/pdf/', views.exportar_top_10_pdf, name='exportar_top_10_pdf'),
     path('reportes/top-10/correo/', views.enviar_top_10_correo, name='enviar_top_10_correo'),
 
+    path('reportes/canciones-genero/', views.reporte_canciones_genero, name='reporte_canciones_genero'),
+    path('reportes/canciones-genero/pdf/', views.exportar_canciones_genero_pdf, name='exportar_canciones_genero_pdf'),
+    path('reportes/canciones-genero/correo/', views.enviar_canciones_genero_correo, name='enviar_canciones_genero_correo'),
+
+    path('reportes/playlists-populares/', views.reporte_playlists_populares, name='reporte_playlists_populares'),
+    path('reportes/playlists-populares/pdf/', views.exportar_playlists_populares_pdf, name='exportar_playlists_populares_pdf'),
+    path('reportes/playlists-populares/correo/', views.enviar_playlists_populares_correo, name='enviar_playlists_populares_correo'),
+
+    path('reportes/artistas-populares/', views.reporte_artistas_populares, name='reporte_artistas_populares'),
+    path('reportes/artistas-populares/pdf/', views.exportar_artistas_populares_pdf, name='exportar_artistas_populares_pdf'),
+    path('reportes/artistas-populares/correo/', views.enviar_artistas_populares_correo, name='enviar_artistas_populares_correo'),
+
     path('reportes/auditoria-metadatos/', views.reporte_auditoria_catalogo, name='reporte_auditoria_catalogo'),
     path('reportes/auditoria-metadatos/pdf/', views.exportar_auditoria_pdf, name='exportar_auditoria_pdf'),
     path('reportes/auditoria-metadatos/correo/', views.enviar_auditoria_correo, name='enviar_auditoria_correo'),

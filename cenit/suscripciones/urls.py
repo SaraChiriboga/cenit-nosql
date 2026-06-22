@@ -56,5 +56,26 @@ urlpatterns = [
     #  REPORTES
     # ══════════════════════════════════════════
     path('reportes/vencimientos/',          views.reporte_vencimientos,          name='reporte_vencimientos'),
-    path('reportes/promociones-vencidas/',  views.reporte_promociones_vencidas,  name='reporte_promociones_vencidas'),
+    path('reportes/vencimientos/pdf/',      views.exportar_vencimientos_pdf,      name='exportar_vencimientos_pdf'),
+    path('reportes/vencimientos/correo/',   views.enviar_vencimientos_correo,   name='enviar_vencimientos_correo'),
+
+    path('reportes/promociones-vencidas/',          views.reporte_promociones_vencidas,          name='reporte_promociones_vencidas'),
+    path('reportes/promociones-vencidas/pdf/',      views.exportar_promociones_vencidas_pdf,      name='exportar_promociones_vencidas_pdf'),
+    path('reportes/promociones-vencidas/correo/',   views.enviar_promociones_vencidas_correo,   name='enviar_promociones_vencidas_correo'),
+
+    path('reportes/usuarios-premium/',          views.reporte_usuarios_premium,          name='reporte_usuarios_premium'),
+    path('reportes/usuarios-premium/pdf/',      views.exportar_usuarios_premium_pdf,      name='exportar_usuarios_premium_pdf'),
+    path('reportes/usuarios-premium/correo/',   views.enviar_usuarios_premium_correo,   name='enviar_usuarios_premium_correo'),
+
+    path('reportes/usuarios-free/',          views.reporte_usuarios_free,          name='reporte_usuarios_free'),
+    path('reportes/usuarios-free/pdf/',      views.exportar_usuarios_free_pdf,      name='exportar_usuarios_free_pdf'),
+    path('reportes/usuarios-free/correo/',   views.enviar_usuarios_free_correo,   name='enviar_usuarios_free_correo'),
+
+    path('reportes/accesos-fallidos/',          views.reporte_accesos_fallidos,          name='reporte_accesos_fallidos'),
+    path('reportes/accesos-fallidos/pdf/',      views.exportar_accesos_fallidos_pdf,      name='exportar_accesos_fallidos_pdf'),
+    path('reportes/accesos-fallidos/correo/',   views.enviar_accesos_fallidos_correo,   name='enviar_accesos_fallidos_correo'),
+
+    path('reportes/acciones-admin/',          views.reporte_acciones_admin,          name='reporte_acciones_admin'),
+    path('reportes/acciones-admin/pdf/',      views.exportar_acciones_admin_pdf,      name='exportar_acciones_admin_pdf'),
+    path('reportes/acciones-admin/correo/',   views.enviar_acciones_admin_correo,   name='enviar_acciones_admin_correo'),
 ]
