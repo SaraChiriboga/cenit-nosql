@@ -31,7 +31,7 @@
         }
 
         .submenu.open {
-            max-height: 400px;
+            max-height: 1000px;
             opacity: 1;
         }
         .submenu-arrow {
@@ -87,7 +87,7 @@
 
     {% with url_name=request.resolver_match.url_name|default:'' %}
     {% with catalog_urls="songs_overview artists_overview albums_overview genre_overview add_track" %}
-    <aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-container/80 backdrop-blur-xl border-r border-white/10 flex flex-col py-5 z-50 overflow-y-auto">
+    <aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-container/80 backdrop-blur-xl border-r border-white/10 flex flex-col py-5 z-50">
 
         <div class="w-full flex justify-center mb-5">
             <svg class="h-14 w-auto" width="200" height="60" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -97,7 +97,7 @@
             </svg>
         </div>
 
-        <nav class="flex-1 flex flex-col gap-1 px-3">
+        <nav class="flex-1 flex flex-col gap-1 px-3 overflow-y-auto">
 
             <div>
                 <button id="catalog-toggle"
@@ -216,28 +216,28 @@
 
                         <a href="{% url 'suscripcion_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if '/suscripciones/' in request.path and '/plan' not in request.path and '/promocion' not in request.path and '/notificacion/' not in request.path and '/playlist/' not in request.path and '/estadistica/' not in request.path and '/reporte/' not in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/suscripciones/' in request.path and '/plan' not in request.path and '/promocion' not in request.path and '/notificacion' not in request.path and '/playlist' not in request.path and '/estadistica' not in request.path and '/reporte' not in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">subscriptions</span>
                             Suscripciones
                         </a>
 
                         <a href="{% url 'notificacion_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if '/notificacion/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/notificacion' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">notifications</span>
                             Notificaciones
                         </a>
 
                         <a href="{% url 'playlist_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if '/playlist/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/playlist' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">playlist_play</span>
                             Playlists
                         </a>
 
                         <a href="{% url 'estadistica_list' %}"
                            class="submenu-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm transition-all duration-150
-                                  {% if '/estadistica/' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                                  {% if '/estadistica' in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
                             <span class="material-symbols-outlined text-[16px]">bar_chart</span>
                             Estadísticas
                         </a>

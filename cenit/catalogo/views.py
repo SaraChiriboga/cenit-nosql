@@ -377,17 +377,6 @@ def delete_track(request, pk):
             # 1. Eliminar pista principal de MongoDB
             db["Cancion"].delete_one({"cancion_id": int(pk)})
 
-            # 2. De forma opcional, si existen dependencias en SQL Server, hacemos una limpieza
-            try:
-                from django.db import connection
-                with connection.cursor() as cursor:
-                    cursor.execute("DELETE FROM [Catalogo].[Colaboracion] WHERE Cancion_idCancion = %s", [pk])
-                    cursor.execute("DELETE FROM [Usuario].[CancionFavorita] WHERE Cancion_idCancion = %s", [pk])
-                    cursor.execute("DELETE FROM [Usuario].[PlaylistCancion] WHERE Cancion_idCancion = %s", [pk])
-                    cursor.execute("DELETE FROM [Auditoria].[EstadisticaDiaria] WHERE Cancion_idCancion = %s", [pk])
-            except Exception:
-                pass
-
             return JsonResponse({'status': 'success'})
 
         except Exception as e:
@@ -636,15 +625,6 @@ def delete_artist(request, pk):
                 {},
                 {"$pull": {"colaboradores": {"artista_id": pk}}}
             )
-
-            # Opcional: Eliminar de base de datos SQL relacional si existiesen
-            try:
-                from django.db import connection
-                with connection.cursor() as cursor:
-                    cursor.execute("DELETE FROM [Usuario].[Seguimiento] WHERE Artista_idArtista = %s", [pk])
-                    cursor.execute("DELETE FROM [Catalogo].[Colaboracion] WHERE Artista_idArtista = %s", [pk])
-            except Exception:
-                pass
 
             return JsonResponse({'status': 'success'})
         except Exception as e:

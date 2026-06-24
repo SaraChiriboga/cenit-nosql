@@ -55,11 +55,11 @@
         <tbody class="divide-y divide-white/5">
             {% for e in estadisticas %}
             <tr class="hover:bg-white/3 transition-colors">
-                <td class="px-6 py-4 text-on-surface-variant font-mono">{{ e.id }}</td>
+                <td class="px-6 py-4 text-on-surface-variant font-mono">#{{ e.id|slice:"-6:"|upper }}</td>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                        {% if e.cancion_nombre_portada %}
-                        <img src="{{ e.cancion_nombre_portada }}" alt="{{ e.cancion_nombre_nombre }}"
+                        {% if e.cancion_portada %}
+                        <img src="{{ e.cancion_portada }}" alt="{{ e.cancion_nombre }}"
                              class="w-9 h-9 rounded-lg object-cover flex-shrink-0"/>
                         {% else %}
                         <div class="w-9 h-9 rounded-lg bg-surface-container-low flex items-center justify-center flex-shrink-0">
@@ -67,8 +67,8 @@
                         </div>
                         {% endif %}
                         <div class="flex flex-col">
-                            <span class="text-on-surface font-medium">{{ e.cancion_nombre_nombre }}</span>
-                            <span class="text-on-surface-variant text-xs">{{ e.cancion_nombre_album }}</span>
+                            <span class="text-on-surface font-medium">{{ e.cancion_nombre }}</span>
+                            <span class="text-on-surface-variant text-xs">{{ e.cancion_album }}</span>
                         </div>
                     </div>
                 </td>

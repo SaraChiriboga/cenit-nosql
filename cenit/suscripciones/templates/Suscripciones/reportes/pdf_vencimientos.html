@@ -93,7 +93,7 @@
             {% for s in proximas %}
             <tr>
                 <td class="id-col">{{ s.id }}</td>
-                <td class="name-col">{{ s.usuario_nombre_nombre }}</td>
+                <td class="name-col">{{ s.usuario_nombre }}</td>
                 <td class="plan-col">{{ s.tipoSuscripcion.nombrePlan }}</td>
                 <td class="date-col">{{ s.fechaInicio|date:"d/m/Y" }}</td>
                 <td class="date-col">{{ s.fechaFin|date:"d/m/Y" }}</td>

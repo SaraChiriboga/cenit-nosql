@@ -40,7 +40,7 @@
             {% with dias=s.fechaFin|timeuntil %}
             <tr class="hover:bg-white/3 transition-colors">
                 <td class="px-6 py-4 text-on-surface-variant font-mono">{{ s.id }}</td>
-                <td class="px-6 py-4 text-on-surface">{{ s.usuario_nombre_nombre|default:"—" }}</td>
+                <td class="px-6 py-4 text-on-surface">{{ s.usuario_nombre|default:"—" }}</td>
                 <td class="px-6 py-4 text-on-surface-variant">{{ s.tipoSuscripcion.nombrePlan }}</td>
                 <td class="px-6 py-4 text-on-surface-variant">{{ s.fechaInicio|date:"d/m/Y" }}</td>
                 <td class="px-6 py-4 font-medium text-yellow-400">{{ s.fechaFin|date:"d/m/Y" }}</td>

@@ -57,7 +57,7 @@
             {% for pl in playlists %}
             <tr class="hover:bg-white/3 transition-colors">
                 <td class="px-6 py-4 text-on-surface font-medium">{{ pl.nombre }}</td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ pl.usuario_nombre_nombre|default:"—" }}</td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ pl.usuario_nombre|default:"—" }}</td>
                 <td class="px-6 py-4 text-on-surface-variant">{{ pl.fechaCreacion|date:"d/m/Y" }}</td>
                 <td class="px-6 py-4">
                     {% if pl.esPrivada %}
