@@ -158,6 +158,8 @@ section { position: relative; z-index: 10; }
 .hero-actions {
   display: flex; align-items: center; gap: 16px; margin-top: 48px;
   animation: fadeDown 0.8s 0.3s cubic-bezier(0.22,1,0.36,1) both;
+  position: relative;
+  z-index: 20;
 }
 .btn-primary {
   display: inline-flex; align-items: center; gap: 8px;
@@ -183,6 +185,73 @@ section { position: relative; z-index: 10; }
   transition: all 0.25s;
 }
 .btn-ghost:hover { border-color: var(--border-hover); color: var(--text); }
+
+/* ─── DROPDOWN CONSOLE ─── */
+.dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  background: rgba(14, 16, 23, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 150;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(69, 243, 255, 0.03);
+}
+.dropdown-container.active .dropdown-menu {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: var(--text-mid);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-align: left;
+}
+.dropdown-item:hover {
+  background: rgba(69, 243, 255, 0.08);
+  color: var(--cyan);
+  transform: translateX(4px);
+}
+.dropdown-item span.material-symbols-outlined {
+  font-size: 18px;
+}
+.dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 200px;
+  padding: 14px 20px;
+}
+.dropdown-trigger .arrow-icon {
+  transition: transform 0.3s ease;
+}
+.dropdown-container.active .dropdown-trigger .arrow-icon {
+  transform: rotate(180deg);
+}
 
 /* ─── HERO VISUAL / WAVEFORM ─── */
 .hero-visual {
@@ -631,10 +700,22 @@ footer {
       <span class="material-symbols-outlined" style="font-size: 20px;">play_arrow</span>
       Iniciar Player
     </a>
-    <a class="btn-ghost" href="{% url 'login' %}">
-      Consola Admin
-      <span class="material-symbols-outlined" style="font-size: 18px;">east</span>
-    </a>
+    <div class="dropdown-container">
+      <button class="btn-ghost dropdown-trigger" id="console-dropdown-btn">
+        <span>Consola</span>
+        <span class="material-symbols-outlined arrow-icon" style="font-size: 18px;">keyboard_arrow_down</span>
+      </button>
+      <div class="dropdown-menu">
+        <a href="{% url 'login' %}" class="dropdown-item">
+          <span class="material-symbols-outlined">admin_panel_settings</span>
+          <span>Administrador</span>
+        </a>
+        <a href="{% url 'login_analista' %}" class="dropdown-item">
+          <span class="material-symbols-outlined">monitoring</span>
+          <span>Analista</span>
+        </a>
+      </div>
+    </div>
   </div>
 
   <!-- WAVEFORM MOCKUP -->
@@ -1085,6 +1166,23 @@ document.querySelectorAll('.preview-list-item').forEach(item => {
     item.classList.add('active');
   });
 });
+
+// ── CONSOLE DROPDOWN INTERACTION ──
+const dropdownContainer = document.querySelector('.dropdown-container');
+const dropdownBtn = document.getElementById('console-dropdown-btn');
+
+if (dropdownBtn && dropdownContainer) {
+  dropdownBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropdownContainer.classList.toggle('active');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!dropdownContainer.contains(e.target)) {
+      dropdownContainer.classList.remove('active');
+    }
+  });
+}
 </script>
 </body>
 </html>

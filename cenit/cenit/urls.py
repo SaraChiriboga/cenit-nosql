@@ -14,6 +14,7 @@ urlpatterns = [
 
     # Rutas de autenticación
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('login/analista/', auth_views.LoginView.as_view(template_name='registration/login_analista.html'), name='login_analista'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
     # El cuarto de máquinas
