@@ -1,0 +1,516 @@
+{% load static %}
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CÉNIT | Player</title>
+
+<link rel="icon" type="image/svg+xml" href="{% static 'logo.svg' %}">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&amp;display=swap" rel="stylesheet" />
+
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          cyan: {
+            DEFAULT: '#45f3ff',
+            dim: 'rgba(69,243,255,0.15)',
+            glow: 'rgba(69,243,255,0.4)',
+          },
+          darkbg: '#08090d',
+          cardbg: '#0e1017',
+          borderbg: 'rgba(255,255,255,0.06)'
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #08090d;
+        color: #e8e9f0;
+        overflow: hidden;
+    }
+    
+    /* ─── GRID BG ─── */
+    .grid-bg {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(69,243,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(69,243,255,0.02) 1px, transparent 1px);
+      background-size: 80px 80px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(69,243,255,0.15); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(69,243,255,0.3); }
+
+    /* Custom range input styling */
+    input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        background: rgba(255,255,255,0.1);
+        border-radius: 4px;
+        height: 4px;
+        outline: none;
+        cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #45f3ff;
+        box-shadow: 0 0 10px rgba(69,243,255,0.8);
+        transition: transform 0.1s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.3);
+    }
+
+    /* Audio visualizer bar animation */
+    .bar {
+        width: 3px;
+        height: 15px;
+        background-color: #45f3ff;
+        border-radius: 3px;
+        transition: height 0.15s ease;
+    }
+    .playing .bar {
+        animation: bounce 0.8s ease-in-out infinite alternate;
+    }
+    @keyframes bounce {
+        10% { height: 5px; }
+        50% { height: 28px; }
+        100% { height: 10px; }
+    }
+    .bar:nth-child(2) { animation-delay: 0.15s; }
+    .bar:nth-child(3) { animation-delay: 0.3s; }
+    .bar:nth-child(4) { animation-delay: 0.05s; }
+    .bar:nth-child(5) { animation-delay: 0.25s; }
+
+    /* Glassmorphism utility */
+    .glass {
+        background: rgba(14, 16, 23, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255,255,255,0.06);
+    }
+</style>
+</head>
+<body class="h-screen w-screen flex flex-col relative select-none">
+
+<div class="grid-bg"></div>
+
+<!-- MAIN LAYOUT -->
+<div class="flex-1 flex w-full overflow-hidden z-10">
+    
+    <!-- SIDEBAR -->
+    <aside class="w-64 glass flex flex-col border-r border-borderbg h-full">
+        <!-- Logo -->
+        <div class="p-6 flex items-center gap-3">
+            <div class="w-8 h-8 rotate-45 border-2 border-cyan flex items-center justify-center shadow-lg shadow-cyan/20">
+                <div class="w-3.5 h-3.5 bg-cyan"></div>
+            </div>
+            <span class="text-sm font-extrabold tracking-[0.4em] uppercase text-white">CÉNIT</span>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="flex-1 px-4 py-2 space-y-1">
+            <a href="{% url 'landing' %}" class="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-white/50 hover:text-white hover:bg-white/5 transition-all">
+                <span class="material-symbols-outlined">home</span>
+                Inicio Landing
+            </a>
+            <a href="{% url 'songs_overview' %}" class="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-white/50 hover:text-white hover:bg-white/5 transition-all">
+                <span class="material-symbols-outlined">dashboard</span>
+                Panel de Control
+            </a>
+            <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-cyan bg-cyan/10 transition-all border border-cyan/10">
+                <span class="material-symbols-outlined text-cyan">play_circle</span>
+                Reproductor Web
+            </a>
+        </nav>
+
+        <!-- User Info / Logout -->
+        <div class="p-4 border-t border-borderbg flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-cyan/10 border border-cyan/20 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-cyan text-lg">person</span>
+                </div>
+                <div class="truncate max-w-[120px]">
+                    <p class="text-xs text-white font-bold truncate">{{ request.user.username|upper }}</p>
+                    <p class="text-[10px] text-white/40 truncate">Usuario Activo</p>
+                </div>
+            </div>
+            <a href="{% url 'logout' %}" class="text-white/40 hover:text-red-400 p-1.5 rounded-lg hover:bg-white/5 transition-colors">
+                <span class="material-symbols-outlined text-lg">logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- CONTENT AREA -->
+    <main class="flex-1 flex flex-col overflow-hidden relative">
+        <!-- Top bar inside main -->
+        <header class="h-16 px-8 flex items-center justify-between border-b border-borderbg relative z-10 glass">
+            <h1 class="text-base font-bold tracking-wider text-white uppercase">Ecosistema de Streaming</h1>
+            <div class="flex items-center gap-4">
+                <span class="text-xs bg-cyan/10 text-cyan border border-cyan/20 px-3 py-1.5 rounded-full font-bold uppercase tracking-widest">
+                    Audio 24-Bit / 192kHz
+                </span>
+            </div>
+        </header>
+
+        <!-- Playlist Grid / Main scrolling container -->
+        <div class="flex-1 overflow-y-auto px-8 py-6 relative z-10 space-y-6">
+            
+            <!-- Hero Banner -->
+            <div class="relative rounded-3xl overflow-hidden p-8 flex items-end min-h-[220px] shadow-2xl border border-borderbg" style="background: linear-gradient(135deg, rgba(69,243,255,0.15) 0%, rgba(167,139,250,0.1) 100%), #0e1017;">
+                <div class="space-y-3 relative z-10">
+                    <span class="text-[10px] font-extrabold uppercase tracking-[0.3em] text-cyan">Reproductor Oficial</span>
+                    <h2 class="text-3xl font-extrabold text-white tracking-tight">Tu Colección de Música</h2>
+                    <p class="text-sm text-white/50 max-w-xl">Disfruta de tus canciones favoritas integradas de forma directa desde tu base de datos y la API de Spotify.</p>
+                </div>
+                <div class="absolute -right-12 -bottom-12 w-64 h-64 bg-cyan/5 rounded-full blur-3xl pointer-events-none"></div>
+            </div>
+
+            <!-- Song List Section -->
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-white tracking-wide">Pistas del Catálogo</h3>
+                    <span class="text-xs text-white/40">{{ canciones|length }} canciones disponibles</span>
+                </div>
+                
+                <!-- Songs Table/List -->
+                <div class="grid grid-cols-1 gap-2">
+                    {% for c in canciones %}
+                    <div class="song-row flex items-center justify-between p-3 rounded-2xl bg-cardbg/40 border border-white/5 hover:border-cyan/20 hover:bg-white/5 transition-all group cursor-pointer" 
+                         data-id="{{ c.id }}"
+                         data-title="{{ c.titulo }}"
+                         data-artist="{{ c.artista }}"
+                         data-cover="{{ c.url_portada }}"
+                         data-audio="{{ c.url_audio }}"
+                         onclick="playSong(this)">
+                        
+                        <!-- Left Part: Art and Titles -->
+                        <div class="flex items-center gap-4 flex-1 truncate">
+                            <div class="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
+                                <img src="{{ c.url_portada }}" alt="{{ c.titulo }}" class="w-full h-full object-cover">
+                                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <span class="material-symbols-outlined text-cyan text-2xl" id="play-row-icon-{{ c.id }}">play_arrow</span>
+                                </div>
+                            </div>
+                            <div class="truncate">
+                                <p class="text-sm font-semibold text-white group-hover:text-cyan transition-colors truncate" id="title-row-{{ c.id }}">{{ c.titulo }}</p>
+                                <p class="text-xs text-white/50 truncate">{{ c.artista }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Right Part: Duration and Actions -->
+                        <div class="flex items-center gap-6">
+                            {% if c.url_audio %}
+                            <span class="text-[10px] text-cyan/70 bg-cyan/10 border border-cyan/10 px-2 py-0.5 rounded-full font-bold uppercase">preview</span>
+                            {% else %}
+                            <span class="text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded-full uppercase">local</span>
+                            {% endif %}
+                            <span class="text-xs text-white/40 font-mono">{{ c.duracion }}s</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="p-8 text-center glass rounded-2xl border border-white/5 space-y-3">
+                        <span class="material-symbols-outlined text-[48px] text-white/20">music_off</span>
+                        <p class="text-sm text-white/40">No hay canciones publicadas en tu catálogo aún.</p>
+                        <a href="{% url 'add_track' %}" class="inline-block text-xs bg-cyan text-black px-4 py-2 rounded-xl font-bold uppercase transition-all hover:scale-105">
+                            Agregar Canción
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- NOW PLAYING BAR (BOTTOM) -->
+<footer class="h-24 glass border-t border-borderbg px-8 flex items-center justify-between z-20 relative">
+    <!-- Left: Song details -->
+    <div class="flex items-center gap-4 w-1/4 min-w-[200px]">
+        <div class="w-14 h-14 rounded-xl overflow-hidden border border-borderbg flex-shrink-0 bg-cardbg shadow-lg">
+            <img id="current-cover" src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=150" alt="Cover" class="w-full h-full object-cover">
+        </div>
+        <div class="truncate">
+            <h4 id="current-title" class="text-sm font-semibold text-white truncate">Reproductor CÉNIT</h4>
+            <p id="current-artist" class="text-xs text-white/40 truncate">Selecciona una pista</p>
+        </div>
+    </div>
+
+    <!-- Center: Playback controls and sliders -->
+    <div class="flex flex-col items-center gap-2 w-2/4 max-w-[600px]">
+        <!-- Control buttons -->
+        <div class="flex items-center gap-6">
+            <button onclick="playPrev()" class="text-white/60 hover:text-white p-1 hover:scale-110 active:scale-95 transition-all">
+                <span class="material-symbols-outlined text-2xl">skip_previous</span>
+            </button>
+            <button onclick="togglePlay()" id="play-btn" class="w-10 h-10 rounded-full bg-cyan text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg shadow-cyan/20">
+                <span class="material-symbols-outlined text-2xl" id="play-icon" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+            </button>
+            <button onclick="playNext()" class="text-white/60 hover:text-white p-1 hover:scale-110 active:scale-95 transition-all">
+                <span class="material-symbols-outlined text-2xl">skip_next</span>
+            </button>
+        </div>
+        <!-- Progress bar -->
+        <div class="w-full flex items-center gap-3">
+            <span id="time-current" class="text-[10px] text-white/40 font-mono w-8 text-right">0:00</span>
+            <input type="range" id="progress-bar" value="0" class="flex-1" step="0.1" onchange="seekAudio()">
+            <span id="time-duration" class="text-[10px] text-white/40 font-mono w-8">0:00</span>
+        </div>
+    </div>
+
+    <!-- Right: Volume & Audio visualizer -->
+    <div class="flex items-center justify-end gap-6 w-1/4 min-w-[200px]">
+        <!-- Visualizer -->
+        <div class="flex items-end gap-[3px] h-8 w-12 justify-center" id="visualizer-container">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </div>
+
+        <!-- Volume control -->
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-white/50 text-xl" id="volume-icon">volume_up</span>
+            <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.7" class="w-20" oninput="changeVolume()">
+        </div>
+    </div>
+</footer>
+
+<!-- HIDDEN HTML5 AUDIO ELEMENT -->
+<audio id="main-audio" style="display:none;"></audio>
+
+<!-- PLAYER ENGINE JAVASCRIPT -->
+<script>
+    const audio = document.getElementById('main-audio');
+    const playBtn = document.getElementById('play-btn');
+    const playIcon = document.getElementById('play-icon');
+    const progressBar = document.getElementById('progress-bar');
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeIcon = document.getElementById('volume-icon');
+    const timeCurrent = document.getElementById('time-current');
+    const timeDuration = document.getElementById('time-duration');
+    const visualizer = document.getElementById('visualizer-container');
+
+    const currentCover = document.getElementById('current-cover');
+    const currentTitle = document.getElementById('current-title');
+    const currentArtist = document.getElementById('current-artist');
+
+    let isPlaying = false;
+    let currentSongRow = null;
+    let playlist = [];
+
+    // Load all songs into a local playlist array
+    document.querySelectorAll('.song-row').forEach(row => {
+        playlist.push({
+            id: row.getAttribute('data-id'),
+            title: row.getAttribute('data-title'),
+            artist: row.getAttribute('data-artist'),
+            cover: row.getAttribute('data-cover'),
+            audio: row.getAttribute('data-audio'),
+            element: row
+        });
+    });
+
+    // Play a selected song
+    function playSong(rowElement) {
+        const id = rowElement.getAttribute('data-id');
+        const title = rowElement.getAttribute('data-title');
+        const artist = rowElement.getAttribute('data-artist');
+        const cover = rowElement.getAttribute('data-cover');
+        const audioUrl = rowElement.getAttribute('data-audio');
+
+        // Reset previous row styling
+        if (currentSongRow) {
+            currentSongRow.classList.remove('bg-cyan/5', 'border-cyan/30');
+            const oldIcon = document.getElementById(`play-row-icon-${currentSongRow.getAttribute('data-id')}`);
+            if (oldIcon) oldIcon.innerText = 'play_arrow';
+        }
+
+        // Update styling of selected row
+        currentSongRow = rowElement;
+        currentSongRow.classList.add('bg-cyan/5', 'border-cyan/30');
+        const newIcon = document.getElementById(`play-row-icon-${id}`);
+        if (newIcon) newIcon.innerText = 'pause';
+
+        // Update Bottom Bar info
+        currentTitle.textContent = title;
+        currentArtist.textContent = artist;
+        currentCover.src = cover;
+
+        // Set audio source
+        if (audioUrl) {
+            audio.src = audioUrl;
+            audio.load();
+            audio.play()
+                .then(() => {
+                    isPlaying = true;
+                    updateUIState();
+                })
+                .catch(err => {
+                    console.log("Audio play error (requires user interaction first):", err);
+                });
+        } else {
+            // If no spotify preview is present, we simulate a mock play
+            audio.src = '';
+            isPlaying = true;
+            updateUIState();
+            simulateMockPlayback(parseInt(rowElement.getAttribute('data-duration') || 30));
+        }
+    }
+
+    // Toggle Play/Pause state
+    function togglePlay() {
+        if (!audio.src && !currentSongRow) {
+            // If no song loaded, pick the first one
+            const firstRow = document.querySelector('.song-row');
+            if (firstRow) playSong(firstRow);
+            return;
+        }
+
+        if (isPlaying) {
+            audio.pause();
+            isPlaying = false;
+        } else {
+            audio.play().catch(e => console.log("Play failed:", e));
+            isPlaying = true;
+        }
+        updateUIState();
+    }
+
+    // Play Previous Song
+    function playPrev() {
+        if (!currentSongRow) return;
+        const currentIndex = playlist.findIndex(s => s.id === currentSongRow.getAttribute('data-id'));
+        if (currentIndex > 0) {
+            playSong(playlist[currentIndex - 1].element);
+        } else {
+            playSong(playlist[playlist.length - 1].element); // Wrap to end
+        }
+    }
+
+    // Play Next Song
+    function playNext() {
+        if (!currentSongRow) return;
+        const currentIndex = playlist.findIndex(s => s.id === currentSongRow.getAttribute('data-id'));
+        if (currentIndex < playlist.length - 1) {
+            playSong(playlist[currentIndex + 1].element);
+        } else {
+            playSong(playlist[0].element); // Wrap to start
+        }
+    }
+
+    // Update Play button state and visualizer
+    function updateUIState() {
+        if (isPlaying) {
+            playIcon.innerText = 'pause';
+            visualizer.classList.add('playing');
+            if (currentSongRow) {
+                const icon = document.getElementById(`play-row-icon-${currentSongRow.getAttribute('data-id')}`);
+                if (icon) icon.innerText = 'pause';
+            }
+        } else {
+            playIcon.innerText = 'play_arrow';
+            visualizer.classList.remove('playing');
+            if (currentSongRow) {
+                const icon = document.getElementById(`play-row-icon-${currentSongRow.getAttribute('data-id')}`);
+                if (icon) icon.innerText = 'play_arrow';
+            }
+        }
+    }
+
+    // Format seconds to mm:ss
+    function formatTime(secs) {
+        const minutes = Math.floor(secs / 60);
+        const seconds = Math.floor(secs % 60);
+        return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    }
+
+    // Sync progress bar with audio
+    audio.addEventListener('timeupdate', () => {
+        if (audio.duration) {
+            const current = audio.currentTime;
+            const duration = audio.duration;
+            progressBar.value = (current / duration) * 100;
+            timeCurrent.textContent = formatTime(current);
+            timeDuration.textContent = formatTime(duration);
+        }
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+        timeDuration.textContent = formatTime(audio.duration);
+        progressBar.max = 100;
+    });
+
+    audio.addEventListener('ended', () => {
+        playNext();
+    });
+
+    // Seek track
+    function seekAudio() {
+        if (audio.duration) {
+            const newTime = (progressBar.value / 100) * audio.duration;
+            audio.currentTime = newTime;
+        }
+    }
+
+    // Change volume
+    function changeVolume() {
+        audio.volume = volumeSlider.value;
+        if (audio.volume === 0) {
+            volumeIcon.innerText = 'volume_mute';
+        } else if (audio.volume < 0.5) {
+            volumeIcon.innerText = 'volume_down';
+        } else {
+            volumeIcon.innerText = 'volume_up';
+        }
+    }
+
+    // Mock playback simulation for songs without active audio URL (preview)
+    let mockInterval = null;
+    let mockCurrent = 0;
+    let mockDuration = 180;
+    function simulateMockPlayback(dur) {
+        clearInterval(mockInterval);
+        mockCurrent = 0;
+        mockDuration = dur;
+        timeDuration.textContent = formatTime(mockDuration);
+        
+        mockInterval = setInterval(() => {
+            if (!isPlaying) return;
+            mockCurrent += 1;
+            if (mockCurrent >= mockDuration) {
+                clearInterval(mockInterval);
+                playNext();
+                return;
+            }
+            progressBar.value = (mockCurrent / mockDuration) * 100;
+            timeCurrent.textContent = formatTime(mockCurrent);
+        }, 1000);
+    }
+    
+    // Clear simulation on actual audio load
+    audio.addEventListener('play', () => {
+        clearInterval(mockInterval);
+    });
+</script>
+</body>
+</html>

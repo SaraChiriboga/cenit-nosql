@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'catalogo',
     'suscripciones',
     'usuarios',
+    'reproductor',
 ]
 
 MIDDLEWARE = [
@@ -62,6 +63,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'usuarios.middleware.RoleRestrictionMiddleware',
 ]
 
 ROOT_URLCONF = 'cenit.urls'
@@ -160,3 +162,9 @@ LOGOUT_REDIRECT_URL = 'landing'
 # Email backend configuration for local development
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'admin@cenit.com'
+
+# Custom Authentication Backends
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # Default for superusers (e.g. cenit-sa)
+    'usuarios.auth_backend.MongoAuthBackend',     # Custom for MongoDB users (e.g. Sofia, Camila, Mateo)
+]

@@ -4,6 +4,7 @@ from django.contrib.auth import views as auth_views
 from django.views.generic import TemplateView
 
 from catalogo import views as catalogo_views
+from usuarios.views import login_admin_view, login_analista_view, login_player_view
 
 urlpatterns = [
     # Ruta raíz del sitio web
@@ -12,9 +13,10 @@ urlpatterns = [
     # Rutas del módulo de catálogo
     path('catalogo/', include('catalogo.urls')),
 
-    # Rutas de autenticación
-    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
-    path('login/analista/', auth_views.LoginView.as_view(template_name='registration/login_analista.html'), name='login_analista'),
+    # Rutas de autenticación — cada una valida el rol antes de permitir acceso
+    path('login/',          login_admin_view,    name='login'),
+    path('login/analista/', login_analista_view, name='login_analista'),
+    path('login/player/',   login_player_view,   name='login_player'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
     # El cuarto de máquinas
@@ -25,6 +27,9 @@ urlpatterns = [
 
     # Conexión a la app de usuarios (¡Esta es la única línea que necesitas aquí!)
     path('usuarios/', include('usuarios.urls')),
+
+    # Conexión a la app de reproductor web
+    path('player/', include('reproductor.urls')),
 
     path('', TemplateView.as_view(template_name='landing.html'), name='landing'),
 ]

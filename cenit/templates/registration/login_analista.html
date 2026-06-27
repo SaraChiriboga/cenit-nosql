@@ -4,323 +4,371 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Cénit | Acceso Analista de Datos</title>
-
+<title>Cénit | Consola de Analista</title>
+<meta name="description" content="Acceso al panel de reportería y métricas de Cénit.">
 <link rel="icon" type="image/svg+xml" href="{% static 'logo.svg' %}">
 
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind (sin plugin forms para no romper los inputs) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 
-<script id="tailwind-config">
+<script>
   tailwind.config = {
     darkMode: "class",
-    theme: {
-      extend: {
-        "colors": {
-          "on-error": "#690005",
-          "surface-container-high": "#292a2e",
-          "surface-bright": "#38393e",
-          "surface": "#121317",
-          "secondary-fixed": "#62f9ee",
-          "tertiary-fixed": "#dae3f2",
-          "on-surface-variant": "#bac9ca",
-          "on-secondary-fixed-variant": "#00504b",
-          "on-primary-container": "#006c72",
-          "surface-container": "#1f1f24",
-          "secondary-fixed-dim": "#3cdcd1",
-          "on-tertiary-fixed-variant": "#3e4753",
-          "tertiary-fixed-dim": "#bec7d6",
-          "outline": "#849395",
-          "on-surface": "#e3e2e8",
-          "inverse-on-surface": "#2f3035",
-          "surface-dim": "#121317",
-          "surface-tint": "#0cdbe7",
-          "on-tertiary": "#28313c",
-          "surface-variant": "#343439",
-          "secondary": "#44e2d7",
-          "surface-container-low": "#1a1b20",
-          "primary-fixed-dim": "#0cdbe7",
-          "outline-variant": "#3b494a",
-          "on-tertiary-container": "#59626f",
-          "on-secondary-container": "#004c48",
-          "secondary-container": "#00c5bb",
-          "on-primary-fixed-variant": "#004f54",
-          "tertiary-container": "#d5deed",
-          "primary-fixed": "#75f5ff",
-          "primary-container": "#45f3ff",
-          "on-primary": "#00363a",
-          "on-secondary-fixed": "#00201e",
-          "primary": "#ebfeff",
-          "error-container": "#93000a",
-          "error": "#ffb4ab",
-          "background": "#121317",
-          "on-error-container": "#ffdad6",
-          "inverse-primary": "#00696f",
-          "inverse-surface": "#e3e2e8",
-          "on-secondary": "#003734",
-          "tertiary": "#f9faff",
-          "on-primary-fixed": "#002022",
-          "surface-container-highest": "#343439",
-          "on-tertiary-fixed": "#131c27",
-          "on-background": "#e3e2e8",
-          "surface-container-lowest": "#0d0e12"
-        },
-        "fontFamily": {
-          "headline-lg": ["Inter", "sans-serif"],
-          "body-md": ["Inter", "sans-serif"],
-          "label-sm": ["Inter", "sans-serif"],
-        },
-      },
-    }
+    theme: { extend: { fontFamily: { sans: ["Inter", "sans-serif"] } } }
   }
 </script>
-<style>
-    body { background-color: #08090d; overflow: hidden; font-family: 'Inter', sans-serif; }
-    
-    /* ─── GRID BG ─── */
-    .grid-bg {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background-image:
-        linear-gradient(rgba(69,243,255,0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(69,243,255,0.025) 1px, transparent 1px);
-      background-size: 60px 60px;
-    }
-    
-    .aurora-blur { filter: blur(120px); opacity: 0.25; animation: drift 20s infinite alternate ease-in-out; }
-    @keyframes drift {
-        0% { transform: translate(-10%, -10%) scale(1); }
-        100% { transform: translate(10%, 15%) scale(1.2); }
-    }
-    .glass-ultra {
-        background: rgba(8, 9, 13, 0.7); backdrop-filter: blur(40px);
-        border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 0 40px rgba(69, 243, 255, 0.05);
-    }
-    .stagger-in { opacity: 0; transform: translateY(20px); animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
-    .magnetic-btn { transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease; }
-    .magnetic-btn:hover { box-shadow: 0 0 25px rgba(69, 243, 255, 0.4); }
-    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; color: rgba(255, 255, 255, 0.4); }
-    .focus-within-cyan:focus-within .material-symbols-outlined { color: #45F3FF; }
 
-    /* Floating charts */
-    .chart-container {
-        position: fixed;
-        pointer-events: none;
-        z-index: 1;
-        opacity: 0.25;
-        transition: transform 0.2s ease-out;
-    }
-    
-    /* Animation for SVG drawing */
-    .draw-line {
-        stroke-dasharray: 1000;
-        stroke-dashoffset: 1000;
-        animation: draw 3s forwards ease-in-out;
-    }
-    
-    @keyframes draw {
-        to { stroke-dashoffset: 0; }
-    }
+<style>
+  :root {
+    --cyan:       #45f3ff;
+    --cyan-dim:   rgba(69,243,255,0.1);
+    --cyan-glow:  rgba(69,243,255,0.35);
+    --border:     rgba(255,255,255,0.07);
+    --border-2:   rgba(69,243,255,0.2);
+    --text:       #e3e2e8;
+    --muted:      #5a6080;
+    --muted-2:    #8890b0;
+    --danger:     #ff4d6a;
+    --danger-dim: rgba(255,77,106,0.1);
+    --bg:         #08090d;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  body { background: var(--bg); font-family: 'Inter', sans-serif; overflow: hidden; }
+
+  /* ── Background ── */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(69,243,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(69,243,255,0.025) 1px, transparent 1px);
+    background-size: 52px 52px;
+  }
+  .aurora { filter: blur(120px); opacity: 0.28; animation: drift 20s infinite alternate ease-in-out; }
+  @keyframes drift { 0%{transform:translate(-8%,-8%) scale(1)} 100%{transform:translate(8%,14%) scale(1.18)} }
+
+  /* ── Floating charts ── */
+  .float-chart {
+    position: fixed; pointer-events: none; z-index: 1;
+    opacity: 0; transition: transform 0.15s ease-out;
+    animation: chartIn 1.4s ease forwards;
+  }
+  @keyframes chartIn { to { opacity: 0.2; } }
+  .chart-left  { top: 6vh;   left: 2vw;  width: clamp(180px,17vw,260px); animation-delay: 0.6s; }
+  .chart-right { bottom: 6vh; right: 2vw; width: clamp(220px,21vw,320px); animation-delay: 1s;   }
+  .chart-top   { top: 8vh; right: 5vw;  width: clamp(130px,13vw,190px); animation-delay: 1.4s; }
+
+  .bar-up {
+    transform-origin: bottom; transform: scaleY(0);
+    animation: barUp 1s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+  .bar-up:nth-child(1){animation-delay:.7s}
+  .bar-up:nth-child(2){animation-delay:.85s}
+  .bar-up:nth-child(3){animation-delay:1s}
+  .bar-up:nth-child(4){animation-delay:1.15s}
+  .bar-up:nth-child(5){animation-delay:1.3s}
+  @keyframes barUp { to { transform: scaleY(1); } }
+
+  .line-draw {
+    stroke-dasharray: 650; stroke-dashoffset: 650;
+    animation: drawLine 2.4s ease 1.2s forwards;
+  }
+  @keyframes drawLine { to { stroke-dashoffset: 0; } }
+
+  @keyframes donut1 { to { stroke-dasharray: 48 52; } }
+  @keyframes donut2 { to { stroke-dasharray: 30 70; } }
+
+  /* ── Card ── */
+  .login-card {
+    background: rgba(8,9,13,0.75); backdrop-filter: blur(40px);
+    border: 1px solid var(--border); border-top: 1px solid rgba(69,243,255,0.15);
+    border-radius: 22px;
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.03) inset;
+  }
+  .accent-bar::before {
+    content: ''; display: block; width: 40px; height: 3px;
+    background: linear-gradient(90deg, var(--cyan), #0cdbe7);
+    border-radius: 2px; margin: 0 auto 32px;
+    box-shadow: 0 0 12px var(--cyan-glow);
+  }
+  .card-enter { opacity: 0; transform: translateY(24px); transition: opacity 0.9s cubic-bezier(0.16,1,0.3,1), transform 0.9s cubic-bezier(0.16,1,0.3,1); }
+  .card-enter.show { opacity: 1; transform: translateY(0); }
+
+  /* ── Form — IDENTICAL to player login ── */
+  .form-group { margin-bottom: 20px; }
+
+  .form-label {
+    display: block; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted-2); margin-bottom: 8px;
+  }
+  .form-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .form-label-row .form-label { margin-bottom: 0; }
+
+  .forgot-link { font-size: 12px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .forgot-link:hover { color: var(--cyan); }
+
+  .input-wrap {
+    position: relative; border-radius: 12px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+  }
+  .input-wrap:focus-within {
+    border-color: var(--border-2);
+    background: rgba(69,243,255,0.03);
+    box-shadow: 0 0 0 3px rgba(69,243,255,0.08), 0 0 20px rgba(69,243,255,0.06);
+  }
+  .input-icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .input-icon .material-symbols-outlined {
+    font-size: 18px; color: var(--muted); line-height: 1;
+    font-variation-settings: 'FILL' 0, 'wght' 300;
+    transition: color 0.25s;
+  }
+  .input-wrap:focus-within .input-icon .material-symbols-outlined { color: var(--cyan); }
+
+  .form-input {
+    width: 100%; background: transparent;
+    border: none; outline: none;
+    padding: 14px 14px 14px 44px;
+    font-size: 14px; font-family: 'Inter', sans-serif;
+    color: var(--text); letter-spacing: 0.01em;
+  }
+  .form-input::placeholder { color: var(--muted); }
+  .form-input[type="password"] { padding-right: 46px; letter-spacing: 0.15em; }
+
+  .toggle-pass {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    padding: 4px; display: flex; align-items: center;
+  }
+  .toggle-pass .material-symbols-outlined {
+    font-size: 18px; color: var(--muted);
+    font-variation-settings: 'FILL' 0, 'wght' 300; transition: color 0.2s;
+  }
+  .toggle-pass:hover .material-symbols-outlined { color: var(--cyan); }
+
+  /* Submit */
+  .btn-submit {
+    width: 100%; padding: 15px 24px; margin-top: 8px;
+    border: none; border-radius: 12px; cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700;
+    background: linear-gradient(135deg, #20d8e8 0%, #0cb8e0 50%, #3df0ff 100%);
+    color: #050810;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 24px rgba(69,243,255,0.3), 0 1px 0 rgba(255,255,255,0.15) inset;
+    transition: transform 0.2s cubic-bezier(0.175,0.885,0.32,1.275), box-shadow 0.25s;
+    position: relative; overflow: hidden;
+  }
+  .btn-submit::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .btn-submit:hover::before { opacity: 1; }
+  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(69,243,255,0.45), 0 1px 0 rgba(255,255,255,0.15) inset; }
+  .btn-submit:active { transform: scale(0.98); }
+  .btn-submit .material-symbols-outlined { font-size: 18px; font-variation-settings: 'FILL' 0, 'wght' 600; transition: transform 0.2s; color: #050810; }
+  .btn-submit:hover .material-symbols-outlined { transform: translateX(3px); }
+
+  /* Error */
+  .error-alert {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 13px 16px; border-radius: 12px;
+    background: var(--danger-dim); border: 1px solid rgba(255,77,106,0.25);
+    color: #ff8fa0; font-size: 13px; margin-bottom: 24px;
+    animation: slideDown 0.4s ease;
+  }
+  .error-alert .material-symbols-outlined { font-size: 18px; color: var(--danger); flex-shrink: 0; margin-top: 1px; font-variation-settings: 'FILL' 1, 'wght' 400; }
+  @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
 </style>
 </head>
-<body class="flex items-center justify-center min-h-screen text-on-surface relative">
+<body class="flex items-center justify-center min-h-screen relative">
 
-<a href="{% url 'landing' %}" class="absolute top-8 left-8 z-50 flex items-center gap-2 text-white/40 hover:text-white transition-colors duration-300">
-    <span class="material-symbols-outlined text-[20px]">arrow_back</span>
-    <span class="font-body-md text-sm font-medium">Volver al inicio</span>
+<div class="bg-grid"></div>
+
+<!-- Aurora -->
+<div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+  <div class="aurora absolute -top-1/4 -left-1/4 w-[55%] h-[55%] rounded-full" style="background:#45f3ff;"></div>
+  <div class="aurora absolute bottom-0 -right-1/4 w-[45%] h-[45%] rounded-full" style="background:#44e2d7;animation-delay:-6s;"></div>
+</div>
+
+<!-- Chart bars LEFT -->
+<div class="float-chart chart-left hidden lg:block" id="chart-left">
+  <svg viewBox="0 0 240 190" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="20" y1="162" x2="220" y2="162" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+    <line x1="20" y1="30"  x2="20"  y2="162" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+    <line x1="20" y1="122" x2="220" y2="122" stroke="rgba(255,255,255,0.06)" stroke-dasharray="4 4"/>
+    <line x1="20" y1="82"  x2="220" y2="82"  stroke="rgba(255,255,255,0.06)" stroke-dasharray="4 4"/>
+    <line x1="20" y1="42"  x2="220" y2="42"  stroke="rgba(255,255,255,0.06)" stroke-dasharray="4 4"/>
+    <defs>
+      <linearGradient id="cg1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#45f3ff" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#45f3ff" stop-opacity="0.08"/>
+      </linearGradient>
+      <linearGradient id="cg2" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0cdbe7" stop-opacity="0.8"/>
+        <stop offset="100%" stop-color="#0cdbe7" stop-opacity="0.06"/>
+      </linearGradient>
+    </defs>
+    <rect class="bar-up" x="37"  y="72"  width="22" height="90"  fill="url(#cg1)" rx="4"/>
+    <rect class="bar-up" x="74"  y="42"  width="22" height="120" fill="url(#cg2)" rx="4"/>
+    <rect class="bar-up" x="111" y="92"  width="22" height="70"  fill="url(#cg1)" rx="4"/>
+    <rect class="bar-up" x="148" y="32"  width="22" height="130" fill="url(#cg2)" rx="4"/>
+    <rect class="bar-up" x="185" y="62"  width="22" height="100" fill="url(#cg1)" rx="4"/>
+  </svg>
+</div>
+
+<!-- Chart line RIGHT -->
+<div class="float-chart chart-right hidden lg:block" id="chart-right">
+  <svg viewBox="0 0 300 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="10" y1="140" x2="290" y2="140" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+    <line x1="10" y1="100" x2="290" y2="100" stroke="rgba(255,255,255,0.06)" stroke-dasharray="4 4"/>
+    <line x1="10" y1="60"  x2="290" y2="60"  stroke="rgba(255,255,255,0.06)" stroke-dasharray="4 4"/>
+    <defs>
+      <linearGradient id="lg1" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#45f3ff"/>
+        <stop offset="100%" stop-color="#0cdbe7"/>
+      </linearGradient>
+      <linearGradient id="la1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#45f3ff" stop-opacity="0.4"/>
+        <stop offset="100%" stop-color="#45f3ff" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path class="line-draw" d="M10 112 Q60 128 92 76 T168 38 T238 88 T290 22" stroke="url(#lg1)" stroke-width="2.5" fill="none"/>
+    <path d="M10 112 Q60 128 92 76 T168 38 T238 88 T290 22 L290 140 L10 140 Z" fill="url(#la1)" opacity="0.2"/>
+    <circle cx="92"  cy="76" r="4" fill="#45f3ff" filter="drop-shadow(0 0 5px #45f3ff)"/>
+    <circle cx="168" cy="38" r="4" fill="#45f3ff" filter="drop-shadow(0 0 5px #45f3ff)"/>
+    <circle cx="238" cy="88" r="4" fill="#0cdbe7" filter="drop-shadow(0 0 5px #0cdbe7)"/>
+  </svg>
+</div>
+
+<!-- Donut TOP-RIGHT -->
+<div class="float-chart chart-top hidden xl:block" id="chart-top">
+  <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="60" cy="60" r="44" stroke="rgba(255,255,255,0.06)" stroke-width="13"/>
+    <circle cx="60" cy="60" r="44" stroke="#45f3ff" stroke-width="13" stroke-linecap="round"
+      stroke-dasharray="0 100" pathLength="100" transform="rotate(-90 60 60)"
+      style="animation:donut1 1.2s ease 1.5s forwards;"/>
+    <circle cx="60" cy="60" r="44" stroke="#0cdbe7" stroke-width="13" stroke-linecap="round"
+      stroke-dasharray="0 100" pathLength="100" transform="rotate(72 60 60)"
+      style="animation:donut2 1.2s ease 1.7s forwards;"/>
+  </svg>
+</div>
+
+<!-- Back -->
+<a href="{% url 'landing' %}" class="fixed top-7 left-7 z-50 flex items-center gap-2 text-white/30 hover:text-white/80 transition-colors duration-300 text-sm font-medium no-underline">
+  <span class="material-symbols-outlined" style="font-size:18px;color:inherit;font-variation-settings:'FILL' 0,'wght' 300;">arrow_back</span>
+  Volver al inicio
 </a>
 
-<!-- BACKGROUND LAYERS -->
-<div class="grid-bg"></div>
-<div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-    <div class="aurora-blur absolute -top-1/4 -left-1/4 w-[60%] h-[60%] bg-primary-container rounded-full"></div>
-    <div class="aurora-blur absolute top-1/2 -right-1/4 w-[50%] h-[50%] bg-secondary rounded-full" style="animation-delay: -5s;"></div>
-</div>
+<!-- Card -->
+<main class="relative z-10 w-full max-w-[440px] px-5 sm:px-0 card-enter" id="login-card">
+  <div class="login-card accent-bar p-8 sm:p-11">
 
-<!-- FLOATING SVG CHARTS (Analyst Theme) -->
-<div class="chart-container top-16 left-16 w-72 h-56 hidden md:block" id="chart-left">
-    <!-- SVG Bar Chart -->
-    <svg viewBox="0 0 240 180" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <line x1="20" y1="150" x2="220" y2="150" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
-        <line x1="20" y1="30" x2="20" y2="150" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
-        
-        <!-- Grid lines -->
-        <line x1="20" y1="110" x2="220" y2="110" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4 4" />
-        <line x1="20" y1="70" x2="220" y2="70" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4 4" />
-        
-        <!-- Bars -->
-        <rect x="40" y="80" width="20" height="70" fill="url(#cyan-grad)" rx="4" />
-        <rect x="75" y="50" width="20" height="100" fill="url(#cyan-grad)" rx="4" />
-        <rect x="110" y="100" width="20" height="50" fill="url(#cyan-grad)" rx="4" />
-        <rect x="145" y="30" width="20" height="120" fill="url(#purple-grad)" rx="4" />
-        <rect x="180" y="60" width="20" height="90" fill="url(#purple-grad)" rx="4" />
-        
-        <defs>
-            <linearGradient id="cyan-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#45f3ff" stop-opacity="0.8" />
-                <stop offset="100%" stop-color="#45f3ff" stop-opacity="0.15" />
-            </linearGradient>
-            <linearGradient id="purple-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.8" />
-                <stop offset="100%" stop-color="#a78bfa" stop-opacity="0.15" />
-            </linearGradient>
-        </defs>
-    </svg>
-</div>
-
-<div class="chart-container bottom-16 right-16 w-96 h-56 hidden md:block" id="chart-right">
-    <!-- SVG Line Chart -->
-    <svg viewBox="0 0 300 150" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <line x1="10" y1="130" x2="290" y2="130" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
-        
-        <!-- Chart path -->
-        <path d="M10 100 Q 50 115 80 70 T 150 35 T 220 85 T 290 20" stroke="url(#line-cyan)" stroke-width="3" fill="none" class="draw-line" />
-        <path d="M10 100 Q 50 115 80 70 T 150 35 T 220 85 T 290 20 L 290 130 L 10 130 Z" fill="url(#line-area)" opacity="0.18" />
-        
-        <!-- Dots -->
-        <circle cx="80" cy="70" r="5" fill="#45f3ff" filter="drop-shadow(0 0 4px #45f3ff)" />
-        <circle cx="150" cy="35" r="5" fill="#45f3ff" filter="drop-shadow(0 0 4px #45f3ff)" />
-        <circle cx="220" cy="85" r="5" fill="#a78bfa" filter="drop-shadow(0 0 4px #a78bfa)" />
-        
-        <defs>
-            <linearGradient id="line-cyan" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stop-color="#45f3ff" />
-                <stop offset="100%" stop-color="#a78bfa" />
-            </linearGradient>
-            <linearGradient id="line-area" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#45f3ff" stop-opacity="0.6" />
-                <stop offset="100%" stop-color="#45f3ff" stop-opacity="0" />
-            </linearGradient>
-        </defs>
-    </svg>
-</div>
-
-<main class="relative z-10 w-full max-w-[460px] px-6 md:px-0">
-    <div class="glass-ultra rounded-[2rem] p-8 md:p-12 opacity-0 transform translate-y-12 transition-all duration-[1000ms] ease-out" id="login-card">
-
-        <div class="text-center mb-10 stagger-in" style="animation-delay: 0.1s;">
-            <div class="inline-flex items-center justify-center mb-4 p-3 rounded-2xl bg-[#45f3ff]/10 border border-[#45f3ff]/20">
-                <span class="material-symbols-outlined text-[36px] text-[#45f3ff]" style="font-variation-settings: 'FILL' 1;">monitoring</span>
-            </div>
-            <h1 class="font-headline-lg text-headline-lg font-extrabold text-white tracking-tight mb-2">
-                Consola de Analista
-            </h1>
-            <p class="font-body-md text-body-md text-white/50">
-                Ingresa al panel de reportería y métricas de CÉNIT.
-            </p>
-        </div>
-
-        {% if form.errors %}
-            <div class="stagger-in mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium flex items-start gap-3 backdrop-blur-sm" style="animation-delay: 0.15s;">
-                <span class="material-symbols-outlined text-red-400 text-[20px] mt-0.5">error</span>
-                <div>
-                    Usuario o contraseña incorrectos. Por favor, verifica tus datos e inténtalo de nuevo.
-                </div>
-            </div>
-        {% endif %}
-
-        <form method="post" action="{% url 'login_analista' %}" class="space-y-6">
-            {% csrf_token %}
-
-            <input type="hidden" name="next" value="{{ next|default:'' }}">
-
-            <div class="stagger-in space-y-2 focus-within-cyan" style="animation-delay: 0.2s;">
-                <label class="font-label-sm text-label-sm text-white/40 uppercase tracking-widest ml-1">Usuario Analista</label>
-                <div class="relative group">
-                    <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none transition-colors duration-300">
-                        <span class="material-symbols-outlined text-xl">query_stats</span>
-                    </div>
-                    <input name="username" class="w-full bg-black/40 border border-white/5 rounded-xl py-4 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-primary-container/50 focus:border-primary-container transition-all duration-300 placeholder-white/20" placeholder="analista_datos" type="text" required autofocus/>
-                </div>
-            </div>
-
-            <div class="stagger-in space-y-2 focus-within-cyan" style="animation-delay: 0.3s;">
-                <div class="flex justify-between items-center">
-                    <label class="font-label-sm text-label-sm text-white/40 uppercase tracking-widest ml-1">Contraseña</label>
-                    <a class="text-xs text-white/30 hover:text-primary-container transition-all duration-300 hover:drop-shadow-[0_0_8px_rgba(69,243,255,0.6)]" href="#">¿Olvidaste tu clave?</a>
-                </div>
-                <div class="relative group">
-                    <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none transition-colors duration-300">
-                        <span class="material-symbols-outlined text-xl">lock</span>
-                    </div>
-                    <input name="password" class="w-full bg-black/40 border border-white/5 rounded-xl py-4 pl-12 pr-12 text-white focus:outline-none focus:ring-2 focus:ring-primary-container/50 focus:border-primary-container transition-all duration-300 placeholder-white/20" id="password-field" placeholder="••••••••••••" type="password" required/>
-                    <button class="absolute inset-y-0 right-4 flex items-center text-white/40 hover:text-primary-container transition-colors" onclick="togglePassword()" type="button">
-                        <span class="material-symbols-outlined text-xl" id="password-toggle-icon">visibility</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="stagger-in pt-4" style="animation-delay: 0.5s;">
-                <button type="submit" class="magnetic-btn w-full bg-primary-container text-black py-4 rounded-xl font-bold font-body-md hover:scale-[1.03] active:scale-95 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-primary-container/30">
-                    <span>Iniciar Sesión de Datos</span>
-                    <span class="material-symbols-outlined text-black group-hover:translate-x-1 transition-transform" style="font-variation-settings: 'wght' 700;">arrow_forward</span>
-                </button>
-            </div>
-        </form>
+    <!-- Brand -->
+    <div class="flex items-center justify-center gap-2.5 mb-8">
+      <img src="{% static 'logo.svg' %}" alt="Cénit" class="w-8 h-8" style="filter:drop-shadow(0 0 8px rgba(69,243,255,0.55));">
+      <span style="font-size:18px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--text);">CÉNIT</span>
+      <span style="font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--cyan);background:var(--cyan-dim);border:1px solid rgba(69,243,255,0.2);padding:2px 8px;border-radius:20px;">ANALISTA</span>
     </div>
 
-    <footer class="mt-8 text-center stagger-in" style="animation-delay: 0.7s;">
-        <p class="font-label-sm text-label-sm text-white/20 flex items-center justify-center gap-1">
-            <span class="material-symbols-outlined text-[14px]">query_stats</span> Módulo de Inteligencia de Negocios
-        </p>
-    </footer>
+    <!-- Title -->
+    <div class="text-center mb-8">
+      <h1 style="font-size:26px;font-weight:800;letter-spacing:-0.02em;color:#fff;margin-bottom:8px;">Consola de Analista</h1>
+      <p style="font-size:14px;color:var(--muted-2);line-height:1.6;">Panel de reportería, métricas y análisis de datos.</p>
+    </div>
+
+    {% if form.errors %}
+    <div class="error-alert" role="alert">
+      <span class="material-symbols-outlined">error</span>
+      <span>Credenciales incorrectas. Verifica tus datos e inténtalo de nuevo.</span>
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'login_analista' %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next|default:'' }}">
+
+      <!-- Usuario -->
+      <div class="form-group">
+        <label class="form-label" for="id_username">Usuario Analista</label>
+        <div class="input-wrap">
+          <span class="input-icon"><span class="material-symbols-outlined">query_stats</span></span>
+          <input class="form-input" id="id_username" name="username" type="text"
+            placeholder="analista_datos" required autofocus autocomplete="username">
+        </div>
+      </div>
+
+      <!-- Contraseña -->
+      <div class="form-group">
+        <div class="form-label-row">
+          <label class="form-label" for="id_password">Contraseña</label>
+          <a href="#" class="forgot-link">¿Olvidaste tu clave?</a>
+        </div>
+        <div class="input-wrap">
+          <span class="input-icon"><span class="material-symbols-outlined">lock</span></span>
+          <input class="form-input" id="id_password" name="password" type="password"
+            placeholder="••••••••••" required autocomplete="current-password">
+          <button type="button" class="toggle-pass" id="toggle-btn" aria-label="Mostrar contraseña">
+            <span class="material-symbols-outlined" id="toggle-icon">visibility</span>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="submit-btn">
+        <span>Acceder al Panel</span>
+        <span class="material-symbols-outlined">arrow_forward</span>
+      </button>
+    </form>
+
+    <p class="text-center mt-6" style="font-size:12px;color:var(--muted);">
+      ¿Eres administrador? <a href="{% url 'login' %}" style="color:var(--muted-2);text-decoration:none;" onmouseover="this.style.color='var(--cyan)'" onmouseout="this.style.color='var(--muted-2)'">Consola admin</a>
+      &nbsp;·&nbsp;
+      <a href="{% url 'login_player' %}" style="color:var(--muted-2);text-decoration:none;" onmouseover="this.style.color='var(--cyan)'" onmouseout="this.style.color='var(--muted-2)'">Player</a>
+    </p>
+
+  </div>
 </main>
 
 <script>
-    window.addEventListener('DOMContentLoaded', () => {
-        const card = document.getElementById('login-card');
-        setTimeout(() => {
-            card.style.opacity = '1';
-            card.style.transform = 'translateY(0)';
-        }, 100);
+  setTimeout(() => document.getElementById('login-card').classList.add('show'), 80);
+
+  document.getElementById('toggle-btn').addEventListener('click', () => {
+    const inp = document.getElementById('id_password');
+    const ico = document.getElementById('toggle-icon');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    ico.textContent = inp.type === 'password' ? 'visibility' : 'visibility_off';
+  });
+
+  const btn = document.getElementById('submit-btn');
+  btn.addEventListener('mousemove', (e) => {
+    const r = btn.getBoundingClientRect();
+    const x = (e.clientX - r.left - r.width  / 2) * 0.12;
+    const y = (e.clientY - r.top  - r.height / 2) * 0.12;
+    btn.style.transform = `translate(${x}px, ${y}px) translateY(-2px)`;
+  });
+  btn.addEventListener('mouseleave', () => { btn.style.transform = ''; });
+
+  window.addEventListener('mousemove', (e) => {
+    const x = e.clientX / window.innerWidth  - 0.5;
+    const y = e.clientY / window.innerHeight - 0.5;
+    document.querySelectorAll('.aurora').forEach((el, i) => {
+      el.style.transform = `translate(${x*(i+1)*22}px, ${y*(i+1)*22}px)`;
     });
-
-    function togglePassword() {
-        const passwordField = document.getElementById('password-field');
-        const icon = document.getElementById('password-toggle-icon');
-        if (passwordField.type === 'password') {
-            passwordField.type = 'text';
-            icon.innerText = 'visibility_off';
-        } else {
-            passwordField.type = 'password';
-            icon.innerText = 'visibility';
-        }
-    }
-
-    const btn = document.querySelector('.magnetic-btn');
-    btn.addEventListener('mousemove', (e) => {
-        const rect = btn.getBoundingClientRect();
-        const x = e.clientX - rect.left - rect.width / 2;
-        const y = e.clientY - rect.top - rect.height / 2;
-        btn.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px) scale(1.03)`;
-    });
-
-    btn.addEventListener('mouseleave', () => {
-        btn.style.transform = `translate(0px, 0px) scale(1)`;
-    });
-
-    // Parallax effect on floating charts and aurora
-    window.addEventListener('mousemove', (e) => {
-        const x = (e.clientX / window.innerWidth) - 0.5;
-        const y = (e.clientY / window.innerHeight) - 0.5;
-        
-        document.querySelectorAll('.aurora-blur').forEach((el, i) => {
-            const speed = (i + 1) * 20;
-            el.style.transform = `translate(${x * speed}px, ${y * speed}px)`;
-        });
-
-        // Floating charts move in opposite or offset directions
-        const chartLeft = document.getElementById('chart-left');
-        const chartRight = document.getElementById('chart-right');
-        
-        if (chartLeft) {
-            chartLeft.style.transform = `translate(${x * -30}px, ${y * -30}px)`;
-        }
-        if (chartRight) {
-            chartRight.style.transform = `translate(${x * 40}px, ${y * 40}px)`;
-        }
-    });
+    const cl = document.getElementById('chart-left');
+    const cr = document.getElementById('chart-right');
+    const ct = document.getElementById('chart-top');
+    if (cl) cl.style.transform = `translate(${x*-28}px, ${y*-28}px)`;
+    if (cr) cr.style.transform = `translate(${x*32}px,  ${y*32}px)`;
+    if (ct) ct.style.transform = `translate(${x*-18}px, ${y*18}px)`;
+  });
 </script>
 </body>
 </html>

@@ -627,3 +627,121 @@ def read_role(request, idRol):
         return redirect('roles_overview')
 
     return render(request, 'usuarios/roles/read_role.html', {'rol': rol})
+
+
+# ══════════════════════════════════════════
+#  VISTAS DE LOGIN POR ROL
+#  Cada consola solo acepta el rol correcto.
+# ══════════════════════════════════════════
+
+from django.contrib.auth import authenticate, login, logout
+from django.views.decorators.http import require_http_methods
+from cenit.mongo_client import db as mongo_db
+
+
+def _get_role_from_user(user):
+    """Devuelve el rol del usuario consultando MongoDB (igual que el middleware)."""
+    if user.is_superuser:
+        return 'Administrador'
+    try:
+        mongo_user = mongo_db["usuarios"].find_one({"email": user.email})
+        if mongo_user:
+            rol = mongo_user.get("rol", {})
+            if isinstance(rol, dict):
+                return rol.get("nombreRol", "Usuario")
+            return str(rol)
+    except Exception as e:
+        print("❌ Error al obtener rol:", e)
+    return 'Usuario'
+
+
+@require_http_methods(["GET", "POST"])
+def login_admin_view(request):
+    """Login exclusivo para Administradores."""
+    if request.method == 'GET':
+        if request.user.is_authenticated:
+            role = _get_role_from_user(request.user)
+            if role == 'Administrador':
+                return redirect('songs_overview')
+            logout(request)
+        return render(request, 'registration/login.html')
+
+    username = request.POST.get('username', '').strip()
+    password = request.POST.get('password', '')
+    user = authenticate(request, username=username, password=password)
+
+    if user is None:
+        return render(request, 'registration/login.html', {'form': _fake_error_form()})
+
+    role = _get_role_from_user(user)
+    if role != 'Administrador':
+        return render(request, 'registration/login.html', {
+            'form': _fake_error_form(),
+            'role_error': 'Esta consola es exclusiva para administradores.',
+        })
+
+    login(request, user)
+    return redirect('songs_overview')
+
+
+@require_http_methods(["GET", "POST"])
+def login_analista_view(request):
+    """Login exclusivo para Analistas."""
+    if request.method == 'GET':
+        if request.user.is_authenticated:
+            role = _get_role_from_user(request.user)
+            if role == 'Analista':
+                return redirect('reporte_top_10')
+            logout(request)
+        return render(request, 'registration/login_analista.html')
+
+    username = request.POST.get('username', '').strip()
+    password = request.POST.get('password', '')
+    user = authenticate(request, username=username, password=password)
+
+    if user is None:
+        return render(request, 'registration/login_analista.html', {'form': _fake_error_form()})
+
+    role = _get_role_from_user(user)
+    if role != 'Analista':
+        return render(request, 'registration/login_analista.html', {
+            'form': _fake_error_form(),
+            'role_error': 'Esta consola es exclusiva para analistas de datos.',
+        })
+
+    login(request, user)
+    return redirect('reporte_top_10')
+
+
+@require_http_methods(["GET", "POST"])
+def login_player_view(request):
+    """Login exclusivo para Usuarios del reproductor."""
+    if request.method == 'GET':
+        if request.user.is_authenticated:
+            role = _get_role_from_user(request.user)
+            if role == 'Usuario':
+                return redirect('player_home')
+            logout(request)
+        return render(request, 'registration/login_player.html')
+
+    username = request.POST.get('username', '').strip()
+    password = request.POST.get('password', '')
+    user = authenticate(request, username=username, password=password)
+
+    if user is None:
+        return render(request, 'registration/login_player.html', {'form': _fake_error_form()})
+
+    role = _get_role_from_user(user)
+    if role != 'Usuario':
+        return render(request, 'registration/login_player.html', {
+            'form': _fake_error_form(),
+            'role_error': 'Esta consola es exclusiva para usuarios del reproductor.',
+        })
+
+    login(request, user)
+    return redirect('player_home')
+
+
+class _fake_error_form:
+    """Objeto mínimo para que {% if form.errors %} sea True en los templates."""
+    errors = True
