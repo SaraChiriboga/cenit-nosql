@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from cenit.mongo_client import db
+import requests
 
 class MongoEncoder(json.JSONEncoder):
     def default(self, o):
@@ -59,7 +60,7 @@ def player_home(request):
                 'titulo': d.get('tituloCancion') or 'Sin título',
                 'duracion': d.get('duracionSeg') or 180,
                 'url_portada': d.get('urlPortada') or '',
-                'url_audio': d.get('urlSpotifyAPI') or '',
+                'url_audio': d.get('urlDeezerPreview') or '',
                 'artista': artista_nombre,
                 'artista_id': colabs[0].get('artista_id') if colabs else None,
                 'album_id': d.get('album_id'),
@@ -329,3 +330,50 @@ def toggle_seguimiento(request):
         return JsonResponse({"status": "success", "action": status})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required(login_url='login_player')
+def get_song_preview(request, cancion_id):
+    try:
+        # Find the song in MongoDB
+        cancion_doc = db["Cancion"].find_one({"cancion_id": int(cancion_id)})
+        if not cancion_doc:
+            return JsonResponse({"status": "error", "message": "Canción no encontrada."}, status=404)
+
+        # If we already have a cached Deezer preview URL in the document, use it!
+        preview_url = cancion_doc.get("urlDeezerPreview")
+        if preview_url:
+            return JsonResponse({"status": "success", "preview_url": preview_url})
+
+        # Otherwise, fetch it on the fly from Deezer
+        # 1. Get artist name
+        colabs = cancion_doc.get("colaboradores", [])
+        artista_nombre = "Artista"
+        for c in colabs:
+            if c.get("rolArtista") == "Principal":
+                artista_nombre = c.get("nombreArtista", "Artista")
+                break
+        else:
+            if colabs:
+                artista_nombre = colabs[0].get("nombreArtista", "Artista")
+
+        titulo = cancion_doc.get("tituloCancion", "")
+
+        # 2. Query Deezer
+        deezer_url = "https://api.deezer.com/search"
+        params = {"q": f"{titulo} {artista_nombre}", "limit": 1}
+        r = requests.get(deezer_url, params=params, timeout=5)
+        deezer_data = r.json().get('data', [])
+        
+        if deezer_data:
+            preview_url = deezer_data[0].get('preview')
+            # Cache it in the Mongo document
+            db["Cancion"].update_one(
+                {"cancion_id": int(cancion_id)},
+                {"$set": {"urlDeezerPreview": preview_url}}
+            )
+            return JsonResponse({"status": "success", "preview_url": preview_url})
+
+        return JsonResponse({"status": "success", "preview_url": None})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+

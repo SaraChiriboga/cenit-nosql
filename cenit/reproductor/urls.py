@@ -8,4 +8,5 @@ urlpatterns = [
     path('api/playlist/remove/', views.quitar_cancion_playlist, name='player_remove_cancion'),
     path('api/favorite/toggle/', views.toggle_favorito, name='player_toggle_favorito'),
     path('api/follow/toggle/', views.toggle_seguimiento, name='player_toggle_seguimiento'),
+    path('api/song/<int:cancion_id>/preview/', views.get_song_preview, name='player_song_preview'),
 ]

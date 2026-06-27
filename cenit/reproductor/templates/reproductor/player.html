@@ -1021,6 +1021,27 @@ tailwind.config = {
       favSongsRows = `<p class="text-xs text-text-dim italic p-4 text-center">No has marcado ninguna canción como favorita todavía.</p>`;
     }
 
+    const followedArtists = data.artistas.filter(a => data.seguidosIds.includes(a.id));
+
+    let followedArtistsHTML = '';
+    followedArtists.forEach(art => {
+      followedArtistsHTML += `
+        <div onclick="switchView('artist', ${art.id})" class="flex items-center gap-3.5 p-2 rounded-xl hover:bg-white/[0.03] cursor-pointer group border border-transparent hover:border-outline/30 transition-all">
+          <div class="w-10 h-10 rounded-full overflow-hidden border border-outline group-hover:border-primary transition-colors shrink-0 bg-surface-container flex items-center justify-center">
+            ${getCoverMarkup(art.url_perfil, art.nombre, "w-full h-full rounded-full")}
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-on-surface group-hover:text-primary transition-colors truncate">${art.nombre}</p>
+            <p class="text-xs text-text-dim mt-0.5">Artista · Siguiendo</p>
+          </div>
+        </div>
+      `;
+    });
+
+    if (followedArtistsHTML === '') {
+      followedArtistsHTML = `<p class="text-xs text-text-dim italic p-4">No sigues a ningún artista todavía.</p>`;
+    }
+
     container.innerHTML = `
       <section class="p-6 md:p-8 space-y-8">
         <div class="flex justify-between items-center">
@@ -1031,13 +1052,26 @@ tailwind.config = {
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <!-- Canciones Favoritas -->
-          <div class="lg:col-span-2 space-y-4">
-            <h3 class="font-display text-lg font-bold text-on-surface flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">favorite</span> Canciones favoritas
-            </h3>
-            <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-3 border border-outline/30">
-              ${favSongsRows}
+          <!-- Column Left -->
+          <div class="lg:col-span-2 space-y-8">
+            <!-- Canciones Favoritas -->
+            <div class="space-y-4">
+              <h3 class="font-display text-lg font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">favorite</span> Canciones favoritas
+              </h3>
+              <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-3 border border-outline/30">
+                ${favSongsRows}
+              </div>
+            </div>
+
+            <!-- Cantantes Seguidos -->
+            <div class="space-y-4">
+              <h3 class="font-display text-lg font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">person</span> Cantantes seguidos
+              </h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-surface-container-low/30 rounded-xl p-4 border border-outline/30">
+                ${followedArtistsHTML}
+              </div>
             </div>
           </div>
 
@@ -1424,7 +1458,7 @@ tailwind.config = {
     clearInterval(mockInterval);
     audio.pause();
 
-    if (song.url_audio) {
+    if (song.url_audio && !song.url_audio.startsWith('http://open.spotify.com') && !song.url_audio.startsWith('https://open.spotify.com')) {
       audio.src = song.url_audio;
       audio.load();
       audio.play().then(() => {
@@ -1434,10 +1468,35 @@ tailwind.config = {
         console.log("Audio preview failed to play:", err);
       });
     } else {
-      audio.removeAttribute('src');
-      isPlaying = true;
-      updateUIState(song.id);
-      simulateMockPlayback(parseInt(song.duracion) || 30, song.id);
+      // Dynamic fetch of Deezer preview URL via backend proxy endpoint
+      fetch(`/player/api/song/${song.id}/preview/`)
+        .then(res => res.json())
+        .then(payload => {
+          if (payload.status === 'success' && payload.preview_url) {
+            song.url_audio = payload.preview_url;
+            audio.src = payload.preview_url;
+            audio.load();
+            audio.play().then(() => {
+              isPlaying = true;
+              updateUIState(song.id);
+            }).catch(err => {
+              console.log("Deezer preview failed to play:", err);
+            });
+          } else {
+            // Fallback simulation
+            audio.removeAttribute('src');
+            isPlaying = true;
+            updateUIState(song.id);
+            simulateMockPlayback(parseInt(song.duracion) || 30, song.id);
+          }
+        })
+        .catch(err => {
+          console.log("Deezer API preview fetch failed:", err);
+          audio.removeAttribute('src');
+          isPlaying = true;
+          updateUIState(song.id);
+          simulateMockPlayback(parseInt(song.duracion) || 30, song.id);
+        });
     }
   }
 
