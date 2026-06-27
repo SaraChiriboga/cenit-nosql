@@ -4,513 +4,1898 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>CÉNIT | Player</title>
-
-<link rel="icon" type="image/svg+xml" href="{% static 'logo.svg' %}">
-
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&amp;display=swap" rel="stylesheet" />
+<title>CÉNIT · Player</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 
 <script id="tailwind-config">
-  tailwind.config = {
-    darkMode: "class",
-    theme: {
-      extend: {
-        colors: {
-          cyan: {
-            DEFAULT: '#45f3ff',
-            dim: 'rgba(69,243,255,0.15)',
-            glow: 'rgba(69,243,255,0.4)',
-          },
-          darkbg: '#08090d',
-          cardbg: '#0e1017',
-          borderbg: 'rgba(255,255,255,0.06)'
-        }
-      }
-    }
-  }
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        background: "#0B0C10",
+        "surface": "#121317",
+        "surface-container": "#16181D",
+        "surface-container-high": "#1C1F26",
+        "surface-container-low": "#0E1014",
+        "on-surface": "#EBFEFF",
+        "on-surface-variant": "#8A9A9C",
+        "text-dim": "#6B7A7C",
+        primary: "#45F3FF",
+        "on-primary": "#00363A",
+        secondary: "#44E2D7",
+        violet: "#7C5CFF",
+        outline: "#2A2D33",
+      },
+      fontFamily: {
+        display: ["Inter", "sans-serif"],
+        body: ["Inter", "sans-serif"],
+        mono: ["JetBrains Mono", "monospace"],
+      },
+    },
+  },
+}
 </script>
 
 <style>
-    body {
-        font-family: 'Inter', sans-serif;
-        background-color: #08090d;
-        color: #e8e9f0;
-        overflow: hidden;
-    }
-    
-    /* ─── GRID BG ─── */
-    .grid-bg {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background-image:
-        linear-gradient(rgba(69,243,255,0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(69,243,255,0.02) 1px, transparent 1px);
-      background-size: 80px 80px;
-    }
+  body { font-family: 'Inter', sans-serif; }
+  .font-mono-num { font-family: 'JetBrains Mono', monospace; font-feature-settings: "tnum"; }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(69,243,255,0.15); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(69,243,255,0.3); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #0B0C10; }
+  ::-webkit-scrollbar-thumb { background: #2A2D33; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a3e46; }
 
-    /* Custom range input styling */
-    input[type="range"] {
-        -webkit-appearance: none;
-        appearance: none;
-        background: rgba(255,255,255,0.1);
-        border-radius: 4px;
-        height: 4px;
-        outline: none;
-        cursor: pointer;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: #45f3ff;
-        box-shadow: 0 0 10px rgba(69,243,255,0.8);
-        transition: transform 0.1s;
-    }
-    input[type="range"]::-webkit-slider-thumb:hover {
-        transform: scale(1.3);
-    }
+  :focus-visible {
+    outline: 2px solid #45F3FF;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 
-    /* Audio visualizer bar animation */
-    .bar {
-        width: 3px;
-        height: 15px;
-        background-color: #45f3ff;
-        border-radius: 3px;
-        transition: height 0.15s ease;
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
     }
-    .playing .bar {
-        animation: bounce 0.8s ease-in-out infinite alternate;
-    }
-    @keyframes bounce {
-        10% { height: 5px; }
-        50% { height: 28px; }
-        100% { height: 10px; }
-    }
-    .bar:nth-child(2) { animation-delay: 0.15s; }
-    .bar:nth-child(3) { animation-delay: 0.3s; }
-    .bar:nth-child(4) { animation-delay: 0.05s; }
-    .bar:nth-child(5) { animation-delay: 0.25s; }
+  }
 
-    /* Glassmorphism utility */
-    .glass {
-        background: rgba(14, 16, 23, 0.7);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.06);
-    }
+  /* ---- Hero atmosphere: layered glow ---- */
+  .hero-atmosphere {
+    background:
+      radial-gradient(ellipse 80% 60% at 30% 0%, rgba(69,243,255,0.14), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 10%, rgba(124,92,255,0.12), transparent 65%),
+      linear-gradient(to bottom, transparent 0%, #0B0C10 92%);
+  }
+
+  /* ---- Signature element: animated waveform ---- */
+  .waveform-bar {
+    width: 3px;
+    background: currentColor;
+    border-radius: 2px;
+    transform-origin: center;
+    animation: wave 1.1s ease-in-out infinite;
+  }
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.35); }
+    50% { transform: scaleY(1); }
+  }
+  .waveform-static .waveform-bar { animation: none; }
+
+  /* Track row hover: number swaps for play, waveform swaps for nothing extra */
+  .track-row .row-index { transition: opacity .15s ease; }
+  .track-row .row-play { opacity: 0; transition: opacity .15s ease, transform .15s ease; transform: scale(0.85); }
+  .track-row:hover .row-index { opacity: 0; }
+  .track-row:hover .row-play { opacity: 1; transform: scale(1); }
+  .track-row.is-playing .row-index { opacity: 0; }
+  .track-row.is-playing .row-wave { display: flex; }
+  .track-row .row-wave { display: none; }
+
+  /* Sticky condensed header reveal */
+  #condensed-header { opacity: 0; transform: translateY(-8px); pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+  #condensed-header.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+  .glass {
+    background: rgba(11, 12, 16, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  /* ---- Horizontal rail / carousel ---- */
+  .rail { display: flex; gap: 1.25rem; overflow-x: auto; scroll-behavior: smooth; scroll-snap-type: x proximity; padding-bottom: 4px; }
+  .rail::-webkit-scrollbar { height: 0; }
+  .rail-item { scroll-snap-align: start; flex-shrink: 0; }
+
+  .rail-nav-btn {
+    opacity: 0; transition: opacity .2s ease, transform .15s ease;
+    background: rgba(11,12,16,0.85);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .rail-section:hover .rail-nav-btn { opacity: 1; }
+  .rail-nav-btn:hover { transform: scale(1.08); border-color: rgba(69,243,255,0.4); }
+  .rail-nav-btn:active { transform: scale(0.95); }
+
+  .media-card { transition: transform .3s cubic-bezier(.2,.8,.2,1), background-color .2s ease; }
+  .media-card:hover { transform: translateY(-3px); }
+
+  .quick-tile { transition: background-color .2s ease; }
+  .quick-tile:hover { background-color: rgba(255,255,255,0.07); }
+
+  .play-glow { box-shadow: 0 0 0 0 rgba(69,243,255,0.4); transition: box-shadow .25s ease, transform .15s ease; }
+  .play-glow:hover { box-shadow: 0 8px 28px -4px rgba(69,243,255,0.45); transform: scale(1.04); }
+  .play-glow:active { transform: scale(0.97); }
+
+  .skeleton {
+    background: linear-gradient(100deg, #16181D 30%, #1C1F26 50%, #16181D 70%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  .nav-link { position: relative; }
+  .nav-link.active::before {
+    content: "";
+    position: absolute; left: -16px; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 18px; border-radius: 2px; background: #45F3FF;
+    box-shadow: 0 0 8px rgba(69,243,255,0.7);
+  }
+
+  /* Range styling */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    height: 4px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #45f3ff;
+    box-shadow: 0 0 10px rgba(69,243,255,0.8);
+    transition: transform 0.1s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.3);
+  }
 </style>
 </head>
-<body class="h-screen w-screen flex flex-col relative select-none">
 
-<div class="grid-bg"></div>
+<body class="bg-background text-on-surface antialiased min-h-screen flex selection:bg-primary/30 selection:text-on-surface">
 
-<!-- MAIN LAYOUT -->
-<div class="flex-1 flex w-full overflow-hidden z-10">
-    
-    <!-- SIDEBAR -->
-    <aside class="w-64 glass flex flex-col border-r border-borderbg h-full">
-        <!-- Logo -->
-        <div class="p-6 flex items-center gap-3">
-            <div class="w-8 h-8 rotate-45 border-2 border-cyan flex items-center justify-center shadow-lg shadow-cyan/20">
-                <div class="w-3.5 h-3.5 bg-cyan"></div>
-            </div>
-            <span class="text-sm font-extrabold tracking-[0.4em] uppercase text-white">CÉNIT</span>
+{% csrf_token %}
+
+<!-- ============ SIDEBAR ============ -->
+<nav aria-label="Navegación principal" class="hidden md:flex bg-surface-container-low fixed left-0 top-0 h-full w-[248px] border-r border-outline/60 flex-col py-6 z-50">
+  <!-- Brand logo -->
+  <div class="px-6 mb-8 flex items-center gap-2.5">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M13 2L23 13L13 24L3 13L13 2Z" stroke="#45F3FF" stroke-width="1.6"/>
+      <path d="M13 8L18 13L13 18L8 13L13 8Z" fill="#45F3FF"/>
+    </svg>
+    <span class="font-display font-extrabold text-lg tracking-wide text-on-surface">CÉNIT</span>
+  </div>
+
+  <!-- Primary navigation links -->
+  <div class="flex flex-col gap-0.5 px-3">
+    <button onclick="switchView('home')" id="nav-home" class="nav-link active flex w-full items-center gap-3.5 px-3.5 py-2.5 rounded-lg text-on-surface bg-white/[0.06] transition-colors text-[15px] font-semibold">
+      <span class="material-symbols-outlined text-[20px]">home</span> Inicio
+    </button>
+    <button onclick="switchView('search')" id="nav-search" class="nav-link flex w-full items-center gap-3.5 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/[0.04] transition-colors text-[15px] font-medium">
+      <span class="material-symbols-outlined text-[20px]">search</span> Buscar
+    </button>
+    <button onclick="switchView('library')" id="nav-library" class="nav-link flex w-full items-center gap-3.5 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/[0.04] transition-colors text-[15px] font-medium">
+      <span class="material-symbols-outlined text-[20px]">library_music</span> Tu biblioteca
+    </button>
+  </div>
+
+  <!-- Create playlist action -->
+  <div class="px-3 mt-6">
+    <button onclick="openCreatePlaylistModal()" class="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/[0.04] transition-colors text-[15px] font-medium">
+      <span class="w-5 h-5 rounded bg-on-surface-variant/20 flex items-center justify-center">
+        <span class="material-symbols-outlined text-[14px]">add</span>
+      </span>
+      Crear playlist
+    </button>
+  </div>
+
+  <!-- Playlists lists container -->
+  <div class="mt-2 px-3 flex flex-col gap-0.5 overflow-y-auto flex-1 text-left">
+    <p class="px-3.5 pt-5 pb-2 text-[11px] font-semibold uppercase tracking-wider text-text-dim">Tus listas</p>
+    <div id="sidebar-playlists" class="flex flex-col gap-0.5">
+      <!-- Generated dynamically -->
+    </div>
+  </div>
+
+  <!-- User section -->
+  <div class="px-3 pt-4 border-t border-outline/60 mx-3">
+    <div class="flex items-center justify-between px-2 py-2.5 mt-2">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[18px] text-primary">person</span>
         </div>
-
-        <!-- Navigation Menu -->
-        <nav class="flex-1 px-4 py-2 space-y-1">
-            <a href="{% url 'landing' %}" class="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-white/50 hover:text-white hover:bg-white/5 transition-all">
-                <span class="material-symbols-outlined">home</span>
-                Inicio Landing
-            </a>
-            <a href="{% url 'songs_overview' %}" class="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-white/50 hover:text-white hover:bg-white/5 transition-all">
-                <span class="material-symbols-outlined">dashboard</span>
-                Panel de Control
-            </a>
-            <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-cyan bg-cyan/10 transition-all border border-cyan/10">
-                <span class="material-symbols-outlined text-cyan">play_circle</span>
-                Reproductor Web
-            </a>
-        </nav>
-
-        <!-- User Info / Logout -->
-        <div class="p-4 border-t border-borderbg flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full bg-cyan/10 border border-cyan/20 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-cyan text-lg">person</span>
-                </div>
-                <div class="truncate max-w-[120px]">
-                    <p class="text-xs text-white font-bold truncate">{{ request.user.username|upper }}</p>
-                    <p class="text-[10px] text-white/40 truncate">Usuario Activo</p>
-                </div>
-            </div>
-            <a href="{% url 'logout' %}" class="text-white/40 hover:text-red-400 p-1.5 rounded-lg hover:bg-white/5 transition-colors">
-                <span class="material-symbols-outlined text-lg">logout</span>
-            </a>
+        <div class="min-w-0 max-w-[120px]">
+          <p class="text-sm font-medium text-on-surface truncate" id="username-display">Usuario</p>
+          <p class="text-xs text-text-dim">Cénit Player</p>
         </div>
-    </aside>
+      </div>
+      <a href="{% url 'logout' %}" class="text-text-dim hover:text-red-400 transition-colors p-1" title="Cerrar sesión">
+        <span class="material-symbols-outlined text-[18px]">logout</span>
+      </a>
+    </div>
+  </div>
+</nav>
 
-    <!-- CONTENT AREA -->
-    <main class="flex-1 flex flex-col overflow-hidden relative">
-        <!-- Top bar inside main -->
-        <header class="h-16 px-8 flex items-center justify-between border-b border-borderbg relative z-10 glass">
-            <h1 class="text-base font-bold tracking-wider text-white uppercase">Ecosistema de Streaming</h1>
-            <div class="flex items-center gap-4">
-                <span class="text-xs bg-cyan/10 text-cyan border border-cyan/20 px-3 py-1.5 rounded-full font-bold uppercase tracking-widest">
-                    Audio 24-Bit / 192kHz
-                </span>
-            </div>
-        </header>
+<!-- ============ MAIN CONTENT CONTAINER ============ -->
+<main class="flex-1 md:ml-[248px] min-h-screen relative pb-32 overflow-x-hidden">
 
-        <!-- Playlist Grid / Main scrolling container -->
-        <div class="flex-1 overflow-y-auto px-8 py-6 relative z-10 space-y-6">
-            
-            <!-- Hero Banner -->
-            <div class="relative rounded-3xl overflow-hidden p-8 flex items-end min-h-[220px] shadow-2xl border border-borderbg" style="background: linear-gradient(135deg, rgba(69,243,255,0.15) 0%, rgba(167,139,250,0.1) 100%), #0e1017;">
-                <div class="space-y-3 relative z-10">
-                    <span class="text-[10px] font-extrabold uppercase tracking-[0.3em] text-cyan">Reproductor Oficial</span>
-                    <h2 class="text-3xl font-extrabold text-white tracking-tight">Tu Colección de Música</h2>
-                    <p class="text-sm text-white/50 max-w-xl">Disfruta de tus canciones favoritas integradas de forma directa desde tu base de datos y la API de Spotify.</p>
-                </div>
-                <div class="absolute -right-12 -bottom-12 w-64 h-64 bg-cyan/5 rounded-full blur-3xl pointer-events-none"></div>
-            </div>
+  <!-- Sticky header reveal on scroll (shows context info) -->
+  <header id="condensed-header" class="glass fixed top-0 right-0 w-full md:w-[calc(100%-248px)] z-40 h-16 flex items-center px-6 gap-4">
+    <div class="w-9 h-9 rounded-lg overflow-hidden shrink-0" id="condensed-cover-container">
+      <img id="condensed-img" alt="" class="w-full h-full object-cover" src="">
+    </div>
+    <h2 id="condensed-title" class="font-display font-bold text-lg text-on-surface">Cénit Audio</h2>
+    <div class="ml-auto flex items-center gap-1 text-primary" id="condensed-wave" style="display:none;">
+      <span class="waveform-bar h-2"></span>
+      <span class="waveform-bar h-3.5" style="animation-delay:.15s"></span>
+      <span class="waveform-bar h-1.5" style="animation-delay:.3s"></span>
+    </div>
+  </header>
 
-            <!-- Song List Section -->
-            <div class="space-y-4">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-lg font-bold text-white tracking-wide">Pistas del Catálogo</h3>
-                    <span class="text-xs text-white/40">{{ canciones|length }} canciones disponibles</span>
-                </div>
-                
-                <!-- Songs Table/List -->
-                <div class="grid grid-cols-1 gap-2">
-                    {% for c in canciones %}
-                    <div class="song-row flex items-center justify-between p-3 rounded-2xl bg-cardbg/40 border border-white/5 hover:border-cyan/20 hover:bg-white/5 transition-all group cursor-pointer" 
-                         data-id="{{ c.id }}"
-                         data-title="{{ c.titulo }}"
-                         data-artist="{{ c.artista }}"
-                         data-cover="{{ c.url_portada }}"
-                         data-audio="{{ c.url_audio }}"
-                         onclick="playSong(this)">
-                        
-                        <!-- Left Part: Art and Titles -->
-                        <div class="flex items-center gap-4 flex-1 truncate">
-                            <div class="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
-                                <img src="{{ c.url_portada }}" alt="{{ c.titulo }}" class="w-full h-full object-cover">
-                                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    <span class="material-symbols-outlined text-cyan text-2xl" id="play-row-icon-{{ c.id }}">play_arrow</span>
-                                </div>
-                            </div>
-                            <div class="truncate">
-                                <p class="text-sm font-semibold text-white group-hover:text-cyan transition-colors truncate" id="title-row-{{ c.id }}">{{ c.titulo }}</p>
-                                <p class="text-xs text-white/50 truncate">{{ c.artista }}</p>
-                            </div>
-                        </div>
+  <!-- Navigation top bar (search, profile widget) -->
+  <div class="fixed top-0 left-0 md:left-[248px] w-full md:w-[calc(100%-248px)] h-16 flex items-center justify-between px-6 z-30 md:px-8 glass border-b border-outline/30">
+    <div id="top-search-container" class="relative w-full max-w-xs hidden md:block">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+      <input aria-label="Buscar" id="top-search-input" oninput="triggerTopSearch(this.value)" class="w-full bg-white/[0.06] border border-white/10 rounded-full py-2 pl-10 pr-4 text-sm text-on-surface placeholder:text-text-dim focus:outline-none focus:border-primary/40 focus:bg-white/10 transition-all" placeholder="Buscar canciones, artistas..." type="text"/>
+    </div>
+    <div class="flex items-center gap-3 ml-auto">
+      <button onclick="switchView('library')" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/[0.06] transition-colors" title="Favoritos">
+        <span class="material-symbols-outlined text-[20px]">favorite</span>
+      </button>
+      <div class="w-9 h-9 rounded-full overflow-hidden border border-white/10 flex items-center justify-center bg-surface-container">
+        <span class="material-symbols-outlined text-[20px] text-primary">headphones</span>
+      </div>
+    </div>
+  </div>
 
-                        <!-- Right Part: Duration and Actions -->
-                        <div class="flex items-center gap-6">
-                            {% if c.url_audio %}
-                            <span class="text-[10px] text-cyan/70 bg-cyan/10 border border-cyan/10 px-2 py-0.5 rounded-full font-bold uppercase">preview</span>
-                            {% else %}
-                            <span class="text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded-full uppercase">local</span>
-                            {% endif %}
-                            <span class="text-xs text-white/40 font-mono">{{ c.duracion }}s</span>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="p-8 text-center glass rounded-2xl border border-white/5 space-y-3">
-                        <span class="material-symbols-outlined text-[48px] text-white/20">music_off</span>
-                        <p class="text-sm text-white/40">No hay canciones publicadas en tu catálogo aún.</p>
-                        <a href="{% url 'add_track' %}" class="inline-block text-xs bg-cyan text-black px-4 py-2 rounded-xl font-bold uppercase transition-all hover:scale-105">
-                            Agregar Canción
-                        </a>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-    </main>
+  <!-- Dynamic Views Injector -->
+  <div id="view-content" class="w-full pt-16">
+    <!-- Content injected dynamically via switchView() -->
+  </div>
+
+  <!-- Global Footer -->
+  <footer class="w-full py-10 mb-28 border-t border-outline/60 flex flex-col items-center justify-center gap-3 mt-12 text-text-dim text-xs">
+    <div class="flex items-center gap-5">
+      <a class="hover:text-on-surface transition-colors" href="#">Legal</a>
+      <a class="hover:text-on-surface transition-colors" href="#">Privacidad</a>
+      <a class="hover:text-on-surface transition-colors" href="#">Cookies</a>
+    </div>
+    <p>© 2026 CÉNIT Audio</p>
+  </footer>
+</main>
+
+<!-- ============ PLAYBACK CONTROLS BAR (BOTTOM) ============ -->
+<div class="fixed bottom-0 left-0 md:left-[248px] w-full md:w-[calc(100%-248px)] z-50 px-0 md:px-4 pb-0 md:pb-4 pointer-events-none flex justify-center">
+  <div class="w-full md:max-w-[1280px] glass md:rounded-2xl p-3 md:p-4 flex items-center justify-between pointer-events-auto shadow-2xl relative">
+
+    <!-- Mobile progress bar indicator -->
+    <div class="absolute top-0 left-0 w-full h-[3px] bg-white/10 md:hidden">
+      <div id="mobile-progress-fill" class="h-full bg-primary w-0"></div>
+    </div>
+
+    <!-- Album cover and track details -->
+    <div class="flex items-center gap-3 w-1/3 min-w-fit">
+      <div id="current-cover-container" class="w-12 h-12 rounded-xl overflow-hidden shadow-md shrink-0 hidden sm:block bg-surface-container border border-outline/30 flex items-center justify-center">
+        <!-- populated dynamically via JS -->
+      </div>
+      <div class="min-w-0 max-w-[140px] md:max-w-[200px]">
+        <p id="current-title" class="text-sm font-semibold text-on-surface truncate">Selecciona una pista</p>
+        <p id="current-artist" class="text-xs text-on-surface-variant truncate">Cénit Player</p>
+      </div>
+      <button onclick="toggleCurrentFavorite()" class="hidden md:flex text-on-surface-variant hover:text-primary transition-colors ml-2" id="bottom-fav-btn" title="Añadir a favoritos">
+        <span class="material-symbols-outlined text-lg" id="bottom-fav-icon">favorite</span>
+      </button>
+    </div>
+
+    <!-- Playback buttons and progress slider -->
+    <div class="flex flex-col items-center w-full max-w-md mx-3">
+      <div class="flex items-center gap-4 sm:gap-5">
+        <button onclick="toggleShuffle()" id="shuffle-btn" class="text-on-surface-variant hover:text-primary transition-colors hidden sm:block" title="Modo aleatorio">
+          <span class="material-symbols-outlined text-lg">shuffle</span>
+        </button>
+        <button onclick="playPrev()" class="text-on-surface-variant hover:text-on-surface transition-colors" title="Anterior">
+          <span class="material-symbols-outlined text-2xl">skip_previous</span>
+        </button>
+        <button onclick="togglePlay()" id="play-btn" class="w-10 h-10 rounded-full bg-on-surface text-background flex items-center justify-center play-glow" title="Reproducir">
+          <span class="material-symbols-outlined text-xl" style="font-variation-settings:'FILL' 1" id="play-icon">play_arrow</span>
+        </button>
+        <button onclick="playNext()" class="text-on-surface-variant hover:text-on-surface transition-colors" title="Siguiente">
+          <span class="material-symbols-outlined text-2xl">skip_next</span>
+        </button>
+        <button onclick="toggleRepeat()" id="repeat-btn" class="text-on-surface-variant hover:text-primary transition-colors hidden sm:block" title="Repetir">
+          <span class="material-symbols-outlined text-lg">repeat</span>
+        </button>
+      </div>
+      <div class="w-full items-center gap-2 mt-1.5 hidden md:flex text-[11px] font-mono-num text-text-dim">
+        <span id="time-current">0:00</span>
+        <input type="range" id="progress-bar" value="0" class="flex-1" step="0.1" onchange="seekAudio()">
+        <span id="time-duration">0:00</span>
+      </div>
+    </div>
+
+    <!-- Volume and other utilities -->
+    <div class="hidden md:flex items-center justify-end gap-2.5 w-1/3 text-on-surface-variant">
+      <button onclick="alert('Letras no disponibles para esta pista.')" class="hover:text-primary hover:bg-white/[0.06] transition-colors w-8 h-8 rounded-full flex items-center justify-center" title="Micrófono">
+        <span class="material-symbols-outlined text-lg">mic</span>
+      </button>
+      <div class="flex items-center gap-2 ml-1 w-24 group">
+        <button onclick="muteVolume()" class="hover:text-on-surface transition-colors" id="volume-btn">
+          <span class="material-symbols-outlined text-lg" id="volume-icon">volume_up</span>
+        </button>
+        <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.75" class="w-full" oninput="changeVolume()">
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- NOW PLAYING BAR (BOTTOM) -->
-<footer class="h-24 glass border-t border-borderbg px-8 flex items-center justify-between z-20 relative">
-    <!-- Left: Song details -->
-    <div class="flex items-center gap-4 w-1/4 min-w-[200px]">
-        <div class="w-14 h-14 rounded-xl overflow-hidden border border-borderbg flex-shrink-0 bg-cardbg shadow-lg">
-            <img id="current-cover" src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=150" alt="Cover" class="w-full h-full object-cover">
-        </div>
-        <div class="truncate">
-            <h4 id="current-title" class="text-sm font-semibold text-white truncate">Reproductor CÉNIT</h4>
-            <p id="current-artist" class="text-xs text-white/40 truncate">Selecciona una pista</p>
-        </div>
+<!-- ============ MODALS AND DIALOGS ============ -->
+<!-- 1. Create Playlist Modal -->
+<div id="create-playlist-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden">
+  <div class="glass w-full max-w-md rounded-2xl p-6 border border-white/10 space-y-4">
+    <div class="flex justify-between items-center">
+      <h3 class="text-lg font-bold text-white">Nueva Playlist</h3>
+      <button onclick="closeCreatePlaylistModal()" class="text-white/40 hover:text-white"><span class="material-symbols-outlined">close</span></button>
     </div>
-
-    <!-- Center: Playback controls and sliders -->
-    <div class="flex flex-col items-center gap-2 w-2/4 max-w-[600px]">
-        <!-- Control buttons -->
-        <div class="flex items-center gap-6">
-            <button onclick="playPrev()" class="text-white/60 hover:text-white p-1 hover:scale-110 active:scale-95 transition-all">
-                <span class="material-symbols-outlined text-2xl">skip_previous</span>
-            </button>
-            <button onclick="togglePlay()" id="play-btn" class="w-10 h-10 rounded-full bg-cyan text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg shadow-cyan/20">
-                <span class="material-symbols-outlined text-2xl" id="play-icon" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
-            </button>
-            <button onclick="playNext()" class="text-white/60 hover:text-white p-1 hover:scale-110 active:scale-95 transition-all">
-                <span class="material-symbols-outlined text-2xl">skip_next</span>
-            </button>
-        </div>
-        <!-- Progress bar -->
-        <div class="w-full flex items-center gap-3">
-            <span id="time-current" class="text-[10px] text-white/40 font-mono w-8 text-right">0:00</span>
-            <input type="range" id="progress-bar" value="0" class="flex-1" step="0.1" onchange="seekAudio()">
-            <span id="time-duration" class="text-[10px] text-white/40 font-mono w-8">0:00</span>
-        </div>
+    <div class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-white/40 mb-1.5">Nombre</label>
+        <input type="text" id="new-playlist-name" placeholder="Mi Playlist #1" class="w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-text-dim focus:outline-none focus:border-primary/50 focus:bg-white/10">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-white/40 mb-1.5">Descripción</label>
+        <textarea id="new-playlist-desc" rows="3" placeholder="Añade una descripción opcional" class="w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-text-dim focus:outline-none focus:border-primary/50 focus:bg-white/10"></textarea>
+      </div>
     </div>
-
-    <!-- Right: Volume & Audio visualizer -->
-    <div class="flex items-center justify-end gap-6 w-1/4 min-w-[200px]">
-        <!-- Visualizer -->
-        <div class="flex items-end gap-[3px] h-8 w-12 justify-center" id="visualizer-container">
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-        </div>
-
-        <!-- Volume control -->
-        <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-white/50 text-xl" id="volume-icon">volume_up</span>
-            <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.7" class="w-20" oninput="changeVolume()">
-        </div>
+    <div class="flex justify-end gap-3 pt-2">
+      <button onclick="closeCreatePlaylistModal()" class="px-4 py-2 rounded-xl text-sm font-semibold text-white/60 hover:text-white">Cancelar</button>
+      <button onclick="submitCreatePlaylist()" class="px-5 py-2 bg-primary text-on-primary rounded-xl text-sm font-bold play-glow">Crear</button>
     </div>
-</footer>
+  </div>
+</div>
 
-<!-- HIDDEN HTML5 AUDIO ELEMENT -->
+<!-- 2. Add To Playlist Dialog -->
+<div id="add-playlist-dialog" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden">
+  <div class="glass w-full max-w-sm rounded-2xl p-6 border border-white/10 space-y-4">
+    <div class="flex justify-between items-center">
+      <h3 class="text-base font-bold text-white">Añadir a Playlist</h3>
+      <button onclick="closeAddPlaylistDialog()" class="text-white/40 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <p class="text-xs text-white/50">Selecciona una de tus playlists para agregar esta canción:</p>
+    <div id="add-playlist-list" class="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+      <!-- Generated dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- HIDDEN HTML5 AUDIO COMPONENT -->
 <audio id="main-audio" style="display:none;"></audio>
 
-<!-- PLAYER ENGINE JAVASCRIPT -->
+<!-- ============ EMBEDDED DATABASES ============ -->
+<script id="player-data" type="application/json">
+  {{ player_data_json|safe }}
+</script>
+
+<!-- ============ CLIENT PLAYER CORE ============ -->
 <script>
-    const audio = document.getElementById('main-audio');
-    const playBtn = document.getElementById('play-btn');
-    const playIcon = document.getElementById('play-icon');
-    const progressBar = document.getElementById('progress-bar');
-    const volumeSlider = document.getElementById('volume-slider');
-    const volumeIcon = document.getElementById('volume-icon');
-    const timeCurrent = document.getElementById('time-current');
-    const timeDuration = document.getElementById('time-duration');
-    const visualizer = document.getElementById('visualizer-container');
+  const data = JSON.parse(document.getElementById('player-data').textContent);
+  
+  // Set up global player variables
+  let currentView = 'home';
+  let viewParam = null;
+  let currentTrackList = [...data.canciones];
+  let currentTrackIndex = -1;
+  let isPlaying = false;
+  let isMuted = false;
+  let isShuffle = false;
+  let isRepeat = false;
+  let mockInterval = null;
+  let mockElapsed = 0;
+  let mockDuration = 180;
+  let lastVolume = 0.75;
+  let currentTrackToAdd = null;
+  let activeSearchFilter = 'all';
 
-    const currentCover = document.getElementById('current-cover');
-    const currentTitle = document.getElementById('current-title');
-    const currentArtist = document.getElementById('current-artist');
+  // HTML Audio references
+  const audio = document.getElementById('main-audio');
+  const playBtn = document.getElementById('play-btn');
+  const playIcon = document.getElementById('play-icon');
+  const progressBar = document.getElementById('progress-bar');
+  const mobileProgressFill = document.getElementById('mobile-progress-fill');
+  const volumeSlider = document.getElementById('volume-slider');
+  const volumeIcon = document.getElementById('volume-icon');
+  const timeCurrent = document.getElementById('time-current');
+  const timeDuration = document.getElementById('time-duration');
+  
+  const currentCoverContainer = document.getElementById('current-cover-container');
+  const currentTitle = document.getElementById('current-title');
+  const currentArtist = document.getElementById('current-artist');
+  const bottomFavIcon = document.getElementById('bottom-fav-icon');
+  const bottomFavBtn = document.getElementById('bottom-fav-btn');
 
-    let isPlaying = false;
-    let currentSongRow = null;
-    let playlist = [];
+  // Condensed header references
+  const condensedHeader = document.getElementById('condensed-header');
+  const condensedCoverContainer = document.getElementById('condensed-cover-container');
+  const condensedTitle = document.getElementById('condensed-title');
+  const condensedWave = document.getElementById('condensed-wave');
 
-    // Load all songs into a local playlist array
-    document.querySelectorAll('.song-row').forEach(row => {
-        playlist.push({
-            id: row.getAttribute('data-id'),
-            title: row.getAttribute('data-title'),
-            artist: row.getAttribute('data-artist'),
-            cover: row.getAttribute('data-cover'),
-            audio: row.getAttribute('data-audio'),
-            element: row
-        });
+  // Trigger setup on DOM load
+  window.addEventListener('DOMContentLoaded', () => {
+    // Populate username display
+    const user = data.currentUser;
+    if (user) {
+      document.getElementById('username-display').textContent = `${user.nombre} ${user.apellido}`;
+    }
+
+    // Initialize playback bar cover with music note icon
+    currentCoverContainer.innerHTML = `<span class="material-symbols-outlined text-[22px] text-text-dim">music_note</span>`;
+    condensedCoverContainer.innerHTML = `<span class="material-symbols-outlined text-[16px] text-text-dim">music_note</span>`;
+
+    renderSidebarPlaylists();
+    switchView('home');
+
+    // Scroll listener for floating header
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 300) {
+        condensedHeader.classList.add('visible');
+      } else {
+        condensedHeader.classList.remove('visible');
+      }
+    }, { passive: true });
+  });
+
+  // CSRF token helpers
+  function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+  }
+
+  // -------------------------------------------------------------
+  // COVER/IMAGE INITIALS HELPER
+  // -------------------------------------------------------------
+  function getCoverMarkup(url, name, classes = "w-10 h-10 rounded-lg") {
+    const cleanUrl = (url || "").trim();
+    if (!cleanUrl || cleanUrl.includes("unsplash.com") || cleanUrl.includes("cenit.com")) {
+      const initials = (name || "CN").slice(0, 2).toUpperCase();
+      return `
+        <div class="${classes} shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-[11px] font-bold text-primary tracking-wider uppercase select-none">
+          ${initials}
+        </div>
+      `;
+    }
+    return `<img src="${cleanUrl}" alt="${name}" class="${classes} object-cover shrink-0">`;
+  }
+
+  // -------------------------------------------------------------
+  // SIDEBAR RENDERERS
+  // -------------------------------------------------------------
+  function renderSidebarPlaylists() {
+    const listContainer = document.getElementById('sidebar-playlists');
+    listContainer.innerHTML = '';
+
+    if (data.userPlaylists.length === 0) {
+      listContainer.innerHTML = `<p class="px-3.5 py-2 text-xs text-text-dim italic">Sin playlists creadas</p>`;
+      return;
+    }
+
+    data.userPlaylists.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = "flex w-full items-center gap-3 px-3.5 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/[0.04] transition-colors text-sm truncate text-left";
+      btn.onclick = () => switchView('playlist', p.id);
+      
+      const initials = p.nombre.slice(0, 2).toUpperCase();
+      btn.innerHTML = `
+        <span class="w-7 h-7 rounded bg-surface-container-high border border-outline/40 shrink-0 flex items-center justify-center text-primary font-bold text-[10px] tracking-wider">
+          ${initials}
+        </span>
+        <span class="truncate font-medium">${p.nombre}</span>
+      `;
+      listContainer.appendChild(btn);
+    });
+  }
+
+  // -------------------------------------------------------------
+  // VIEW SWITCHER / ROUTER (SPA)
+  // -------------------------------------------------------------
+  function switchView(viewName, param = null) {
+    currentView = viewName;
+    viewParam = param;
+
+    // Update active nav-links states
+    document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active', 'bg-white/[0.06]', 'font-semibold'));
+    document.getElementById('nav-home').classList.add('text-on-surface-variant');
+    document.getElementById('nav-search').classList.add('text-on-surface-variant');
+    document.getElementById('nav-library').classList.add('text-on-surface-variant');
+
+    if (viewName === 'home') {
+      document.getElementById('nav-home').classList.add('active', 'bg-white/[0.06]', 'font-semibold');
+      document.getElementById('nav-home').classList.remove('text-on-surface-variant');
+    } else if (viewName === 'search') {
+      document.getElementById('nav-search').classList.add('active', 'bg-white/[0.06]', 'font-semibold');
+      document.getElementById('nav-search').classList.remove('text-on-surface-variant');
+    } else if (viewName === 'library') {
+      document.getElementById('nav-library').classList.add('active', 'bg-white/[0.06]', 'font-semibold');
+      document.getElementById('nav-library').classList.remove('text-on-surface-variant');
+    }
+
+    const topSearch = document.getElementById('top-search-container');
+    if (topSearch) {
+      if (viewName === 'search') {
+        topSearch.classList.add('md:hidden');
+      } else {
+        topSearch.classList.remove('md:hidden');
+      }
+    }
+
+    const container = document.getElementById('view-content');
+    
+    if (viewName === 'home') {
+      renderHome(container);
+    } else if (viewName === 'search') {
+      renderSearch(container);
+    } else if (viewName === 'library') {
+      renderLibrary(container);
+    } else if (viewName === 'artist') {
+      renderArtistProfile(container, param);
+    } else if (viewName === 'playlist') {
+      renderPlaylistDetail(container, param);
+    }
+
+    // Reset scroll positions
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    condensedHeader.classList.remove('visible');
+  }
+
+  // -------------------------------------------------------------
+  // RAIL SCROLLER HELPER
+  // -------------------------------------------------------------
+  function scrollRail(id, direction) {
+    const rail = document.getElementById(id);
+    if (rail) {
+      rail.scrollBy({ left: 350 * direction, behavior: 'smooth' });
+    }
+  }
+
+  // -------------------------------------------------------------
+  // SCREEN 1: HOME VIEW (New Rails Design)
+  // -------------------------------------------------------------
+  function renderHome(container) {
+    const hours = new Date().getHours();
+    let greeting = "Buenas noches";
+    if (hours >= 6 && hours < 12) greeting = "Buenos días";
+    else if (hours >= 12 && hours < 19) greeting = "Buenas tardes";
+
+    // 1. Quick Access Items (6 tiles: Mix of user playlists and songs)
+    const quickItems = [];
+    data.userPlaylists.slice(0, 3).forEach(p => {
+      quickItems.push({ type: 'playlist', id: p.id, title: p.nombre, cover: p.imagen_portada });
+    });
+    data.canciones.slice(0, 6 - quickItems.length).forEach(s => {
+      quickItems.push({ type: 'song', id: s.id, title: s.titulo, cover: s.url_portada });
     });
 
-    // Play a selected song
-    function playSong(rowElement) {
-        const id = rowElement.getAttribute('data-id');
-        const title = rowElement.getAttribute('data-title');
-        const artist = rowElement.getAttribute('data-artist');
-        const cover = rowElement.getAttribute('data-cover');
-        const audioUrl = rowElement.getAttribute('data-audio');
+    let quickTilesHtml = '';
+    quickItems.forEach(item => {
+      const clickAction = item.type === 'playlist' 
+        ? `switchView('playlist', '${item.id}')` 
+        : `playSongFromUI('${item.id}', 'all')`;
 
-        // Reset previous row styling
-        if (currentSongRow) {
-            currentSongRow.classList.remove('bg-cyan/5', 'border-cyan/30');
-            const oldIcon = document.getElementById(`play-row-icon-${currentSongRow.getAttribute('data-id')}`);
-            if (oldIcon) oldIcon.innerText = 'play_arrow';
-        }
-
-        // Update styling of selected row
-        currentSongRow = rowElement;
-        currentSongRow.classList.add('bg-cyan/5', 'border-cyan/30');
-        const newIcon = document.getElementById(`play-row-icon-${id}`);
-        if (newIcon) newIcon.innerText = 'pause';
-
-        // Update Bottom Bar info
-        currentTitle.textContent = title;
-        currentArtist.textContent = artist;
-        currentCover.src = cover;
-
-        // Set audio source
-        if (audioUrl) {
-            audio.src = audioUrl;
-            audio.load();
-            audio.play()
-                .then(() => {
-                    isPlaying = true;
-                    updateUIState();
-                })
-                .catch(err => {
-                    console.log("Audio play error (requires user interaction first):", err);
-                });
-        } else {
-            // If no spotify preview is present, we simulate a mock play
-            audio.src = '';
-            isPlaying = true;
-            updateUIState();
-            simulateMockPlayback(parseInt(rowElement.getAttribute('data-duration') || 30));
-        }
-    }
-
-    // Toggle Play/Pause state
-    function togglePlay() {
-        if (!audio.src && !currentSongRow) {
-            // If no song loaded, pick the first one
-            const firstRow = document.querySelector('.song-row');
-            if (firstRow) playSong(firstRow);
-            return;
-        }
-
-        if (isPlaying) {
-            audio.pause();
-            isPlaying = false;
-        } else {
-            audio.play().catch(e => console.log("Play failed:", e));
-            isPlaying = true;
-        }
-        updateUIState();
-    }
-
-    // Play Previous Song
-    function playPrev() {
-        if (!currentSongRow) return;
-        const currentIndex = playlist.findIndex(s => s.id === currentSongRow.getAttribute('data-id'));
-        if (currentIndex > 0) {
-            playSong(playlist[currentIndex - 1].element);
-        } else {
-            playSong(playlist[playlist.length - 1].element); // Wrap to end
-        }
-    }
-
-    // Play Next Song
-    function playNext() {
-        if (!currentSongRow) return;
-        const currentIndex = playlist.findIndex(s => s.id === currentSongRow.getAttribute('data-id'));
-        if (currentIndex < playlist.length - 1) {
-            playSong(playlist[currentIndex + 1].element);
-        } else {
-            playSong(playlist[0].element); // Wrap to start
-        }
-    }
-
-    // Update Play button state and visualizer
-    function updateUIState() {
-        if (isPlaying) {
-            playIcon.innerText = 'pause';
-            visualizer.classList.add('playing');
-            if (currentSongRow) {
-                const icon = document.getElementById(`play-row-icon-${currentSongRow.getAttribute('data-id')}`);
-                if (icon) icon.innerText = 'pause';
-            }
-        } else {
-            playIcon.innerText = 'play_arrow';
-            visualizer.classList.remove('playing');
-            if (currentSongRow) {
-                const icon = document.getElementById(`play-row-icon-${currentSongRow.getAttribute('data-id')}`);
-                if (icon) icon.innerText = 'play_arrow';
-            }
-        }
-    }
-
-    // Format seconds to mm:ss
-    function formatTime(secs) {
-        const minutes = Math.floor(secs / 60);
-        const seconds = Math.floor(secs % 60);
-        return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-    }
-
-    // Sync progress bar with audio
-    audio.addEventListener('timeupdate', () => {
-        if (audio.duration) {
-            const current = audio.currentTime;
-            const duration = audio.duration;
-            progressBar.value = (current / duration) * 100;
-            timeCurrent.textContent = formatTime(current);
-            timeDuration.textContent = formatTime(duration);
-        }
+      quickTilesHtml += `
+        <div onclick="${clickAction}" class="quick-tile flex items-center gap-3 bg-white/[0.04] rounded-lg overflow-hidden group cursor-pointer p-0 select-none">
+          <div class="w-16 h-16 shrink-0 flex items-center justify-center bg-surface-container border-r border-outline/30">
+            ${getCoverMarkup(item.cover, item.title, "w-full h-full")}
+          </div>
+          <span class="text-sm font-semibold text-on-surface truncate pr-2 group-hover:text-primary transition-colors">${item.title}</span>
+        </div>
+      `;
     });
 
-    audio.addEventListener('loadedmetadata', () => {
-        timeDuration.textContent = formatTime(audio.duration);
-        progressBar.max = 100;
+    // 2. Rail: Hecho para ti (Playlists)
+    let forYouHtml = '';
+    const allPlaylists = [...data.userPlaylists, ...data.publicPlaylists];
+    allPlaylists.forEach(p => {
+      forYouHtml += `
+        <div onclick="switchView('playlist', '${p.id}')" class="rail-item media-card w-[170px] group cursor-pointer">
+          <div class="w-full aspect-square rounded-xl overflow-hidden relative bg-surface-container shadow-lg mb-3 flex items-center justify-center">
+            ${getCoverMarkup(p.imagen_portada, p.nombre, "w-full h-full")}
+            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <button onclick="event.stopPropagation(); playPlaylist('${p.id}')" class="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow translate-y-2 group-hover:translate-y-0 transition-transform shrink-0">
+                <span class="material-symbols-outlined text-xl ml-0.5" style="font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+            </div>
+          </div>
+          <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">${p.nombre}</h3>
+          <p class="text-xs text-text-dim mt-0.5 truncate">${p.descripcion || `${p.canciones.length} canciones`}</p>
+        </div>
+      `;
     });
-
-    audio.addEventListener('ended', () => {
-        playNext();
-    });
-
-    // Seek track
-    function seekAudio() {
-        if (audio.duration) {
-            const newTime = (progressBar.value / 100) * audio.duration;
-            audio.currentTime = newTime;
-        }
+    if (forYouHtml === '') {
+      forYouHtml = `<p class="text-xs text-text-dim italic py-4">No hay listas creadas o públicas.</p>`;
     }
 
-    // Change volume
-    function changeVolume() {
-        audio.volume = volumeSlider.value;
-        if (audio.volume === 0) {
-            volumeIcon.innerText = 'volume_mute';
-        } else if (audio.volume < 0.5) {
-            volumeIcon.innerText = 'volume_down';
-        } else {
-            volumeIcon.innerText = 'volume_up';
-        }
+    // 3. Rail: Álbumes populares
+    let albumsHtml = '';
+    data.albumes.forEach(al => {
+      const artist = data.artistas.find(a => a.id === al.artista_id);
+      const artistName = artist ? artist.nombre : "Artista";
+
+      albumsHtml += `
+        <div onclick="playAlbum('${al.id}')" class="rail-item media-card w-[170px] group cursor-pointer">
+          <div class="w-full aspect-square rounded-xl overflow-hidden relative bg-surface-container shadow-lg mb-3 flex items-center justify-center">
+            ${getCoverMarkup(al.url_portada, al.titulo, "w-full h-full")}
+            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <button onclick="event.stopPropagation(); playAlbum('${al.id}')" class="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow translate-y-2 group-hover:translate-y-0 transition-transform shrink-0">
+                <span class="material-symbols-outlined text-xl ml-0.5" style="font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+            </div>
+          </div>
+          <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">${al.titulo}</h3>
+          <p class="text-xs text-text-dim mt-0.5 truncate">${artistName}</p>
+        </div>
+      `;
+    });
+    if (albumsHtml === '') {
+      albumsHtml = `<p class="text-xs text-text-dim italic py-4">No hay álbumes registrados.</p>`;
     }
 
-    // Mock playback simulation for songs without active audio URL (preview)
-    let mockInterval = null;
-    let mockCurrent = 0;
-    let mockDuration = 180;
-    function simulateMockPlayback(dur) {
-        clearInterval(mockInterval);
-        mockCurrent = 0;
-        mockDuration = dur;
-        timeDuration.textContent = formatTime(mockDuration);
+    // 4. Rail: Artistas que sigues / sugeridos
+    let artistsHtml = '';
+    data.artistas.forEach(art => {
+      artistsHtml += `
+        <div onclick="switchView('artist', ${art.id})" class="rail-item media-card w-[150px] group cursor-pointer text-center">
+          <div class="w-full aspect-square rounded-full overflow-hidden relative bg-surface-container shadow-lg mb-3 flex items-center justify-center">
+            ${getCoverMarkup(art.url_perfil, art.nombre, "w-full h-full rounded-full")}
+            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <button onclick="event.stopPropagation(); playArtistTracks(${art.id})" class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow shrink-0">
+                <span class="material-symbols-outlined text-lg ml-0.5" style="font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+            </div>
+          </div>
+          <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">${art.nombre}</h3>
+          <p class="text-xs text-text-dim mt-0.5">Artista</p>
+        </div>
+      `;
+    });
+    if (artistsHtml === '') {
+      artistsHtml = `<p class="text-xs text-text-dim italic py-4">No hay artistas disponibles.</p>`;
+    }
+
+    // 5. Rail: Recién publicado
+    let newSongsHtml = '';
+    const newSongs = [...data.canciones].reverse().slice(0, 8);
+    newSongs.forEach(song => {
+      newSongsHtml += `
+        <div onclick="playSongFromUI('${song.id}', 'all')" class="rail-item media-card w-[170px] group cursor-pointer">
+          <div class="w-full aspect-square rounded-xl overflow-hidden relative bg-surface-container shadow-lg mb-3 flex items-center justify-center">
+            ${getCoverMarkup(song.url_portada, song.titulo, "w-full h-full")}
+            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <button onclick="event.stopPropagation(); playSongFromUI('${song.id}', 'all')" class="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow translate-y-2 group-hover:translate-y-0 transition-transform shrink-0">
+                <span class="material-symbols-outlined text-xl ml-0.5" style="font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+            </div>
+            <span class="absolute top-2 left-2 bg-primary text-on-primary text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full select-none">Nuevo</span>
+          </div>
+          <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">${song.titulo}</h3>
+          <p class="text-xs text-text-dim mt-0.5 truncate">${song.artista}</p>
+        </div>
+      `;
+    });
+    if (newSongsHtml === '') {
+      newSongsHtml = `<p class="text-xs text-text-dim italic py-4">No hay lanzamientos recientes.</p>`;
+    }
+
+    container.innerHTML = `
+      <div class="px-6 md:px-10 pt-2 space-y-10">
         
-        mockInterval = setInterval(() => {
-            if (!isPlaying) return;
-            mockCurrent += 1;
-            if (mockCurrent >= mockDuration) {
-                clearInterval(mockInterval);
-                playNext();
-                return;
-            }
-            progressBar.value = (mockCurrent / mockDuration) * 100;
-            timeCurrent.textContent = formatTime(mockCurrent);
-        }, 1000);
+        <!-- Greeting & Quick Access Tiles -->
+        <section aria-labelledby="greeting-heading">
+          <h1 id="greeting-heading" class="font-display text-[28px] md:text-[32px] font-extrabold tracking-tight text-on-surface mb-5">${greeting}</h1>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            ${quickTilesHtml}
+          </div>
+        </section>
+
+        <!-- Rail 1: Hecho para ti (Playlists) -->
+        <section aria-labelledby="foryou-heading" class="rail-section relative">
+          <div class="flex items-center justify-between mb-4">
+            <h2 id="foryou-heading" class="font-display text-2xl font-bold text-on-surface">Hecho para ti</h2>
+          </div>
+          <button class="rail-nav-btn absolute left-0 top-[40%] -translate-y-1/2 -translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-foryou', -1)">
+            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+          </button>
+          <button class="rail-nav-btn absolute right-0 top-[40%] -translate-y-1/2 translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-foryou', 1)">
+            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+          </button>
+          <div id="rail-foryou" class="rail">
+            ${forYouHtml}
+          </div>
+        </section>
+
+        <!-- Rail 2: Álbumes populares -->
+        <section aria-labelledby="albums-heading" class="rail-section relative">
+          <div class="flex items-center justify-between mb-4">
+            <h2 id="albums-heading" class="font-display text-2xl font-bold text-on-surface">Álbumes populares</h2>
+          </div>
+          <button class="rail-nav-btn absolute left-0 top-[40%] -translate-y-1/2 -translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-albums', -1)">
+            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+          </button>
+          <button class="rail-nav-btn absolute right-0 top-[40%] -translate-y-1/2 translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-albums', 1)">
+            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+          </button>
+          <div id="rail-albums" class="rail">
+            ${albumsHtml}
+          </div>
+        </section>
+
+        <!-- Rail 3: Artistas que sigues / sugeridos -->
+        <section aria-labelledby="artists-heading" class="rail-section relative">
+          <div class="flex items-center justify-between mb-4">
+            <h2 id="artists-heading" class="font-display text-2xl font-bold text-on-surface">Artistas populares</h2>
+          </div>
+          <button class="rail-nav-btn absolute left-0 top-[35%] -translate-y-1/2 -translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-artists', -1)">
+            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+          </button>
+          <button class="rail-nav-btn absolute right-0 top-[35%] -translate-y-1/2 translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-artists', 1)">
+            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+          </button>
+          <div id="rail-artists" class="rail">
+            ${artistsHtml}
+          </div>
+        </section>
+
+        <!-- Rail 5: Recién publicado -->
+        <section aria-labelledby="new-heading" class="rail-section relative">
+          <div class="flex items-center justify-between mb-4">
+            <h2 id="new-heading" class="font-display text-2xl font-bold text-on-surface">Recién publicado</h2>
+          </div>
+          <button class="rail-nav-btn absolute left-0 top-[40%] -translate-y-1/2 -translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-new', -1)">
+            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+          </button>
+          <button class="rail-nav-btn absolute right-0 top-[40%] -translate-y-1/2 translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-new', 1)">
+            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+          </button>
+          <div id="rail-new" class="rail">
+            ${newSongsHtml}
+          </div>
+        </section>
+
+      </div>
+    `;
+  }
+
+  // -------------------------------------------------------------
+  // SCREEN 2: SEARCH SCREEN
+  // -------------------------------------------------------------
+  function renderSearch(container) {
+    container.innerHTML = `
+      <section class="p-6 md:p-8 space-y-6">
+        <h2 class="font-display text-2xl font-bold text-on-surface">Explorar todo</h2>
+        
+        <!-- Live Search Input -->
+        <div class="relative w-full max-w-lg">
+          <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+          <input oninput="searchDatabase(this.value)" class="w-full bg-white/[0.05] border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-sm text-on-surface placeholder:text-text-dim focus:outline-none focus:border-primary/50 focus:bg-white/10 transition-all shadow-inner" placeholder="¿Qué quieres escuchar hoy?" type="text" autofocus/>
+        </div>
+
+        <!-- Filter Capsules -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-2 select-none" id="search-filter-container">
+          <button onclick="setSearchFilter('all')" id="filter-all" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-primary text-on-primary border border-primary/20 transition-all shadow-[0_0_12px_rgba(69,243,255,0.45)]">Todos</button>
+          <button onclick="setSearchFilter('songs')" id="filter-songs" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-white/[0.05] text-on-surface-variant border border-white/10 hover:text-on-surface hover:bg-white/[0.08] transition-all">Canciones</button>
+          <button onclick="setSearchFilter('artists')" id="filter-artists" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-white/[0.05] text-on-surface-variant border border-white/10 hover:text-on-surface hover:bg-white/[0.08] transition-all">Artistas</button>
+          <button onclick="setSearchFilter('playlists')" id="filter-playlists" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-white/[0.05] text-on-surface-variant border border-white/10 hover:text-on-surface hover:bg-white/[0.08] transition-all">Playlists</button>
+        </div>
+
+        <!-- Search Results Containers -->
+        <div id="search-results" class="space-y-8 pt-4">
+          <p class="text-xs text-text-dim italic">Escribe para empezar a buscar canciones, playlists y artistas...</p>
+        </div>
+      </section>
+    `;
+    
+    activeSearchFilter = 'all';
+  }
+
+  function setSearchFilter(filter) {
+    activeSearchFilter = filter;
+    
+    document.querySelectorAll('#search-filter-container button').forEach(btn => {
+      btn.className = "px-4 py-1.5 rounded-full text-xs font-semibold bg-white/[0.05] text-on-surface-variant border border-white/10 hover:text-on-surface hover:bg-white/[0.08] transition-all";
+    });
+    
+    const activeBtn = document.getElementById(`filter-${filter}`);
+    if (activeBtn) {
+      activeBtn.className = "px-4 py-1.5 rounded-full text-xs font-semibold bg-primary text-on-primary border border-primary/20 transition-all shadow-[0_0_12px_rgba(69,243,255,0.45)]";
     }
     
-    // Clear simulation on actual audio load
-    audio.addEventListener('play', () => {
-        clearInterval(mockInterval);
+    const searchInput = document.querySelector('input[placeholder*="escuchar"]');
+    if (searchInput) {
+      searchDatabase(searchInput.value);
+    }
+  }
+
+  function triggerTopSearch(query) {
+    switchView('search');
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('input[placeholder*="escuchar"]');
+      if (inputs.length > 0) {
+        inputs[0].value = query;
+        searchDatabase(query);
+      }
+    }, 50);
+  }
+
+  function searchDatabase(query) {
+    const resultsContainer = document.getElementById('search-results');
+    const cleanQuery = query.toLowerCase().trim();
+
+    if (!cleanQuery) {
+      resultsContainer.innerHTML = `<p class="text-xs text-text-dim italic">Escribe para empezar a buscar...</p>`;
+      return;
+    }
+
+    const matchedSongs = (activeSearchFilter === 'all' || activeSearchFilter === 'songs')
+      ? data.canciones.filter(s => s.titulo.toLowerCase().includes(cleanQuery) || s.artista.toLowerCase().includes(cleanQuery))
+      : [];
+      
+    const matchedArtists = (activeSearchFilter === 'all' || activeSearchFilter === 'artists')
+      ? data.artistas.filter(a => a.nombre.toLowerCase().includes(cleanQuery))
+      : [];
+      
+    const matchedPlaylists = (activeSearchFilter === 'all' || activeSearchFilter === 'playlists')
+      ? [...data.userPlaylists, ...data.publicPlaylists].filter(p => p.nombre.toLowerCase().includes(cleanQuery))
+      : [];
+
+    let html = '';
+
+    if (matchedSongs.length > 0) {
+      let songRows = '';
+      matchedSongs.slice(0, 5).forEach((song, index) => {
+        const isFav = data.favoritasIds.includes(song.id);
+        const isCurrent = currentTrackIndex !== -1 && currentTrackList[currentTrackIndex] && String(currentTrackList[currentTrackIndex].id) === String(song.id);
+        const playingClass = isCurrent ? 'text-primary is-playing bg-white/[0.02]' : '';
+        const rowPlayIcon = (isCurrent && isPlaying) ? 'pause' : 'play_arrow';
+        const favClass = isFav ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface';
+
+        songRows += `
+          <div class="track-row grid grid-cols-[2rem_1fr_4rem_2.5rem_2.5rem] items-center gap-4 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer group ${playingClass}" onclick="playSongFromUI('${song.id}', 'search')">
+            <div class="relative w-8 h-8 flex items-center justify-center shrink-0">
+              <span class="row-index absolute text-xs font-mono-num text-text-dim">${index+1}</span>
+              <button class="row-play absolute text-on-surface hover:text-primary transition-all shrink-0">
+                <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">${rowPlayIcon}</span>
+              </button>
+              <div class="row-wave items-end gap-[2px] h-3 text-primary shrink-0">
+                <span class="waveform-bar h-1.5"></span>
+                <span class="waveform-bar h-3" style="animation-delay:.15s"></span>
+                <span class="waveform-bar h-1" style="animation-delay:.3s"></span>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-9 h-9 rounded overflow-hidden shrink-0 shadow bg-surface-container flex items-center justify-center">
+                ${getCoverMarkup(song.url_portada, song.titulo, "w-full h-full")}
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold truncate group-hover:text-primary transition-colors">${song.titulo}</p>
+                <p class="text-xs text-text-dim truncate mt-0.5">${song.artista}</p>
+              </div>
+            </div>
+            <span class="text-right text-xs font-mono-num text-on-surface-variant">${formatTime(song.duracion)}</span>
+            <button onclick="event.stopPropagation(); toggleSongFavorite('${song.id}')" class="w-8 h-8 rounded-full flex items-center justify-center ${favClass} transition-colors shrink-0">
+              <span class="material-symbols-outlined text-[16px]">favorite</span>
+            </button>
+            <button onclick="event.stopPropagation(); openAddPlaylistDialog('${song.id}')" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors shrink-0">
+              <span class="material-symbols-outlined text-[16px]">playlist_add</span>
+            </button>
+          </div>
+        `;
+      });
+      html += `
+        <section class="space-y-3">
+          <h3 class="text-sm font-semibold uppercase tracking-wider text-text-dim">Canciones</h3>
+          <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-2.5 border border-outline/30">
+            ${songRows}
+          </div>
+        </section>
+      `;
+    }
+
+    if (matchedArtists.length > 0) {
+      let artistCards = '';
+      matchedArtists.forEach(art => {
+        artistCards += `
+          <div onclick="switchView('artist', ${art.id})" class="flex items-center gap-3.5 p-2.5 rounded-xl hover:bg-white/[0.03] cursor-pointer group border border-transparent hover:border-outline/30 transition-all bg-surface-container-low/10">
+            <div class="w-12 h-12 rounded-full overflow-hidden border border-outline group-hover:border-primary transition-colors shrink-0 bg-surface-container flex items-center justify-center">
+              ${getCoverMarkup(art.url_perfil, art.nombre, "w-full h-full rounded-full")}
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-on-surface group-hover:text-primary transition-colors truncate">${art.nombre}</p>
+              <p class="text-xs text-text-dim mt-0.5">Artista</p>
+            </div>
+          </div>
+        `;
+      });
+      html += `
+        <section class="space-y-3">
+          <h3 class="text-sm font-semibold uppercase tracking-wider text-text-dim">Artistas</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            ${artistCards}
+          </div>
+        </section>
+      `;
+    }
+
+    if (matchedPlaylists.length > 0) {
+      let playlistCards = '';
+      matchedPlaylists.forEach(p => {
+        playlistCards += `
+          <div onclick="switchView('playlist', '${p.id}')" class="flex items-center gap-3.5 p-2.5 rounded-xl hover:bg-white/[0.03] cursor-pointer group transition-colors border border-transparent hover:border-outline/30 bg-surface-container-low/10">
+            <div class="w-12 h-12 rounded-lg overflow-hidden border border-outline group-hover:border-primary transition-colors shrink-0 bg-surface-container flex items-center justify-center">
+              ${getCoverMarkup(p.imagen_portada, p.nombre, "w-full h-full")}
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-on-surface group-hover:text-primary transition-colors truncate">${p.nombre}</p>
+              <p class="text-xs text-text-dim mt-0.5">${p.canciones.length} canciones</p>
+            </div>
+          </div>
+        `;
+      });
+      html += `
+        <section class="space-y-3">
+          <h3 class="text-sm font-semibold uppercase tracking-wider text-text-dim">Listas de reproducción</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            ${playlistCards}
+          </div>
+        </section>
+      `;
+    }
+
+    if (html === '') {
+      resultsContainer.innerHTML = `<p class="text-xs text-text-dim italic">No se encontraron resultados para "${query}".</p>`;
+    } else {
+      resultsContainer.innerHTML = html;
+    }
+  }
+
+  // -------------------------------------------------------------
+  // SCREEN 3: LIBRARY VIEW
+  // -------------------------------------------------------------
+  function renderLibrary(container) {
+    const favSongs = data.canciones.filter(s => data.favoritasIds.includes(s.id));
+
+    let favSongsRows = '';
+    favSongs.forEach((song, index) => {
+      const isCurrent = currentTrackIndex !== -1 && currentTrackList[currentTrackIndex] && String(currentTrackList[currentTrackIndex].id) === String(song.id);
+      const playingClass = isCurrent ? 'text-primary is-playing bg-white/[0.02]' : '';
+      const rowPlayIcon = (isCurrent && isPlaying) ? 'pause' : 'play_arrow';
+
+      favSongsRows += `
+        <div class="track-row grid grid-cols-[2rem_1fr_4rem_2.5rem_2.5rem] items-center gap-4 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer group ${playingClass}" onclick="playSongFromUI('${song.id}', 'favorites')">
+          <div class="relative w-8 h-8 flex items-center justify-center shrink-0">
+            <span class="row-index absolute text-xs font-mono-num text-text-dim">${index+1}</span>
+            <button class="row-play absolute text-on-surface hover:text-primary transition-all shrink-0">
+              <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">${rowPlayIcon}</span>
+            </button>
+            <div class="row-wave items-end gap-[2px] h-3 text-primary shrink-0">
+              <span class="waveform-bar h-1.5"></span>
+              <span class="waveform-bar h-3" style="animation-delay:.15s"></span>
+              <span class="waveform-bar h-1" style="animation-delay:.3s"></span>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded overflow-hidden shrink-0 shadow bg-surface-container flex items-center justify-center">
+              ${getCoverMarkup(song.url_portada, song.titulo, "w-full h-full")}
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold truncate group-hover:text-primary transition-colors">${song.titulo}</p>
+              <p class="text-xs text-text-dim truncate mt-0.5">${song.artista}</p>
+            </div>
+          </div>
+          <span class="text-right text-xs font-mono-num text-on-surface-variant">${formatTime(song.duracion)}</span>
+          <button onclick="event.stopPropagation(); toggleSongFavorite('${song.id}')" class="w-8 h-8 rounded-full flex items-center justify-center text-primary transition-colors shrink-0">
+            <span class="material-symbols-outlined text-[16px]">favorite</span>
+          </button>
+          <button onclick="event.stopPropagation(); openAddPlaylistDialog('${song.id}')" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors shrink-0">
+            <span class="material-symbols-outlined text-[16px]">playlist_add</span>
+          </button>
+        </div>
+      `;
     });
+
+    if (favSongsRows === '') {
+      favSongsRows = `<p class="text-xs text-text-dim italic p-4 text-center">No has marcado ninguna canción como favorita todavía.</p>`;
+    }
+
+    container.innerHTML = `
+      <section class="p-6 md:p-8 space-y-8">
+        <div class="flex justify-between items-center">
+          <h2 class="font-display text-2xl font-bold text-on-surface">Tu Biblioteca</h2>
+          <button onclick="openCreatePlaylistModal()" class="px-4 py-2 bg-primary/10 border border-primary/20 text-primary rounded-xl text-xs font-bold uppercase hover:bg-primary/20 transition-all flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">add</span> Crear Playlist
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <!-- Canciones Favoritas -->
+          <div class="lg:col-span-2 space-y-4">
+            <h3 class="font-display text-lg font-bold text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">favorite</span> Canciones favoritas
+            </h3>
+            <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-3 border border-outline/30">
+              ${favSongsRows}
+            </div>
+          </div>
+
+          <!-- Mis Playlists -->
+          <div class="space-y-4">
+            <h3 class="font-display text-lg font-bold text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">playlist_play</span> Mis Playlists
+            </h3>
+            <div class="flex flex-col gap-2.5 bg-surface-container-low/30 rounded-xl p-4 border border-outline/30" id="library-playlists-list">
+              <!-- Generated dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+
+    const libPlContainer = document.getElementById('library-playlists-list');
+    let libPlHtml = '';
+    data.userPlaylists.forEach(p => {
+      libPlHtml += `
+        <div onclick="switchView('playlist', '${p.id}')" class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/[0.03] cursor-pointer group transition-colors">
+          <div class="w-10 h-10 rounded overflow-hidden shrink-0 shadow bg-surface-container flex items-center justify-center">
+            ${getCoverMarkup(p.imagen_portada, p.nombre, "w-full h-full")}
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-on-surface group-hover:text-primary transition-colors truncate">${p.nombre}</p>
+            <p class="text-xs text-text-dim mt-0.5">${p.canciones.length} canciones</p>
+          </div>
+        </div>
+      `;
+    });
+
+    if (libPlHtml === '') {
+      libPlHtml = `<p class="text-xs text-text-dim italic text-center py-4">No tienes playlists.</p>`;
+    }
+    libPlContainer.innerHTML = libPlHtml;
+  }
+
+  // -------------------------------------------------------------
+  // SCREEN 4: ARTIST PROFILE VIEW
+  // -------------------------------------------------------------
+  function renderArtistProfile(container, artistId) {
+    const artist = data.artistas.find(a => a.id === artistId);
+    if (!artist) {
+      container.innerHTML = `<p class="p-8 text-center text-text-dim">Artista no encontrado.</p>`;
+      return;
+    }
+
+    const artistSongs = data.canciones.filter(s => s.artista_id === artist.id);
+    const artistAlbums = data.albumes.filter(al => al.artista_id === artist.id);
+    const isFollowing = data.seguidosIds.includes(artist.id);
+
+    condensedTitle.textContent = artist.nombre;
+    if (artist.url_perfil && !artist.url_perfil.includes('unsplash.com') && !artist.url_perfil.includes('cenit.com')) {
+      condensedCoverContainer.innerHTML = `<img src="${artist.url_perfil}" class="w-full h-full object-cover">`;
+    } else {
+      const initials = artist.nombre.slice(0,2).toUpperCase();
+      condensedCoverContainer.innerHTML = `
+        <div class="w-full h-full flex items-center justify-center text-[10px] font-bold text-primary bg-surface-container-high uppercase select-none">
+          ${initials}
+        </div>
+      `;
+    }
+
+    let popularTracksHtml = '';
+    artistSongs.slice(0, 5).forEach((song, index) => {
+      const isFav = data.favoritasIds.includes(song.id);
+      const isCurrent = currentTrackIndex !== -1 && currentTrackList[currentTrackIndex] && String(currentTrackList[currentTrackIndex].id) === String(song.id);
+      const playingClass = isCurrent ? 'text-primary is-playing bg-white/[0.02]' : '';
+      const rowPlayIcon = (isCurrent && isPlaying) ? 'pause' : 'play_arrow';
+      const favClass = isFav ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface';
+
+      popularTracksHtml += `
+        <div class="track-row grid grid-cols-[2rem_1fr_4rem_2.5rem_2.5rem] items-center gap-4 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer group ${playingClass}" onclick="playSongFromUI('${song.id}', 'artist-${artist.id}')">
+          <div class="relative w-8 h-8 flex items-center justify-center shrink-0">
+            <span class="row-index absolute text-xs font-mono-num text-text-dim">${index + 1}</span>
+            <button class="row-play absolute text-on-surface hover:text-primary transition-all shrink-0">
+              <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">${rowPlayIcon}</span>
+            </button>
+            <div class="row-wave items-end gap-[2px] h-3 text-primary shrink-0">
+              <span class="waveform-bar h-1.5"></span>
+              <span class="waveform-bar h-3" style="animation-delay:.15s"></span>
+              <span class="waveform-bar h-1" style="animation-delay:.3s"></span>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded overflow-hidden shrink-0 shadow bg-surface-container flex items-center justify-center">
+              ${getCoverMarkup(song.url_portada, song.titulo, "w-full h-full")}
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold truncate group-hover:text-primary transition-colors text-white">${song.titulo}</p>
+              ${song.esExplicita ? '<span class="inline-block mt-0.5 px-1.5 py-px bg-white/10 rounded text-[9px] text-on-surface-variant uppercase tracking-wider font-semibold">Explícita</span>' : ''}
+            </div>
+          </div>
+          <span class="text-right text-xs font-mono-num text-on-surface-variant">${formatTime(song.duracion)}</span>
+          <button onclick="event.stopPropagation(); toggleSongFavorite('${song.id}')" class="w-8 h-8 rounded-full flex items-center justify-center ${favClass} transition-colors shrink-0">
+            <span class="material-symbols-outlined text-[16px]">favorite</span>
+          </button>
+          <button onclick="event.stopPropagation(); openAddPlaylistDialog('${song.id}')" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors shrink-0">
+            <span class="material-symbols-outlined text-[16px]">playlist_add</span>
+          </button>
+        </div>
+      `;
+    });
+
+    if (popularTracksHtml === '') {
+      popularTracksHtml = `<p class="text-xs text-text-dim italic py-4">No hay canciones publicadas para este artista.</p>`;
+    }
+
+    let albumsCardsHtml = '';
+    artistAlbums.forEach(al => {
+      albumsCardsHtml += `
+        <div class="release-card flex flex-col gap-3 group cursor-pointer">
+          <div class="w-full aspect-square rounded-xl overflow-hidden relative bg-surface-container shadow-lg shrink-0 flex items-center justify-center">
+            ${getCoverMarkup(al.url_portada, al.titulo, "w-full h-full")}
+            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <button onclick="event.stopPropagation(); playAlbum('${al.id}')" class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow translate-y-2 group-hover:translate-y-0 transition-transform shrink-0">
+                <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">${al.titulo}</h3>
+            <p class="text-xs text-text-dim mt-0.5">Álbum</p>
+          </div>
+        </div>
+      `;
+    });
+
+    if (albumsCardsHtml === '') {
+      albumsCardsHtml = `<p class="text-xs text-text-dim italic col-span-full">No hay álbumes registrados.</p>`;
+    }
+
+    const otherArtists = data.artistas.filter(a => a.id !== artist.id).slice(0, 3);
+    let fansAlsoLikeHtml = '';
+    otherArtists.forEach(oa => {
+      fansAlsoLikeHtml += `
+        <div onclick="switchView('artist', ${oa.id})" class="flex items-center gap-3.5 p-2 rounded-lg hover:bg-white/[0.04] transition-colors group cursor-pointer bg-surface-container-low/10">
+          <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-colors shrink-0 bg-surface-container flex items-center justify-center shadow">
+            ${getCoverMarkup(oa.url_perfil, oa.nombre, "w-full h-full rounded-full")}
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-on-surface group-hover:text-primary transition-colors truncate">${oa.nombre}</p>
+            <p class="text-xs text-text-dim mt-0.5">Artista</p>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = `
+      <!-- Artist profile banner -->
+      <section class="relative h-[380px] w-full flex items-end p-6 md:p-8 border-b border-outline/30">
+        <div class="absolute inset-0 w-full h-full">
+          ${artist.url_perfil && !artist.url_perfil.includes('unsplash.com') && !artist.url_perfil.includes('cenit.com')
+            ? `<img alt="" class="w-full h-full object-cover object-top filter brightness-75" src="${artist.url_perfil}">`
+            : `<div class="w-full h-full bg-gradient-to-b from-violet/20 to-background"></div>`
+          }
+          <div class="absolute inset-0 hero-atmosphere"></div>
+        </div>
+
+        <div class="absolute bottom-0 left-0 w-full p-6 md:p-8 flex flex-col justify-end z-10">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="material-symbols-outlined text-secondary text-[18px]" style="font-variation-settings:'FILL' 1">verified</span>
+            <span class="text-xs font-semibold text-secondary tracking-[0.12em] uppercase">Artista verificado</span>
+          </div>
+          <h1 class="font-display text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+            ${artist.nombre}
+          </h1>
+          <p class="font-mono-num text-on-surface-variant text-sm mb-6">
+            Procedencia: <span class="text-on-surface font-semibold">${artist.pais}</span>
+          </p>
+
+          <div class="flex items-center gap-5">
+            <button onclick="playArtistTracks(${artist.id})" class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow group shrink-0" aria-label="Reproducir canciones">
+              <span class="material-symbols-outlined text-[24px] ml-0.5 group-active:scale-95 transition-transform" style="font-variation-settings:'FILL' 1">play_arrow</span>
+            </button>
+            <button onclick="toggleFollowArtist(${artist.id})" class="px-6 py-2.5 rounded-full border ${isFollowing ? 'border-primary text-primary bg-primary/10' : 'border-white/20 text-on-surface bg-white/[0.04]'} text-xs font-bold uppercase tracking-wide hover:scale-105 active:scale-95 transition-all backdrop-blur-sm">
+              ${isFollowing ? 'Siguiendo' : 'Seguir'}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Content grid -->
+      <div class="px-6 md:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10">
+        <!-- LEFT: Popular + Discography -->
+        <div class="lg:col-span-2 flex flex-col gap-10">
+          <section>
+            <h2 class="font-display text-lg font-bold text-on-surface mb-4">Popular</h2>
+            <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-2.5 border border-outline/30">
+              ${popularTracksHtml}
+            </div>
+          </section>
+
+          <section>
+            <h2 class="font-display text-lg font-bold text-on-surface mb-4">Álbumes</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              ${albumsCardsHtml}
+            </div>
+          </section>
+        </div>
+
+        <!-- RIGHT: About + Fans Also Like -->
+        <div class="flex flex-col gap-8">
+          <section class="glass rounded-xl p-5 relative overflow-hidden">
+            <h2 class="font-display text-base font-bold text-on-surface mb-3 relative z-10">Biografía</h2>
+            <p class="text-xs leading-relaxed text-on-surface-variant relative z-10">
+              ${artist.biografia || 'Sin descripción detallada disponible.'}
+            </p>
+          </section>
+
+          <section class="space-y-4">
+            <h2 class="font-display text-base font-bold text-on-surface">A los oyentes también les gusta</h2>
+            <div class="flex flex-col gap-2">
+              ${fansAlsoLikeHtml}
+            </div>
+          </section>
+        </div>
+      </div>
+    `;
+  }
+
+  // -------------------------------------------------------------
+  // SCREEN 5: PLAYLIST DETAIL VIEW
+  // -------------------------------------------------------------
+  function renderPlaylistDetail(container, playlistId) {
+    let playlist = data.userPlaylists.find(p => p.id === playlistId);
+    let isOwner = true;
+    if (!playlist) {
+      playlist = data.publicPlaylists.find(p => p.id === playlistId);
+      isOwner = false;
+    }
+
+    if (!playlist) {
+      container.innerHTML = `<p class="p-8 text-center text-text-dim">Playlist no encontrada.</p>`;
+      return;
+    }
+
+    let songsInPlaylist = [];
+    playlist.canciones.forEach(pe => {
+      const s = data.canciones.find(song => song.id == pe.idCancion);
+      if (s) {
+        songsInPlaylist.push({
+          ...s,
+          fechaAdicion: pe.fechaAdicion,
+          orden: pe.orden
+        });
+      }
+    });
+
+    songsInPlaylist.sort((a, b) => a.orden - b.orden);
+
+    let tracksHtml = '';
+    songsInPlaylist.forEach((song, index) => {
+      const isFav = data.favoritasIds.includes(song.id);
+      const isCurrent = currentTrackIndex !== -1 && currentTrackList[currentTrackIndex] && String(currentTrackList[currentTrackIndex].id) === String(song.id);
+      const playingClass = isCurrent ? 'text-primary is-playing bg-white/[0.02]' : '';
+      const rowPlayIcon = (isCurrent && isPlaying) ? 'pause' : 'play_arrow';
+      const favClass = isFav ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface';
+
+      const deleteAction = isOwner 
+        ? `<button onclick="event.stopPropagation(); removeSongFromPlaylist('${playlist.id}', '${song.id}')" class="w-8 h-8 rounded-full flex items-center justify-center text-red-400/60 hover:text-red-400 hover:bg-white/5 transition-all shrink-0" title="Eliminar de playlist">
+             <span class="material-symbols-outlined text-[18px]">delete</span>
+           </button>` 
+        : '';
+
+      tracksHtml += `
+        <div class="track-row grid grid-cols-[2rem_1fr_4rem_2.5rem_2.5rem] items-center gap-4 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer group ${playingClass}" onclick="playSongFromUI('${song.id}', 'playlist-${playlist.id}')">
+          <div class="relative w-8 h-8 flex items-center justify-center shrink-0">
+            <span class="row-index absolute text-xs font-mono-num text-text-dim">${index+1}</span>
+            <button class="row-play absolute text-on-surface hover:text-primary transition-all shrink-0">
+              <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">${rowPlayIcon}</span>
+            </button>
+            <div class="row-wave items-end gap-[2px] h-3 text-primary shrink-0">
+              <span class="waveform-bar h-1.5"></span>
+              <span class="waveform-bar h-3" style="animation-delay:.15s"></span>
+              <span class="waveform-bar h-1" style="animation-delay:.3s"></span>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded overflow-hidden shrink-0 shadow bg-surface-container flex items-center justify-center">
+              ${getCoverMarkup(song.url_portada, song.titulo, "w-full h-full")}
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold truncate group-hover:text-primary transition-colors text-white">${song.titulo}</p>
+              <p class="text-xs text-text-dim truncate mt-0.5">${song.artista}</p>
+            </div>
+          </div>
+          <span class="text-right text-xs font-mono-num text-on-surface-variant">${formatTime(song.duracion)}</span>
+          <button onclick="event.stopPropagation(); toggleSongFavorite('${song.id}')" class="w-8 h-8 rounded-full flex items-center justify-center ${favClass} transition-colors shrink-0">
+            <span class="material-symbols-outlined text-[16px]">favorite</span>
+          </button>
+          ${deleteAction || `<button onclick="event.stopPropagation(); openAddPlaylistDialog('${song.id}')" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors shrink-0"><span class="material-symbols-outlined text-[16px]">playlist_add</span></button>`}
+        </div>
+      `;
+    });
+
+    if (tracksHtml === '') {
+      tracksHtml = `<p class="text-xs text-text-dim italic py-6 text-center">Esta playlist no tiene canciones todavía.</p>`;
+    }
+
+    container.innerHTML = `
+      <!-- Playlist banner -->
+      <section class="relative h-[260px] w-full flex items-end p-6 md:p-8 hero-atmosphere border-b border-outline/30">
+        <div class="flex flex-col sm:flex-row items-start sm:items-end gap-6 z-10 w-full">
+          <div class="w-28 h-28 md:w-36 md:h-36 rounded-2xl overflow-hidden shrink-0 shadow-2xl bg-surface-container-high border border-outline/40 flex items-center justify-center">
+            ${getCoverMarkup(playlist.imagen_portada, playlist.nombre, "w-full h-full")}
+          </div>
+          <div class="space-y-2 min-w-0">
+            <span class="text-[10px] font-extrabold uppercase tracking-[0.25em] text-primary">Playlist</span>
+            <h1 class="font-display text-2xl md:text-3xl font-black text-on-surface tracking-tight truncate">${playlist.nombre}</h1>
+            <p class="text-xs text-on-surface-variant leading-relaxed line-clamp-2">${playlist.descripcion || 'Sin descripción.'}</p>
+            <p class="text-xs text-text-dim">Creada por <span class="text-on-surface font-semibold">${isOwner ? 'Mí' : 'Usuario'}</span> · ${songsInPlaylist.length} canciones</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Songs list -->
+      <div class="px-6 md:px-8 py-8 space-y-6">
+        <div class="flex items-center gap-4">
+          <button onclick="playPlaylist('${playlist.id}')" class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow shrink-0">
+            <span class="material-symbols-outlined text-[24px] ml-0.5" style="font-variation-settings:'FILL' 1">play_arrow</span>
+          </button>
+        </div>
+
+        <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-3 border border-outline/30">
+          <div class="grid grid-cols-[2rem_1fr_4rem_2.5rem_2.5rem] items-center gap-4 px-3 pb-2 border-b border-outline/40 text-[10px] uppercase font-semibold text-text-dim tracking-wider mb-1.5">
+            <span>#</span>
+            <span>Título</span>
+            <span class="text-right">Duración</span>
+            <span></span>
+            <span></span>
+          </div>
+          ${tracksHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  // -------------------------------------------------------------
+  // AUDIO CONTROLS ENGINE & DATA BINDS
+  // -------------------------------------------------------------
+  function loadSong(song) {
+    if (!song) return;
+
+    document.querySelectorAll('.track-row').forEach(row => {
+      row.classList.remove('is-playing', 'text-primary', 'bg-white/[0.02]');
+      const rowIcon = row.querySelector('.row-play span');
+      if (rowIcon) rowIcon.innerText = 'play_arrow';
+    });
+
+    currentTitle.textContent = song.titulo;
+    currentArtist.textContent = song.artista;
+    
+    const container = document.getElementById('current-cover-container');
+    if (song.url_portada && !song.url_portada.includes('unsplash.com') && !song.url_portada.includes('cenit.com')) {
+      container.innerHTML = `<img src="${song.url_portada}" alt="${song.titulo}" class="w-full h-full object-cover">`;
+    } else {
+      const initials = (song.titulo || "CN").slice(0, 2).toUpperCase();
+      container.innerHTML = `
+        <div class="w-full h-full flex items-center justify-center text-xs font-bold text-primary bg-surface-container-high tracking-wider uppercase select-none">
+          ${initials}
+        </div>
+      `;
+    }
+
+    condensedTitle.textContent = song.titulo;
+    if (song.url_portada && !song.url_portada.includes('unsplash.com') && !song.url_portada.includes('cenit.com')) {
+      condensedCoverContainer.innerHTML = `<img src="${song.url_portada}" class="w-full h-full object-cover">`;
+    } else {
+      const initials = (song.titulo || "CN").slice(0, 2).toUpperCase();
+      condensedCoverContainer.innerHTML = `
+        <div class="w-full h-full flex items-center justify-center text-[10px] font-bold text-primary bg-surface-container-high uppercase select-none">
+          ${initials}
+        </div>
+      `;
+    }
+
+    const isFav = data.favoritasIds.includes(song.id);
+    bottomFavIcon.innerText = isFav ? 'favorite' : 'favorite';
+    bottomFavIcon.style.fontVariationSettings = isFav ? "'FILL' 1" : "'FILL' 0";
+    bottomFavBtn.className = isFav ? 'text-primary ml-2 shrink-0' : 'text-on-surface-variant hover:text-on-surface ml-2 shrink-0';
+
+    clearInterval(mockInterval);
+    audio.pause();
+
+    if (song.url_audio) {
+      audio.src = song.url_audio;
+      audio.load();
+      audio.play().then(() => {
+        isPlaying = true;
+        updateUIState(song.id);
+      }).catch(err => {
+        console.log("Audio preview failed to play:", err);
+      });
+    } else {
+      audio.removeAttribute('src');
+      isPlaying = true;
+      updateUIState(song.id);
+      simulateMockPlayback(parseInt(song.duracion) || 30, song.id);
+    }
+  }
+
+  function simulateMockPlayback(dur, songId) {
+    mockElapsed = 0;
+    mockDuration = dur;
+    timeDuration.textContent = formatTime(mockDuration);
+    progressBar.max = mockDuration;
+    progressBar.value = 0;
+    mobileProgressFill.style.width = '0%';
+
+    mockInterval = setInterval(() => {
+      if (!isPlaying) return;
+      mockElapsed += 1;
+      if (mockElapsed >= mockDuration) {
+        clearInterval(mockInterval);
+        playNext();
+        return;
+      }
+      progressBar.value = mockElapsed;
+      mobileProgressFill.style.width = `${(mockElapsed / mockDuration) * 100}%`;
+      timeCurrent.textContent = formatTime(mockElapsed);
+    }, 1000);
+  }
+
+  function updateUIState(activeSongId = null) {
+    const targetSongId = activeSongId || (currentTrackIndex !== -1 && currentTrackList[currentTrackIndex] ? currentTrackList[currentTrackIndex].id : null);
+    if (!targetSongId) return;
+
+    const targetSongIdStr = String(targetSongId);
+
+    if (isPlaying) {
+      playIcon.innerText = 'pause';
+      condensedWave.style.display = 'flex';
+      
+      document.querySelectorAll(`[onclick*="playSongFromUI('${targetSongIdStr}'"]`).forEach(row => {
+        row.classList.add('is-playing', 'text-primary', 'bg-white/[0.02]');
+        const icon = row.querySelector('.row-play span');
+        if (icon) icon.innerText = 'pause';
+      });
+    } else {
+      playIcon.innerText = 'play_arrow';
+      condensedWave.style.display = 'none';
+
+      document.querySelectorAll(`[onclick*="playSongFromUI('${targetSongIdStr}'"]`).forEach(row => {
+        row.classList.remove('is-playing', 'text-primary', 'bg-white/[0.02]');
+        const icon = row.querySelector('.row-play span');
+        if (icon) icon.innerText = 'play_arrow';
+      });
+    }
+  }
+
+  function playSongFromUI(songId, context = 'all') {
+    const songIdStr = String(songId);
+
+    if (currentTrackIndex !== -1 && currentTrackList[currentTrackIndex] && String(currentTrackList[currentTrackIndex].id) === songIdStr) {
+      togglePlay();
+      return;
+    }
+
+    if (context === 'all') {
+      currentTrackList = [...data.canciones];
+    } else if (context.startsWith('artist-')) {
+      const artId = parseInt(context.split('-')[1]);
+      currentTrackList = data.canciones.filter(s => s.artista_id === artId);
+    } else if (context.startsWith('playlist-')) {
+      const plId = context.split('-')[1];
+      const pl = [...data.userPlaylists, ...data.publicPlaylists].find(p => p.id === plId);
+      currentTrackList = pl ? pl.canciones.map(pe => data.canciones.find(s => s.id == pe.idCancion)).filter(Boolean) : [...data.canciones];
+    } else if (context === 'favorites') {
+      currentTrackList = data.canciones.filter(s => data.favoritasIds.includes(s.id));
+    } else if (context === 'search') {
+      currentTrackList = [...data.canciones];
+    }
+
+    const index = currentTrackList.findIndex(s => String(s.id) === songIdStr);
+    if (index !== -1) {
+      currentTrackIndex = index;
+      loadSong(currentTrackList[currentTrackIndex]);
+    }
+  }
+
+  function togglePlay() {
+    if (currentTrackIndex === -1) {
+      if (currentTrackList.length > 0) {
+        currentTrackIndex = 0;
+        loadSong(currentTrackList[0]);
+      }
+      return;
+    }
+
+    if (isPlaying) {
+      isPlaying = false;
+      if (audio.src) {
+        audio.pause();
+      }
+      updateUIState();
+    } else {
+      isPlaying = true;
+      if (audio.src) {
+        audio.play().catch(e => console.log("Play failed:", e));
+      }
+      updateUIState();
+    }
+  }
+
+  function playNext() {
+    if (currentTrackList.length === 0) return;
+    
+    if (isShuffle) {
+      currentTrackIndex = Math.floor(Math.random() * currentTrackList.length);
+    } else {
+      currentTrackIndex = (currentTrackIndex + 1) % currentTrackList.length;
+    }
+    if (currentTrackList[currentTrackIndex]) {
+      loadSong(currentTrackList[currentTrackIndex]);
+    }
+  }
+
+  function playPrev() {
+    if (currentTrackList.length === 0) return;
+    
+    currentTrackIndex = (currentTrackIndex - 1 + currentTrackList.length) % currentTrackList.length;
+    if (currentTrackList[currentTrackIndex]) {
+      loadSong(currentTrackList[currentTrackIndex]);
+    }
+  }
+
+  function playPlaylist(playlistId) {
+    const pl = [...data.userPlaylists, ...data.publicPlaylists].find(p => p.id === playlistId);
+    if (!pl || pl.canciones.length === 0) return;
+
+    currentTrackList = pl.canciones.map(pe => data.canciones.find(s => s.id == pe.idCancion)).filter(Boolean);
+    if (currentTrackList.length > 0) {
+      currentTrackIndex = 0;
+      loadSong(currentTrackList[0]);
+    }
+  }
+
+  function playAlbum(albumId) {
+    currentTrackList = data.canciones.filter(s => s.album_id == albumId);
+    if (currentTrackList.length > 0) {
+      currentTrackIndex = 0;
+      loadSong(currentTrackList[0]);
+    }
+  }
+
+  // Play artist songs
+  function playArtistTracks(artistId) {
+    currentTrackList = data.canciones.filter(s => s.artista_id == artistId);
+    if (currentTrackList.length > 0) {
+      currentTrackIndex = 0;
+      loadSong(currentTrackList[0]);
+    }
+  }
+
+  // Audio Event Listeners
+  audio.addEventListener('timeupdate', () => {
+    if (audio.duration) {
+      progressBar.value = (audio.currentTime / audio.duration) * 100;
+      mobileProgressFill.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
+      timeCurrent.textContent = formatTime(audio.currentTime);
+      timeDuration.textContent = formatTime(audio.duration);
+    }
+  });
+
+  audio.addEventListener('loadedmetadata', () => {
+    timeDuration.textContent = formatTime(audio.duration);
+    progressBar.max = 100;
+  });
+
+  audio.addEventListener('ended', () => {
+    if (isRepeat) {
+      loadSong(currentTrackList[currentTrackIndex]);
+    } else {
+      playNext();
+    }
+  });
+
+  function seekAudio() {
+    if (audio.src && audio.duration) {
+      audio.currentTime = (progressBar.value / 100) * audio.duration;
+    } else if (!audio.src) {
+      mockElapsed = Math.floor((progressBar.value / 100) * mockDuration);
+      timeCurrent.textContent = formatTime(mockElapsed);
+    }
+  }
+
+  function changeVolume() {
+    audio.volume = volumeSlider.value;
+    isMuted = (audio.volume === 0);
+    updateVolumeIcon();
+  }
+
+  function muteVolume() {
+    if (isMuted) {
+      audio.volume = lastVolume;
+      volumeSlider.value = lastVolume;
+      isMuted = false;
+    } else {
+      lastVolume = audio.volume || 0.75;
+      audio.volume = 0;
+      volumeSlider.value = 0;
+      isMuted = true;
+    }
+    updateVolumeIcon();
+  }
+
+  function updateVolumeIcon() {
+    if (isMuted || volumeSlider.value == 0) {
+      volumeIcon.innerText = 'volume_off';
+    } else if (volumeSlider.value < 0.4) {
+      volumeIcon.innerText = 'volume_down';
+    } else {
+      volumeIcon.innerText = 'volume_up';
+    }
+  }
+
+  function toggleShuffle() {
+    isShuffle = !isShuffle;
+    document.getElementById('shuffle-btn').classList.toggle('text-primary', isShuffle);
+  }
+
+  function toggleRepeat() {
+    isRepeat = !isRepeat;
+    document.getElementById('repeat-btn').classList.toggle('text-primary', isRepeat);
+  }
+
+  function formatTime(secs) {
+    const minutes = Math.floor(secs / 60);
+    const seconds = Math.floor(secs % 60);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  }
+
+  // -------------------------------------------------------------
+  // BACKEND / DB OPERATIONS (AJAX)
+  // -------------------------------------------------------------
+  function openCreatePlaylistModal() {
+    document.getElementById('create-playlist-modal').classList.remove('hidden');
+    document.getElementById('new-playlist-name').focus();
+  }
+
+  function closeCreatePlaylistModal() {
+    document.getElementById('create-playlist-modal').classList.add('hidden');
+    document.getElementById('new-playlist-name').value = '';
+    document.getElementById('new-playlist-desc').value = '';
+  }
+
+  // Submit create playlist
+  function submitCreatePlaylist() {
+    const name = document.getElementById('new-playlist-name').value.trim();
+    const desc = document.getElementById('new-playlist-desc').value.trim();
+
+    if (!name) {
+      alert("Por favor, ingresa el nombre de la playlist.");
+      return;
+    }
+
+    fetch('/player/api/playlist/create/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ nombre: name, descripcion: desc })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        const newPl = {
+          id: payload.playlist.id,
+          idPlaylist: payload.playlist.idPlaylist,
+          nombre: payload.playlist.nombre,
+          descripcion: payload.playlist.descripcion,
+          imagen_portada: payload.playlist.imagenPortada,
+          idUsuario: payload.playlist.idUsuario,
+          canciones: payload.playlist.canciones,
+          esPublicada: payload.playlist.esPublicada,
+          esPrivada: payload.playlist.esPrivada
+        };
+        data.userPlaylists.push(newPl);
+        renderSidebarPlaylists();
+        closeCreatePlaylistModal();
+        
+        if (currentView === 'library') {
+          renderLibrary(document.getElementById('view-content'));
+        } else if (currentView === 'home') {
+          renderHome(document.getElementById('view-content'));
+        }
+      } else {
+        alert("Error: " + payload.message);
+      }
+    })
+    .catch(err => console.error(err));
+  }
+
+  function openAddPlaylistDialog(songId) {
+    currentTrackToAdd = songId;
+    const dialogList = document.getElementById('add-playlist-list');
+    dialogList.innerHTML = '';
+
+    if (data.userPlaylists.length === 0) {
+      dialogList.innerHTML = `<p class="text-xs text-text-dim italic text-center py-2">No tienes playlists creadas. Crea una en la barra lateral.</p>`;
+      document.getElementById('add-playlist-dialog').classList.remove('hidden');
+      return;
+    }
+
+    data.userPlaylists.forEach(p => {
+      const exists = p.canciones.some(c => c.idCancion == songId);
+      
+      const btn = document.createElement('button');
+      btn.className = `w-full text-left p-2.5 rounded-lg text-sm transition-all flex justify-between items-center ${exists ? 'bg-white/5 opacity-55 cursor-not-allowed' : 'hover:bg-white/5 text-white'}`;
+      btn.disabled = exists;
+      btn.onclick = () => addSongToPlaylist(p.id, songId);
+      btn.innerHTML = `
+        <span class="font-medium">${p.nombre}</span>
+        ${exists ? '<span class="text-[10px] text-primary uppercase font-bold tracking-wider">Ya agregada</span>' : '<span class="material-symbols-outlined text-sm text-text-dim">add</span>'}
+      `;
+      dialogList.appendChild(btn);
+    });
+
+    document.getElementById('add-playlist-dialog').classList.remove('hidden');
+  }
+
+  function closeAddPlaylistDialog() {
+    document.getElementById('add-playlist-dialog').classList.add('hidden');
+    currentTrackToAdd = null;
+  }
+
+  function addSongToPlaylist(playlistId, songId) {
+    fetch('/player/api/playlist/add/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ playlist_id: playlistId, cancion_id: songId })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        const p = data.userPlaylists.find(pl => pl.id === playlistId);
+        if (p) {
+          p.canciones.push(payload.entry);
+        }
+        closeAddPlaylistDialog();
+        
+        if (currentView === 'playlist' && viewParam === playlistId) {
+          renderPlaylistDetail(document.getElementById('view-content'), playlistId);
+        }
+      } else {
+        alert("Error: " + payload.message);
+      }
+    })
+    .catch(err => console.error(err));
+  }
+
+  function removeSongFromPlaylist(playlistId, songId) {
+    if (!confirm("¿Seguro que deseas quitar esta canción de la playlist?")) return;
+
+    fetch('/player/api/playlist/remove/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ playlist_id: playlistId, cancion_id: songId })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        const p = data.userPlaylists.find(pl => pl.id === playlistId);
+        if (p) {
+          p.canciones = p.canciones.filter(c => c.idCancion != songId);
+        }
+        renderPlaylistDetail(document.getElementById('view-content'), playlistId);
+      } else {
+        alert("Error: " + payload.message);
+      }
+    })
+    .catch(err => console.error(err));
+  }
+
+  function toggleSongFavorite(songId) {
+    fetch('/player/api/favorite/toggle/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ cancion_id: songId })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        const songIdInt = parseInt(songId);
+        if (payload.action === 'added') {
+          data.favoritasIds.push(songIdInt);
+        } else {
+          data.favoritasIds = data.favoritasIds.filter(id => id !== songIdInt);
+        }
+
+        if (currentView === 'home') {
+          renderHome(document.getElementById('view-content'));
+        } else if (currentView === 'library') {
+          renderLibrary(document.getElementById('view-content'));
+        } else if (currentView === 'search') {
+          const searchInput = document.querySelectorAll('input[placeholder*="escuchar"]')[0];
+          if (searchInput) searchDatabase(searchInput.value);
+        } else if (currentView === 'artist') {
+          renderArtistProfile(document.getElementById('view-content'), viewParam);
+        } else if (currentView === 'playlist') {
+          renderPlaylistDetail(document.getElementById('view-content'), viewParam);
+        }
+
+        if (currentTrackIndex !== -1 && currentTrackList[currentTrackIndex] && String(currentTrackList[currentTrackIndex].id) == String(songId)) {
+          const isFavNow = data.favoritasIds.includes(songIdInt);
+          bottomFavIcon.innerText = isFavNow ? 'favorite' : 'favorite';
+          bottomFavIcon.style.fontVariationSettings = isFavNow ? "'FILL' 1" : "'FILL' 0";
+          bottomFavBtn.className = isFavNow ? 'text-primary ml-2 shrink-0' : 'text-on-surface-variant hover:text-on-surface ml-2 shrink-0';
+        }
+      }
+    })
+    .catch(err => console.error(err));
+  }
+
+  function toggleCurrentFavorite() {
+    if (currentTrackIndex === -1) return;
+    const songId = currentTrackList[currentTrackIndex].id;
+    toggleSongFavorite(songId);
+  }
+
+  function toggleFollowArtist(artistId) {
+    fetch('/player/api/follow/toggle/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ artista_id: artistId })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        const artIdInt = parseInt(artistId);
+        if (payload.action === 'followed') {
+          data.seguidosIds.push(artIdInt);
+        } else {
+          data.seguidosIds = data.seguidosIds.filter(id => id !== artIdInt);
+        }
+
+        if (currentView === 'artist' && viewParam === artistId) {
+          renderArtistProfile(document.getElementById('view-content'), artistId);
+        }
+      }
+    })
+    .catch(err => console.error(err));
+  }
 </script>
 </body>
 </html>
