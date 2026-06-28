@@ -102,5 +102,6 @@ urlpatterns = [
     
     path('reportes/exportar/dinamico/pdf/', views.exportar_reporte_dinamico_pdf, name='exportar_reporte_dinamico_pdf'),
     path('reportes/exportar/dinamico/excel/', views.exportar_reporte_dinamico_excel, name='exportar_reporte_dinamico_excel'),
+    path('reportes/exportar/dinamico/correo/', views.enviar_reporte_dinamico_correo, name='enviar_reporte_dinamico_correo'),
     path('reportes/eliminar/<str:report_id>/', views.eliminar_reporte, name='eliminar_reporte'),
 ]

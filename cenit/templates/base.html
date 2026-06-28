@@ -398,6 +398,18 @@
             {% endblock %}
         </div>
 
+        {% if user_role == 'Analista' and reportes_personalizados %}
+        <!-- Barra de búsqueda de reportes personalizados -->
+        <div class="relative w-64 mr-auto ml-8 hidden md:block">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-on-surface-variant pointer-events-none">
+                <span class="material-symbols-outlined text-[16px] leading-none">search</span>
+            </span>
+            <input type="text" id="search-custom-reports" onkeyup="filterCustomReports()"
+                   placeholder="Buscar reporte personalizado..." 
+                   class="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#45F3FF] rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-white/40 focus:outline-none transition-colors font-body-md">
+        </div>
+        {% endif %}
+
         <div class="flex items-center gap-5">
             <div class="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-surface-container-highest/30">
                 <div class="w-8 h-8 rounded-full overflow-hidden bg-secondary/20 flex items-center justify-center">
@@ -574,6 +586,131 @@
                 const modal = document.getElementById('logout-confirm-modal');
                 if (modal) modal.classList.add('hidden');
             };
+
+            // ── EMAIL CUSTOMIZATION MODAL JS ──
+            let currentEmailEndpoint = '';
+            let currentExtraPayload = null;
+            
+            window.enviarReporteCorreo = function(url, extraPayload = null) {
+                currentEmailEndpoint = url;
+                currentExtraPayload = extraPayload;
+                
+                const subjectInput = document.getElementById('email-subject');
+                const bodyInput = document.getElementById('email-body');
+                
+                // Asunto e información contextual inteligente
+                if (url.includes('vencimientos')) {
+                    subjectInput.value = "CÉNIT — Informe de Suscripciones Expiradas";
+                    bodyInput.value = "Adjuntamos el informe detallado de suscripciones Premium inactivas o expiradas para su revisión.";
+                } else if (url.includes('promociones')) {
+                    subjectInput.value = "CÉNIT — Informe de Promociones con Alto Descuento";
+                    bodyInput.value = "Adjuntamos el informe ejecutivo detallando las promociones vigentes con descuentos superiores al 20%.";
+                } else if (url.includes('premium')) {
+                    subjectInput.value = "CÉNIT — Informe de Usuarios Premium Activos";
+                    bodyInput.value = "Adjuntamos el listado detallado de usuarios con suscripción Premium activa en la plataforma.";
+                } else if (url.includes('free')) {
+                    subjectInput.value = "CÉNIT — Informe de Candidatos a Conversión Premium (Plan Free)";
+                    bodyInput.value = "Adjuntamos el informe de usuarios activos en plan Free idóneos para campañas de conversión comercial.";
+                } else if (url.includes('fallidos')) {
+                    subjectInput.value = "CÉNIT — Auditoría de Intentos de Acceso Fallidos";
+                    bodyInput.value = "Adjuntamos la auditoría de seguridad detallando los intentos fallidos de inicio de sesión detectados.";
+                } else if (url.includes('acciones-admin')) {
+                    subjectInput.value = "CÉNIT — Auditoría de Acciones Administrativas";
+                    bodyInput.value = "Adjuntamos la auditoría de seguridad detallando las operaciones de administración crítica realizadas en la consola.";
+                } else {
+                    subjectInput.value = "CÉNIT — Envío de Reporte Analítico";
+                    bodyInput.value = "Adjuntamos el reporte personalizado de datos generado desde la Consola de Analista.";
+                }
+                
+                const modal = document.getElementById('email-custom-modal');
+                if (modal) modal.classList.remove('hidden');
+            };
+            
+            window.closeEmailModal = function() {
+                const modal = document.getElementById('email-custom-modal');
+                if (modal) modal.classList.add('hidden');
+            };
+            
+            window.confirmSendEmail = async function() {
+                const to = document.getElementById('email-to').value;
+                const subject = document.getElementById('email-subject').value;
+                const body = document.getElementById('email-body').value;
+                const attachPdf = document.getElementById('attach-pdf').checked;
+                const attachExcel = document.getElementById('attach-excel').checked;
+                
+                if (!to) {
+                    alert('Por favor especifica un correo de destino.');
+                    return;
+                }
+                if (!attachPdf && !attachExcel) {
+                    alert('Debes seleccionar al menos un archivo para adjuntar (PDF o Excel).');
+                    return;
+                }
+                
+                const btn = document.getElementById('btn-confirm-send-mail');
+                const oldHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[16px] leading-none">progress_activity</span> Enviando...';
+                
+                try {
+                    const payload = {
+                        destinatario: to,
+                        asunto: subject,
+                        mensaje: body,
+                        adjuntar_pdf: attachPdf,
+                        adjuntar_excel: attachExcel,
+                        ...(currentExtraPayload || {})
+                    };
+                    
+                    const response = await fetch(currentEmailEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await response.json();
+                    alert(data.status === 'success' ? '¡Éxito! ' + data.message : 'Error: ' + data.error);
+                    if (data.status === 'success') {
+                        closeEmailModal();
+                    }
+                } catch(e) {
+                    console.error(e);
+                    alert('Fallo de red al despachar el informe por correo.');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = oldHtml;
+                }
+            };
+
+            // ── CUSTOM REPORTS SIDEBAR FILTER JS ──
+            window.filterCustomReports = function() {
+                const searchVal = document.getElementById('search-custom-reports').value.toLowerCase();
+                const submenu = document.getElementById('custom-reports-submenu');
+                if (!submenu) return;
+                
+                const items = submenu.getElementsByTagName('a');
+                let anyVisible = false;
+                
+                for (let item of items) {
+                    const text = item.textContent.toLowerCase();
+                    if (text.includes(searchVal)) {
+                        item.style.display = 'flex';
+                        anyVisible = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                }
+                
+                // Si el usuario escribe y hay resultados, asegurar que el menú se despliegue
+                if (searchVal.length > 0 && anyVisible) {
+                    const arrow = document.getElementById('custom-reports-arrow');
+                    submenu.classList.add('open');
+                    if (arrow) arrow.classList.add('rotated');
+                    localStorage.setItem('customReportsOpen', 'true');
+                }
+            };
     </script>
 
     <!-- Logout Confirmation Modal -->
@@ -592,6 +729,66 @@
             {% csrf_token %}
             <button type="submit" class="px-5 py-2 bg-secondary text-on-secondary-fixed-variant hover:bg-secondary/80 active:scale-95 rounded-xl text-xs font-bold transition-all shadow-lg shadow-secondary/10 font-body-md">Salir</button>
           </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email Customization Modal -->
+    <div id="email-custom-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden">
+      <div class="glass-panel w-full max-w-md rounded-2xl p-6 border border-white/10 space-y-4 glow-cyan">
+        <div class="flex items-center justify-between border-b border-white/5 pb-3">
+          <div class="flex items-center gap-2 text-[#45F3FF]">
+            <span class="material-symbols-outlined text-[24px]">mail</span>
+            <h3 class="text-base font-bold text-white">Enviar Reporte por Correo</h3>
+          </div>
+          <button onclick="closeEmailModal()" class="text-on-surface-variant hover:text-white transition-colors">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+        
+        <div class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-on-surface-variant mb-1" for="email-to">Destinatario</label>
+            <input type="email" id="email-to" value="{{ request.user.email|default:'analista@cenit.com' }}"
+                   class="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#45F3FF] transition-colors font-body-md"
+                   placeholder="correo@ejemplo.com">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-on-surface-variant mb-1" for="email-subject">Asunto</label>
+            <input type="text" id="email-subject" value="CÉNIT — Envío de Reporte Analítico"
+                   class="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#45F3FF] transition-colors font-body-md"
+                   placeholder="Asunto del correo">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-on-surface-variant mb-1" for="email-body">Mensaje / Descripción</label>
+            <textarea id="email-body" rows="3"
+                      class="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#45F3FF] transition-colors resize-none font-body-md"
+                      placeholder="Escribe un mensaje explicativo para el destinatario..."></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-xs font-semibold text-on-surface-variant mb-2">Formatos a Adjuntar</label>
+            <div class="flex items-center gap-6">
+              <label class="flex items-center gap-2 text-xs text-white cursor-pointer select-none">
+                <input type="checkbox" id="attach-pdf" checked
+                       class="accent-[#45F3FF] w-4 h-4 rounded border-white/10 bg-white/5">
+                <span>Documento PDF</span>
+              </label>
+              <label class="flex items-center gap-2 text-xs text-white cursor-pointer select-none">
+                <input type="checkbox" id="attach-excel" checked
+                       class="accent-[#45F3FF] w-4 h-4 rounded border-white/10 bg-white/5">
+                <span>Tabla Excel (.xlsx)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 pt-2 border-t border-white/5">
+          <button onclick="closeEmailModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-on-surface-variant hover:text-white transition-colors font-body-md">Cancelar</button>
+          <button id="btn-confirm-send-mail" onclick="confirmSendEmail()"
+                  class="px-5 py-2 bg-gradient-to-r from-[#45F3FF] to-[#00B4D8] text-black hover:brightness-110 active:scale-95 rounded-xl text-xs font-bold transition-all shadow-lg shadow-[#45F3FF]/10 flex items-center gap-1.5 font-body-md">
+            <span class="material-symbols-outlined text-[16px] leading-none">send</span> Enviar
+          </button>
         </div>
       </div>
     </div>

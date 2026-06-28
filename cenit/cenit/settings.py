@@ -170,9 +170,28 @@ LOGIN_REDIRECT_URL = 'songs_overview'
 # A dónde ir después de cerrar sesión
 LOGOUT_REDIRECT_URL = 'landing'
 
-# Email backend configuration for local development
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'admin@cenit.com'
+# Email backend configuration
+SMTP_CONFIGURED = False
+if os.path.exists(secrets_path):
+    try:
+        with open(secrets_path, 'r', encoding='utf-8') as f:
+            secrets_data = json.load(f)
+            if 'EMAIL_HOST' in secrets_data:
+                EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+                EMAIL_HOST = secrets_data.get('EMAIL_HOST')
+                EMAIL_PORT = int(secrets_data.get('EMAIL_PORT', 587))
+                EMAIL_USE_TLS = secrets_data.get('EMAIL_USE_TLS', True)
+                EMAIL_HOST_USER = secrets_data.get('EMAIL_HOST_USER')
+                EMAIL_HOST_PASSWORD = secrets_data.get('EMAIL_HOST_PASSWORD')
+                DEFAULT_FROM_EMAIL = secrets_data.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+                SMTP_CONFIGURED = True
+    except Exception:
+        pass
+
+if not SMTP_CONFIGURED:
+    # Fallback to printing in console for development
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = 'admin@cenit.com'
 
 # Custom Authentication Backends
 AUTHENTICATION_BACKENDS = [

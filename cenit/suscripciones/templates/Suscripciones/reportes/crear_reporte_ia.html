@@ -93,6 +93,9 @@
                         <button onclick="exportReport('excel')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-xs font-bold transition-all">
                             <span class="material-symbols-outlined text-[14px]">table_view</span> Excel
                         </button>
+                        <button onclick="exportReport('email')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/20 rounded-xl text-xs font-bold transition-all">
+                            <span class="material-symbols-outlined text-[14px]">mail</span> Enviar Correo
+                        </button>
                         <button onclick="saveReport()" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/20 rounded-xl text-xs font-bold transition-all">
                             <span class="material-symbols-outlined text-[14px]">save</span> Guardar
                         </button>
@@ -385,6 +388,15 @@
 
     function exportReport(format) {
         if (!currentReport) return;
+
+        if (format === 'email') {
+            window.enviarReporteCorreo('{% url "enviar_reporte_dinamico_correo" %}', {
+                coleccion: currentReport.coleccion,
+                pipeline: JSON.stringify(currentReport.pipeline),
+                titulo: currentReport.titulo
+            });
+            return;
+        }
 
         const url = format === 'pdf' 
             ? '{% url "exportar_reporte_dinamico_pdf" %}' 
