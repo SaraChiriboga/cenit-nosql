@@ -1,0 +1,26 @@
+<div class="px-6 md:px-8 py-6 space-y-6">
+  <!-- Search bar for mobile / general -->
+  <div class="block md:hidden">
+    <div class="relative w-full">
+      <span class="material-symbols-outlined absolute left-3 top-2.5 text-text-dim text-[20px]">search</span>
+      <input type="text" id="mobile-search-input" oninput="searchDatabase(this.value)" placeholder="¿Qué quieres escuchar?" class="w-full bg-surface-container-high border border-outline/30 rounded-full pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-text-dim focus:outline-none focus:border-primary/50 focus:bg-surface-container-high/80">
+    </div>
+  </div>
+
+  <!-- Search Filter Capsules -->
+  <div class="flex flex-wrap items-center gap-2 select-none">
+    <button onclick="setSearchFilter('all', this)" class="search-capsule active px-4 py-1.5 rounded-full text-xs font-bold transition-all border border-primary/20 bg-primary text-on-primary">Todos</button>
+    <button onclick="setSearchFilter('songs', this)" class="search-capsule px-4 py-1.5 rounded-full text-xs font-bold transition-all border border-outline/40 text-on-surface-variant hover:text-on-surface hover:border-on-surface bg-white/[0.03]">Canciones</button>
+    <button onclick="setSearchFilter('artists', this)" class="search-capsule px-4 py-1.5 rounded-full text-xs font-bold transition-all border border-outline/40 text-on-surface-variant hover:text-on-surface hover:border-on-surface bg-white/[0.03]">Artistas</button>
+    <button onclick="setSearchFilter('playlists', this)" class="search-capsule px-4 py-1.5 rounded-full text-xs font-bold transition-all border border-outline/40 text-on-surface-variant hover:text-on-surface hover:border-on-surface bg-white/[0.03]">Playlists</button>
+  </div>
+
+  <!-- Search Results Grid -->
+  <div id="search-results-grid" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <!-- Populated dynamically via JS searchDatabase() -->
+    <div class="col-span-full py-20 text-center space-y-3">
+      <span class="material-symbols-outlined text-[48px] text-text-dim/40 animate-pulse">search</span>
+      <p class="text-sm text-text-dim">Escribe algo para buscar canciones, artistas o playlists.</p>
+    </div>
+  </div>
+</div>

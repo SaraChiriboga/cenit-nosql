@@ -9,4 +9,15 @@ urlpatterns = [
     path('api/favorite/toggle/', views.toggle_favorito, name='player_toggle_favorito'),
     path('api/follow/toggle/', views.toggle_seguimiento, name='player_toggle_seguimiento'),
     path('api/song/<int:cancion_id>/preview/', views.get_song_preview, name='player_song_preview'),
+    path('api/playlist/edit/', views.editar_playlist, name='player_editar_playlist'),
+    path('api/playlist/delete/', views.eliminar_playlist, name='player_eliminar_playlist'),
+    
+    # Template-based sub-views
+    path('view/home/', views.player_home_view, name='player_view_home'),
+    path('view/search/', views.player_search_view, name='player_view_search'),
+    path('view/library/', views.player_library_view, name='player_view_library'),
+    path('view/artist/<int:artist_id>/', views.player_artist_view, name='player_view_artist'),
+    path('view/playlist/<str:playlist_id>/', views.player_playlist_doc_view, name='player_view_playlist'),
+    path('view/album/<int:album_id>/', views.player_album_view, name='player_view_album'),
+    path('view/favorites/', views.player_favorites_view, name='player_view_favorites'),
 ]

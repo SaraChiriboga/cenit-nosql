@@ -1,0 +1,73 @@
+<!-- Album banner -->
+<section class="relative h-[260px] w-full flex items-end p-6 md:p-8 hero-atmosphere border-b border-outline/30">
+  <div class="flex flex-col sm:flex-row items-start sm:items-end gap-6 z-10 w-full">
+    <div class="w-28 h-28 md:w-36 md:h-36 rounded-2xl overflow-hidden shrink-0 shadow-2xl bg-surface-container-high border border-outline/40 flex items-center justify-center">
+      {% if album.url_portada %}
+        <img src="{{ album.url_portada }}" alt="{{ album.titulo }}" class="w-full h-full object-cover object-center shrink-0">
+      {% else %}
+        <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-lg font-black text-primary tracking-wider uppercase select-none">
+          {{ album.titulo|slice:":2"|upper }}
+        </div>
+      {% endif %}
+    </div>
+    <div class="space-y-2 min-w-0">
+      <span class="text-[10px] font-extrabold uppercase tracking-[0.25em] text-primary">Álbum</span>
+      <h1 class="font-display text-2xl md:text-3xl font-black text-on-surface tracking-tight truncate">{{ album.titulo }}</h1>
+      <p class="text-xs text-on-surface-variant leading-relaxed">De <span onclick="switchView('artist', {{ album.artista_id }})" class="text-primary hover:underline cursor-pointer font-bold">{{ artist_name }}</span></p>
+      <p class="text-xs text-text-dim">{{ songs|length }} canciones</p>
+    </div>
+  </div>
+</section>
+
+<!-- Songs list -->
+<div class="px-6 md:px-8 py-8 space-y-6">
+  <div class="flex items-center gap-4">
+    <button onclick="playAlbum('{{ album.id }}')" class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow shrink-0">
+      <span class="material-symbols-outlined text-[24px] ml-0.5" style="font-variation-settings:'FILL' 1">play_arrow</span>
+    </button>
+  </div>
+
+  <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-3 border border-outline/30">
+    <div class="grid grid-cols-[2rem_1fr_4rem_2.5rem_2.5rem] items-center gap-4 px-3 pb-2 border-b border-outline/40 text-[10px] uppercase font-semibold text-text-dim tracking-wider mb-1.5">
+      <span>#</span>
+      <span>Título</span>
+      <span class="text-right">Duración</span>
+      <span></span>
+      <span></span>
+    </div>
+    {% for song in songs %}
+      <div class="track-row grid grid-cols-[2rem_1fr_4rem_2.5rem_2.5rem] items-center gap-4 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer group" onclick="playSongFromUI('{{ song.id }}', 'album-{{ album.id }}')">
+        <div class="relative w-8 h-8 flex items-center justify-center shrink-0">
+          <span class="row-index absolute text-xs font-mono-num text-text-dim">{{ forloop.counter }}</span>
+          <button class="row-play absolute text-on-surface hover:text-primary transition-all shrink-0">
+            <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">play_arrow</span>
+          </button>
+        </div>
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded overflow-hidden shrink-0 shadow bg-surface-container flex items-center justify-center">
+            {% if song.url_portada %}
+              <img src="{{ song.url_portada }}" alt="{{ song.titulo }}" class="w-full h-full object-cover object-center shrink-0">
+            {% else %}
+              <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-xs font-bold text-primary tracking-wider uppercase select-none">
+                {{ song.titulo|slice:":2"|upper }}
+              </div>
+            {% endif %}
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold truncate group-hover:text-primary transition-colors text-white">{{ song.titulo }}</p>
+            <p class="text-xs text-text-dim truncate mt-0.5">{{ song.artista }}</p>
+          </div>
+        </div>
+        <span class="text-right text-xs font-mono-num text-on-surface-variant">{{ song.duracion_formatted }}</span>
+        <button onclick="event.stopPropagation(); toggleSongFavorite('{{ song.id }}')" class="w-8 h-8 rounded-full flex items-center justify-center {% if song.id in favoritas_ids %}text-primary{% else %}text-on-surface-variant hover:text-on-surface{% endif %} transition-colors shrink-0">
+          <span class="material-symbols-outlined text-[16px]">favorite</span>
+        </button>
+        <button onclick="event.stopPropagation(); openAddPlaylistDialog('{{ song.id }}')" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors shrink-0">
+          <span class="material-symbols-outlined text-[16px]">playlist_add</span>
+        </button>
+      </div>
+    {% empty %}
+      <p class="text-xs text-text-dim italic py-6 text-center">Este álbum no tiene canciones todavía.</p>
+    {% endfor %}
+  </div>
+</div>

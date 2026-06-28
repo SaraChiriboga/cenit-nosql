@@ -1,0 +1,99 @@
+<div class="px-6 md:px-8 py-8 space-y-12">
+  <!-- SECTION 1: Playlists -->
+  <section class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h2 class="font-display text-xl font-bold text-on-surface">Tus Playlists</h2>
+      <button onclick="openCreatePlaylistModal()" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-outline/30 hover:border-primary/50 text-xs font-bold text-on-surface hover:text-primary transition-all">
+        <span class="material-symbols-outlined text-[16px]">add</span>
+        Crear Playlist
+      </button>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <!-- Liked Songs Special Card -->
+      <div onclick="switchView('favorites')" class="media-card flex flex-col gap-3 group cursor-pointer select-none">
+        <div class="w-full aspect-square rounded-xl overflow-hidden relative bg-gradient-to-br from-violet to-primary/80 shadow-lg flex items-center justify-center">
+          <span class="w-12 h-12 rounded-full bg-white flex items-center justify-center text-primary shadow-md group-hover:scale-105 transition-transform">
+            <span class="material-symbols-outlined text-[26px]" style="font-variation-settings:'FILL' 1">favorite</span>
+          </span>
+          <div class="absolute inset-0 bg-black/15 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <button onclick="event.stopPropagation(); switchView('favorites')" class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow translate-y-2 group-hover:translate-y-0 transition-transform shrink-0">
+              <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">play_arrow</span>
+            </button>
+          </div>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">Canciones favoritas</h3>
+          <p class="text-xs text-text-dim mt-0.5 truncate">{{ favoritas|length }} canciones</p>
+        </div>
+      </div>
+
+      <!-- Playlists list -->
+      {% for p in user_playlists %}
+        <div onclick="switchView('playlist', '{{ p.id }}')" class="media-card flex flex-col gap-3 group cursor-pointer">
+          <div class="w-full aspect-square rounded-xl overflow-hidden relative bg-surface-container shadow-lg flex items-center justify-center">
+            {% if p.imagen_portada %}
+              {% if "gradient:" in p.imagen_portada %}
+                <!-- Gradient color: NO initials -->
+                <div class="w-full h-full shrink-0 {{ p.imagen_portada|cut:"gradient:" }} border border-outline/30 shadow-md"></div>
+              {% elif "cenit.com" in p.imagen_portada or "unsplash.com" in p.imagen_portada %}
+                <!-- Mock URL: show initials -->
+                <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-2xl md:text-3xl font-black text-primary tracking-wider uppercase select-none">
+                  {{ p.nombre|slice:":2"|upper }}
+                </div>
+              {% else %}
+                <img src="{{ p.imagen_portada }}" alt="{{ p.nombre }}" class="w-full h-full object-cover object-center shrink-0">
+              {% endif %}
+            {% else %}
+              <!-- Empty Cover: show initials -->
+              <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-2xl md:text-3xl font-black text-primary tracking-wider uppercase select-none">
+                {{ p.nombre|slice:":2"|upper }}
+              </div>
+            {% endif %}
+            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <button onclick="event.stopPropagation(); playPlaylist('{{ p.id }}')" class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow translate-y-2 group-hover:translate-y-0 transition-transform shrink-0">
+                <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">{{ p.nombre }}</h3>
+            <p class="text-xs text-text-dim mt-0.5 truncate">{{ p.descripcion|default:p.canciones|length|yesno:"canciones,Sin canciones" }}</p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- SECTION 2: Followed Artists -->
+  <section class="space-y-6">
+    <h2 class="font-display text-xl font-bold text-on-surface">Cantantes seguidos</h2>
+    
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      {% for art in artistas_seguidos %}
+        <div onclick="switchView('artist', {{ art.id }})" class="media-card flex flex-col items-center text-center gap-3 group cursor-pointer">
+          <div class="w-full aspect-square rounded-full overflow-hidden relative bg-surface-container shadow-lg flex items-center justify-center">
+            {% if art.url_perfil and not "cenit.com" in art.url_perfil and not "unsplash.com" in art.url_perfil %}
+              <img src="{{ art.url_perfil }}" alt="{{ art.nombre }}" class="w-full h-full object-cover object-center rounded-full shrink-0">
+            {% else %}
+              <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-2xl md:text-3xl font-black text-primary tracking-wider uppercase select-none rounded-full">
+                {{ art.nombre|slice:":2"|upper }}
+              </div>
+            {% endif %}
+            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+              <button onclick="event.stopPropagation(); playArtistTracks({{ art.id }})" class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow translate-y-2 group-hover:translate-y-0 transition-transform shrink-0">
+                <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">{{ art.nombre }}</h3>
+            <p class="text-xs text-text-dim mt-0.5">Artista</p>
+          </div>
+        </div>
+      {% empty %}
+        <p class="text-xs text-text-dim italic col-span-full py-4 bg-surface-container-low/20 rounded-xl text-center border border-outline/20">No sigues a ningún artista todavía.</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>

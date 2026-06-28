@@ -1,0 +1,150 @@
+<!-- Playlist banner -->
+<section class="relative h-[340px] w-full flex items-end p-6 md:p-10 border-b border-outline/30 hero-atmosphere">
+  <div class="flex flex-col md:flex-row items-start md:items-end gap-6 z-10 w-full">
+    <div class="w-40 h-40 md:w-48 md:h-48 rounded-2xl overflow-hidden shrink-0 shadow-2xl bg-surface-container-high border border-outline/40 flex items-center justify-center">
+      {% if playlist.imagen_portada %}
+        {% if "gradient:" in playlist.imagen_portada %}
+          <!-- Gradient: NO initials -->
+          <div class="w-full h-full shrink-0 {{ playlist.imagen_portada|cut:"gradient:" }} border border-outline/30 shadow-md"></div>
+        {% elif "cenit.com" in playlist.imagen_portada or "unsplash.com" in playlist.imagen_portada %}
+          <!-- Mock URL: show initials -->
+          <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-4xl md:text-5xl font-black text-primary tracking-wider uppercase select-none">
+            {{ playlist.nombre|slice:":2"|upper }}
+          </div>
+        {% else %}
+          <img src="{{ playlist.imagen_portada }}" alt="{{ playlist.nombre }}" class="w-full h-full object-cover object-center shrink-0">
+        {% endif %}
+      {% else %}
+        <!-- Empty: show initials -->
+        <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-4xl md:text-5xl font-black text-primary tracking-wider uppercase select-none">
+          {{ playlist.nombre|slice:":2"|upper }}
+        </div>
+      {% endif %}
+    </div>
+    <div class="space-y-2.5 min-w-0">
+      <span class="text-xs font-bold uppercase tracking-[0.25em] text-primary">
+        {% if playlist.esPublicada %}Playlist pública{% else %}Playlist privada{% endif %}
+      </span>
+      <h1 class="font-display text-4xl md:text-6xl font-black text-on-surface tracking-tight truncate py-1">{{ playlist.nombre }}</h1>
+      <p class="text-sm text-on-surface-variant leading-relaxed line-clamp-2">{{ playlist.descripcion|default:'Sin descripción.' }}</p>
+      <div class="flex items-center gap-2 text-sm text-on-surface">
+        <div class="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+          <span class="material-symbols-outlined text-[14px] text-primary font-bold">person</span>
+        </div>
+        <span class="font-bold">{{ owner_name }}</span>
+        <span class="text-text-dim">•</span>
+        <span class="text-text-dim">{{ songs|length }} canciones, {{ duration_text }}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Actions Bar -->
+<div class="px-6 md:px-10 py-6 flex flex-wrap items-center justify-between gap-4 select-none">
+  <div class="flex items-center gap-6">
+    <!-- Play/Pause Button -->
+    <button onclick="playPlaylist('{{ playlist.id }}')" class="w-14 h-14 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow shrink-0 transition-transform hover:scale-105 active:scale-95" aria-label="Reproducir playlist">
+      <span class="material-symbols-outlined text-[32px] ml-1" style="font-variation-settings:'FILL' 1">play_arrow</span>
+    </button>
+    
+    {% if is_owner %}
+      <!-- "+" Button to search/add more songs -->
+      <button onclick="switchView('search')" class="text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center hover:scale-105 active:scale-95 shrink-0" title="Buscar más canciones">
+        <span class="material-symbols-outlined text-[28px]">add</span>
+      </button>
+    {% endif %}
+
+    <!-- 3-Dots Dropdown Button -->
+    <div class="relative inline-block text-left">
+      <button onclick="togglePlaylistMenu(event)" class="text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center hover:scale-105 active:scale-95 shrink-0" title="Más opciones">
+        <span class="material-symbols-outlined text-[28px]">more_horiz</span>
+      </button>
+      <div id="playlist-menu-dropdown" class="origin-top-left absolute left-0 mt-2 w-48 rounded-xl shadow-2xl bg-surface-container border border-outline/30 hidden z-50 py-1.5 glass">
+        {% if is_owner %}
+          <button onclick="openEditPlaylistModal('{{ playlist.id }}', '{{ playlist.nombre|escapejs }}', '{{ playlist.descripcion|default:''|escapejs }}', '{{ playlist.esPublicada|yesno:'public,private' }}', '{{ playlist.imagen_portada }}')" class="w-full text-left px-4 py-2.5 text-xs font-bold text-white hover:bg-white/[0.06] transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">edit</span>
+            Editar detalles
+          </button>
+          <button onclick="deletePlaylist('{{ playlist.id }}')" class="w-full text-left px-4 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">delete</span>
+            Eliminar playlist
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Local Playlist Search -->
+  <div class="flex items-center gap-3 text-on-surface-variant text-sm relative">
+    <input type="text" id="local-playlist-search" oninput="filterPlaylistSongs(this.value)" placeholder="Buscar en esta playlist..." class="w-48 bg-white/[0.06] border border-outline/35 rounded-full py-1.5 px-4 text-xs text-on-surface placeholder:text-text-dim focus:outline-none focus:border-primary/40 focus:bg-white/10 transition-all hidden">
+    
+    <button onclick="event.stopPropagation(); const searchInput = document.getElementById('local-playlist-search'); searchInput.classList.toggle('hidden'); if(!searchInput.classList.contains('hidden')) searchInput.focus();" class="text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center hover:scale-105 active:scale-95" title="Buscar en esta playlist">
+      <span class="material-symbols-outlined text-[28px]">search</span>
+    </button>
+  </div>
+</div>
+
+<!-- Songs list table -->
+<div class="px-6 md:px-10 pb-10">
+  <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-3 border border-outline/30">
+    <div class="grid grid-cols-[2.5rem_2.5fr_1.5fr_1.2fr_3rem_2.5rem_2.5rem] items-center gap-4 px-4 pb-2 border-b border-outline/40 text-[10px] uppercase font-bold text-text-dim tracking-wider mb-2">
+      <span>#</span>
+      <span>Título</span>
+      <span>Álbum</span>
+      <span>Fecha adición</span>
+      <span class="text-right flex justify-end"><span class="material-symbols-outlined text-[16px]">schedule</span></span>
+      <span></span>
+      <span></span>
+    </div>
+    {% for song in songs %}
+      <div class="track-row grid grid-cols-[2.5rem_2.5fr_1.5fr_1.2fr_3rem_2.5rem_2.5rem] items-center gap-4 px-4 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer group" onclick="playSongFromUI('{{ song.id }}', 'playlist-{{ playlist.id }}')">
+        <div class="relative w-8 h-8 flex items-center justify-center shrink-0">
+          <span class="row-index absolute text-xs font-mono-num text-text-dim">{{ forloop.counter }}</span>
+          <button class="row-play absolute text-on-surface hover:text-primary transition-all shrink-0">
+            <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">play_arrow</span>
+          </button>
+        </div>
+        
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded overflow-hidden shrink-0 shadow bg-surface-container flex items-center justify-center">
+            {% if song.url_portada %}
+              <img src="{{ song.url_portada }}" alt="{{ song.titulo }}" class="w-full h-full object-cover object-center shrink-0">
+            {% else %}
+              <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-xs font-bold text-primary tracking-wider uppercase select-none">
+                {{ song.titulo|slice:":2"|upper }}
+              </div>
+            {% endif %}
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold truncate group-hover:text-primary transition-colors text-white">{{ song.titulo }}</p>
+            <p class="text-xs text-text-dim truncate mt-0.5 hover:underline" onclick="event.stopPropagation(); switchView('artist', {{ song.artista_id }})">{{ song.artista }}</p>
+          </div>
+        </div>
+
+        <div class="min-w-0">
+          <p class="text-sm text-on-surface-variant truncate group-hover:text-on-surface transition-colors hover:underline" onclick="event.stopPropagation(); switchView('album', {{ song.album_id }})">{{ song.album_name }}</p>
+        </div>
+
+        <div class="min-w-0">
+          <p class="text-sm text-text-dim truncate">{{ song.formatted_date_added }}</p>
+        </div>
+
+        <span class="text-right text-xs font-mono-num text-on-surface-variant">{{ song.duracion_formatted }}</span>
+        
+        <button onclick="event.stopPropagation(); toggleSongFavorite('{{ song.id }}')" class="w-8 h-8 rounded-full flex items-center justify-center {% if song.id in favoritas_ids %}text-primary{% else %}text-on-surface-variant hover:text-on-surface{% endif %} transition-colors shrink-0">
+          <span class="material-symbols-outlined text-[18px]">favorite</span>
+        </button>
+        
+        {% if is_owner %}
+          <button onclick="event.stopPropagation(); removeSongFromPlaylist('{{ playlist.id }}', '{{ song.id }}')" class="w-8 h-8 rounded-full flex items-center justify-center text-red-400/60 hover:text-red-400 hover:bg-white/5 transition-all shrink-0" title="Eliminar de playlist">
+             <span class="material-symbols-outlined text-[18px]">delete</span>
+           </button>
+        {% else %}
+          <button onclick="event.stopPropagation(); openAddPlaylistDialog('{{ song.id }}')" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors shrink-0"><span class="material-symbols-outlined text-[18px]">playlist_add</span></button>
+        {% endif %}
+      </div>
+    {% empty %}
+      <p class="text-xs text-text-dim italic py-8 text-center">Esta playlist no tiene canciones todavía.</p>
+    {% endfor %}
+  </div>
+</div>

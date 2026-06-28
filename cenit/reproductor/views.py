@@ -3,7 +3,7 @@ import datetime
 from bson import ObjectId
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from cenit.mongo_client import db
 import requests
@@ -170,13 +170,17 @@ def crear_playlist(request):
         max_p = list(db["playlists"].find().sort("idPlaylist", -1).limit(1))
         new_id = (max_p[0].get("idPlaylist", 0) + 1) if max_p else 1
         
+        es_publicada = data.get("esPublicada", True)
+        es_privada = not es_publicada
+        imagen_portada = data.get("imagenPortada", "")
+
         playlist_doc = {
             "idPlaylist": new_id,
             "nombre": nombre,
             "descripcion": descripcion,
-            "esPrivada": False,
-            "esPublicada": True,
-            "imagenPortada": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+            "esPrivada": es_privada,
+            "esPublicada": es_publicada,
+            "imagenPortada": imagen_portada,
             "fechaCreacion": datetime.datetime.now().isoformat(),
             "idUsuario": user_id,
             "canciones": []
@@ -376,4 +380,543 @@ def get_song_preview(request, cancion_id):
         return JsonResponse({"status": "success", "preview_url": None})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+# -------------------------------------------------------------
+# TEMPLATE-BASED PARTIAL VIEWS (SPA-AJAX)
+# -------------------------------------------------------------
+@login_required(login_url='login_player')
+def player_home_view(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+
+        # Determine greeting
+        hour = datetime.datetime.now().hour
+        if hour < 12:
+            greeting = "Buenos días"
+        elif hour < 18:
+            greeting = "Buenas tardes"
+        else:
+            greeting = "Buenas noches"
+
+        # Playlists
+        playlists_cursor = db["playlists"].find({
+            "$or": [
+                {"idUsuario": user_id},
+                {"esPublicada": True}
+            ]
+        })
+        all_playlists = []
+        for p in playlists_cursor:
+            all_playlists.append({
+                "id": str(p["_id"]),
+                "nombre": p.get("nombre", ""),
+                "descripcion": p.get("descripcion", ""),
+                "imagen_portada": p.get("imagenPortada", ""),
+                "canciones": p.get("canciones", []),
+            })
+
+        # Artists (Loaded first to map names to albums and avoid N+1 queries)
+        artistas_cursor = list(db["Artista"].find({"estadoActivo": "Vigente"}))
+        artists_map = {art.get("artista_id"): art.get("nombreArtistico", "Artista") for art in artistas_cursor}
+        
+        artistas = []
+        for art in artistas_cursor:
+            artistas.append({
+                "id": art.get("artista_id"),
+                "nombre": art.get("nombreArtistico", ""),
+                "url_perfil": art.get("urlPerfil", ""),
+            })
+
+        # Albums
+        albums_cursor = db["Album"].find()
+        albumes = []
+        for al in albums_cursor:
+            art_name = artists_map.get(al.get("artista_id"), "Artista")
+            albumes.append({
+                "id": al.get("album_id"),
+                "titulo": al.get("tituloAlbum", ""),
+                "url_portada": al.get("urlPortada", ""),
+                "artista_id": al.get("artista_id"),
+                "artista_name": art_name,
+            })
+
+        # New releases (songs)
+        songs_cursor = db["Cancion"].find({"estadoPublicacion": "Publicada"}).sort("cancion_id", -1).limit(8)
+        new_songs = []
+        for s in songs_cursor:
+            colabs = s.get("colaboradores", [])
+            artist_name = "Artista"
+            for c in colabs:
+                if c.get("rolArtista") == "Principal":
+                    artist_name = c.get("nombreArtista", "Artista")
+                    break
+            new_songs.append({
+                "id": s.get("cancion_id"),
+                "titulo": s.get("tituloCancion", ""),
+                "url_portada": s.get("urlPortada", ""),
+                "artista": artist_name,
+            })
+
+        # Quick access items (first 6 combinations of playlists/songs)
+        quick_items = []
+        for p in all_playlists[:3]:
+            quick_items.append({
+                "type": "playlist",
+                "id": p["id"],
+                "title": p["nombre"],
+                "cover": p["imagen_portada"]
+            })
+        for s in new_songs[:3]:
+            quick_items.append({
+                "type": "song",
+                "id": s["id"],
+                "title": s["titulo"],
+                "cover": s["url_portada"]
+            })
+
+        context = {
+            "greeting": greeting,
+            "quick_items": quick_items,
+            "all_playlists": all_playlists,
+            "albumes": albumes,
+            "artistas": artistas,
+            "new_songs": new_songs,
+        }
+        return render(request, 'reproductor/views/home.html', context)
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required(login_url='login_player')
+def player_search_view(request):
+    return render(request, 'reproductor/views/search.html')
+
+@login_required(login_url='login_player')
+def player_library_view(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+
+        # Favorites
+        fav_docs = list(db["cancionesFavoritas"].find({"idUsuario": user_id}))
+        favoritas_ids = [f.get("idCancion") for f in fav_docs]
+        favoritas = []
+        if favoritas_ids:
+            songs_cursor = db["Cancion"].find({"cancion_id": {"$in": favoritas_ids}})
+            for s in songs_cursor:
+                colabs = s.get("colaboradores", [])
+                artist_name = "Artista"
+                for c in colabs:
+                    if c.get("rolArtista") == "Principal":
+                        artist_name = c.get("nombreArtista", "Artista")
+                        break
+                favoritas.append({
+                    "id": s.get("cancion_id"),
+                    "titulo": s.get("tituloCancion", ""),
+                    "url_portada": s.get("urlPortada", ""),
+                    "artista": artist_name,
+                    "duracion": s.get("duracionSeg", 180),
+                })
+
+        # Followed artists
+        seguidos_cursor = db["seguimientos"].find({"idUsuario": user_id, "activo": 1})
+        seguidos_ids = [s.get("idArtista") for s in seguidos_cursor]
+        artistas_seguidos = []
+        if seguidos_ids:
+            artists_cursor = db["Artista"].find({"artista_id": {"$in": seguidos_ids}})
+            for art in artists_cursor:
+                artistas_seguidos.append({
+                    "id": art.get("artista_id"),
+                    "nombre": art.get("nombreArtistico", ""),
+                    "url_perfil": art.get("urlPerfil", ""),
+                })
+
+        # User Playlists
+        playlists_cursor = db["playlists"].find({"idUsuario": user_id})
+        user_playlists = []
+        for p in playlists_cursor:
+            user_playlists.append({
+                "id": str(p["_id"]),
+                "nombre": p.get("nombre", ""),
+                "descripcion": p.get("descripcion", ""),
+                "imagen_portada": p.get("imagenPortada", ""),
+                "canciones": p.get("canciones", []),
+            })
+
+        context = {
+            "favoritas": favoritas,
+            "artistas_seguidos": artistas_seguidos,
+            "user_playlists": user_playlists,
+        }
+        return render(request, 'reproductor/views/library.html', context)
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required(login_url='login_player')
+def player_artist_view(request, artist_id):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+
+        artist = db["Artista"].find_one({"artista_id": int(artist_id)})
+        if not artist:
+            return HttpResponse("Artista no encontrado", status=404)
+
+        # Check followed
+        seg = db["seguimientos"].find_one({"idUsuario": user_id, "idArtista": int(artist_id), "activo": 1})
+        is_following = seg is not None
+
+        # Songs
+        songs_cursor = db["Cancion"].find({
+            "colaboradores.idArtista": int(artist_id),
+            "estadoPublicacion": "Publicada"
+        }).limit(5)
+        popular_tracks = []
+        for s in songs_cursor:
+            colabs = s.get("colaboradores", [])
+            artist_name = "Artista"
+            for c in colabs:
+                if c.get("rolArtista") == "Principal":
+                    artist_name = c.get("nombreArtista", "Artista")
+                    break
+            
+            dur = int(s.get("duracionSeg", 0))
+            minutes = dur // 60
+            seconds = dur % 60
+            dur_formatted = f"{minutes}:{seconds:02d}"
+
+            popular_tracks.append({
+                "id": s.get("cancion_id"),
+                "titulo": s.get("tituloCancion", ""),
+                "url_portada": s.get("urlPortada", ""),
+                "artista": artist_name,
+                "duracion_formatted": dur_formatted,
+            })
+
+        # Albums
+        albums_cursor = db["Album"].find({"artista_id": int(artist_id)})
+        artist_albums = []
+        for al in albums_cursor:
+            artist_albums.append({
+                "id": al.get("album_id"),
+                "titulo": al.get("tituloAlbum", ""),
+                "url_portada": al.get("urlPortada", ""),
+            })
+
+        # Favorites ids list for user
+        fav_docs = list(db["cancionesFavoritas"].find({"idUsuario": user_id}))
+        favoritas_ids = [f.get("idCancion") for f in fav_docs]
+
+        # Related artists (Fans also like)
+        other_artists_cursor = db["Artista"].find({"artista_id": {"$ne": int(artist_id)}, "estadoActivo": "Vigente"}).limit(3)
+        fans_like = []
+        for oa in other_artists_cursor:
+            fans_like.append({
+                "id": oa.get("artista_id"),
+                "nombre": oa.get("nombreArtistico", ""),
+                "url_perfil": oa.get("urlPerfil", ""),
+            })
+
+        context = {
+            "artist": {
+                "id": artist.get("artista_id"),
+                "nombre": artist.get("nombreArtistico"),
+                "url_perfil": artist.get("urlPerfil"),
+                "pais": artist.get("paisOrigen"),
+                "biografia": artist.get("biografia"),
+            },
+            "is_following": is_following,
+            "popular_tracks": popular_tracks,
+            "artist_albums": artist_albums,
+            "fans_like": fans_like,
+            "favoritas_ids": favoritas_ids,
+        }
+        return render(request, 'reproductor/views/artist_profile.html', context)
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required(login_url='login_player')
+def player_playlist_doc_view(request, playlist_id):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+
+        playlist = db["playlists"].find_one({"_id": ObjectId(playlist_id)})
+        if not playlist:
+            return HttpResponse("Playlist no encontrada", status=404)
+
+        is_owner = playlist.get("idUsuario") == user_id
+
+        # Get creator name
+        creator = db["usuarios"].find_one({"id": playlist.get("idUsuario")})
+        owner_name = f"{creator.get('nombre', 'Usuario')} {creator.get('apellido', '')}" if creator else "Usuario"
+
+        # Songs
+        songs_list = []
+        total_seconds = 0
+        for pe in playlist.get("canciones", []):
+            s = db["Cancion"].find_one({"cancion_id": int(pe.get("idCancion"))})
+            if s:
+                colabs = s.get("colaboradores", [])
+                artist_name = "Artista"
+                artista_id = 0
+                for c in colabs:
+                    if c.get("rolArtista") == "Principal":
+                        artist_name = c.get("nombreArtista", "Artista")
+                        artista_id = c.get("idArtista", 0)
+                        break
+
+                dur = int(s.get("duracionSeg", 0))
+                total_seconds += dur
+                minutes = dur // 60
+                seconds = dur % 60
+                dur_formatted = f"{minutes}:{seconds:02d}"
+
+                # Find album name
+                album = db["Album"].find_one({"album_id": s.get("album_id")})
+                album_name = album.get("tituloAlbum", "Sencillo") if album else "Sencillo"
+
+                # Relative date added formatting
+                formatted_date_added = "Hace tiempo"
+                if pe.get("fechaAdicion"):
+                    try:
+                        added_date = datetime.datetime.fromisoformat(pe.get("fechaAdicion"))
+                        diff = datetime.datetime.now() - added_date
+                        if diff.days <= 1:
+                            formatted_date_added = "Hoy"
+                        elif diff.days == 2:
+                            formatted_date_added = "Ayer"
+                        elif diff.days < 7:
+                            formatted_date_added = f"Hace {diff.days} días"
+                        elif diff.days < 30:
+                            weeks = diff.days // 7
+                            formatted_date_added = f"Hace {weeks} semana{'s' if weeks > 1 else ''}"
+                        else:
+                            months = diff.days // 30
+                            formatted_date_added = f"Hace {months} me{'ses' if months > 1 else 's'}"
+                    except Exception:
+                        pass
+
+                songs_list.append({
+                    "id": s.get("cancion_id"),
+                    "titulo": s.get("tituloCancion"),
+                    "artista": artist_name,
+                    "artista_id": artista_id,
+                    "url_portada": s.get("urlPortada"),
+                    "album_id": s.get("album_id"),
+                    "album_name": album_name,
+                    "duracion_formatted": dur_formatted,
+                    "formatted_date_added": formatted_date_added,
+                })
+
+        # Calculate duration text
+        total_min = total_seconds // 60
+        total_hr = total_min // 60
+        rem_min = total_min % 60
+        duration_text = f"{total_hr} h {rem_min} min" if total_hr > 0 else f"{total_min} min"
+
+        # Favorites ids list for user
+        fav_docs = list(db["cancionesFavoritas"].find({"idUsuario": user_id}))
+        favoritas_ids = [f.get("idCancion") for f in fav_docs]
+
+        context = {
+            "playlist": {
+                "id": str(playlist["_id"]),
+                "nombre": playlist.get("nombre"),
+                "descripcion": playlist.get("descripcion"),
+                "imagen_portada": playlist.get("imagenPortada"),
+                "esPublicada": playlist.get("esPublicada"),
+            },
+            "is_owner": is_owner,
+            "owner_name": owner_name,
+            "songs": songs_list,
+            "duration_text": duration_text,
+            "favoritas_ids": favoritas_ids,
+        }
+        return render(request, 'reproductor/views/playlist_detail.html', context)
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required(login_url='login_player')
+def player_album_view(request, album_id):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+
+        album = db["Album"].find_one({"album_id": int(album_id)})
+        if not album:
+            return HttpResponse("Álbum no encontrado", status=404)
+
+        # Get artist name
+        art = db["Artista"].find_one({"artista_id": album.get("artista_id")})
+        artist_name = art.get("nombreArtistico", "Artista") if art else "Artista"
+
+        # Songs
+        songs_cursor = db["Cancion"].find({"album_id": int(album_id), "estadoPublicacion": "Publicada"})
+        songs_list = []
+        for s in songs_cursor:
+            colabs = s.get("colaboradores", [])
+            artist_name_s = "Artista"
+            for c in colabs:
+                if c.get("rolArtista") == "Principal":
+                    artist_name_s = c.get("nombreArtista", "Artista")
+                    break
+
+            dur = int(s.get("duracionSeg", 0))
+            minutes = dur // 60
+            seconds = dur % 60
+            dur_formatted = f"{minutes}:{seconds:02d}"
+
+            songs_list.append({
+                "id": s.get("cancion_id"),
+                "titulo": s.get("tituloCancion"),
+                "artista": artist_name_s,
+                "url_portada": s.get("urlPortada"),
+                "duracion_formatted": dur_formatted,
+            })
+
+        # Favorites ids list for user
+        fav_docs = list(db["cancionesFavoritas"].find({"idUsuario": user_id}))
+        favoritas_ids = [f.get("idCancion") for f in fav_docs]
+
+        context = {
+            "album": {
+                "id": album.get("album_id"),
+                "titulo": album.get("tituloAlbum"),
+                "url_portada": album.get("urlPortada"),
+                "artista_id": album.get("artista_id"),
+            },
+            "artist_name": artist_name,
+            "songs": songs_list,
+            "favoritas_ids": favoritas_ids,
+        }
+        return render(request, 'reproductor/views/album_detail.html', context)
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required(login_url='login_player')
+def player_favorites_view(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+
+        fav_docs = list(db["cancionesFavoritas"].find({"idUsuario": user_id}))
+        favoritas_ids = [f.get("idCancion") for f in fav_docs]
+        
+        songs_list = []
+        if favoritas_ids:
+            songs_cursor = db["Cancion"].find({"cancion_id": {"$in": favoritas_ids}})
+            for s in songs_cursor:
+                colabs = s.get("colaboradores", [])
+                artist_name = "Artista"
+                artista_id = 0
+                for c in colabs:
+                    if c.get("rolArtista") == "Principal":
+                        artist_name = c.get("nombreArtista", "Artista")
+                        artista_id = c.get("idArtista", 0)
+                        break
+
+                dur = int(s.get("duracionSeg", 180))
+                minutes = dur // 60
+                seconds = dur % 60
+                dur_formatted = f"{minutes}:{seconds:02d}"
+
+                album = db["Album"].find_one({"album_id": s.get("album_id")})
+                album_name = album.get("tituloAlbum", "Sencillo") if album else "Sencillo"
+
+                songs_list.append({
+                    "id": s.get("cancion_id"),
+                    "titulo": s.get("tituloCancion"),
+                    "artista": artist_name,
+                    "artista_id": artista_id,
+                    "url_portada": s.get("urlPortada"),
+                    "album_id": s.get("album_id"),
+                    "album_name": album_name,
+                    "duracion_formatted": dur_formatted,
+                })
+
+        context = {
+            "songs": songs_list,
+            "favoritas_ids": favoritas_ids,
+        }
+        return render(request, 'reproductor/views/favorites_detail.html', context)
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required(login_url='login_player')
+@require_POST
+def editar_playlist(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+        
+        data = json.loads(request.body)
+        playlist_id = data.get("playlist_id")
+        nombre = data.get("nombre", "").strip()
+        descripcion = data.get("descripcion", "").strip()
+        es_publicada = data.get("esPublicada", False)
+        imagen_portada = data.get("imagenPortada", "")
+        
+        if not playlist_id:
+            return JsonResponse({"status": "error", "message": "Falta ID de playlist."}, status=400)
+            
+        if not nombre:
+            return JsonResponse({"status": "error", "message": "El nombre no puede estar vacío."}, status=400)
+            
+        from bson import ObjectId
+        playlist_doc = db["playlists"].find_one({"_id": ObjectId(playlist_id)})
+        if not playlist_doc:
+            return JsonResponse({"status": "error", "message": "Playlist no encontrada."}, status=404)
+            
+        if playlist_doc.get("idUsuario") != user_id:
+            return JsonResponse({"status": "error", "message": "No tienes permiso para editar esta playlist."}, status=403)
+            
+        update_fields = {
+            "nombre": nombre,
+            "descripcion": descripcion,
+            "esPublicada": es_publicada,
+            "esPrivada": not es_publicada,
+        }
+        if imagen_portada:
+            update_fields["imagenPortada"] = imagen_portada
+            
+        db["playlists"].update_one(
+            {"_id": ObjectId(playlist_id)},
+            {"$set": update_fields}
+        )
+        
+        # Get updated playlist
+        updated_doc = db["playlists"].find_one({"_id": ObjectId(playlist_id)})
+        updated_doc["id"] = str(updated_doc["_id"])
+        
+        return JsonResponse({"status": "success", "playlist": updated_doc}, encoder=MongoEncoder)
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required(login_url='login_player')
+@require_POST
+def eliminar_playlist(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+        
+        data = json.loads(request.body)
+        playlist_id = data.get("playlist_id")
+        
+        if not playlist_id:
+            return JsonResponse({"status": "error", "message": "Falta ID de playlist."}, status=400)
+            
+        from bson import ObjectId
+        playlist_doc = db["playlists"].find_one({"_id": ObjectId(playlist_id)})
+        if not playlist_doc:
+            return JsonResponse({"status": "error", "message": "Playlist no encontrada."}, status=404)
+            
+        if playlist_doc.get("idUsuario") != user_id:
+            return JsonResponse({"status": "error", "message": "No tienes permiso para eliminar esta playlist."}, status=403)
+            
+        db["playlists"].delete_one({"_id": ObjectId(playlist_id)})
+        return JsonResponse({"status": "success", "message": "Playlist eliminada correctamente."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
 

@@ -1,0 +1,207 @@
+<div class="px-6 md:px-10 pt-2 space-y-10">
+  <!-- Greeting & Quick Access Tiles -->
+  <section aria-labelledby="greeting-heading">
+    <h1 id="greeting-heading" class="font-display text-[28px] md:text-[32px] font-extrabold tracking-tight text-on-surface mb-5">{{ greeting }}</h1>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {% for item in quick_items %}
+        {% if item.type == 'playlist' %}
+          <div onclick="switchView('playlist', '{{ item.id }}')" class="quick-tile flex items-center gap-3 bg-white/[0.04] rounded-lg overflow-hidden group cursor-pointer p-0 select-none">
+            <div class="w-16 h-16 shrink-0 flex items-center justify-center bg-surface-container border-r border-outline/30">
+              {% if item.cover %}
+                {% if "gradient:" in item.cover %}
+                  <!-- Gradient color selected: NO initials -->
+                  <div class="w-full h-full shrink-0 {{ item.cover|cut:"gradient:" }} border border-outline/30 shadow-md"></div>
+                {% elif "cenit.com" in item.cover or "unsplash.com" in item.cover %}
+                  <!-- Mock URL: show initials -->
+                  <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-lg font-black text-primary tracking-wider uppercase select-none">
+                    {{ item.title|slice:":2"|upper }}
+                  </div>
+                {% else %}
+                  <img src="{{ item.cover }}" alt="{{ item.title }}" class="w-full h-full object-cover object-center shrink-0">
+                {% endif %}
+              {% else %}
+                <!-- Empty: show initials -->
+                <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-lg font-black text-primary tracking-wider uppercase select-none">
+                  {{ item.title|slice:":2"|upper }}
+                </div>
+              {% endif %}
+            </div>
+            <span class="text-sm font-semibold text-on-surface truncate pr-2 group-hover:text-primary transition-colors">{{ item.title }}</span>
+          </div>
+        {% else %}
+          <div onclick="playSongFromUI('{{ item.id }}', 'all')" class="quick-tile flex items-center gap-3 bg-white/[0.04] rounded-lg overflow-hidden group cursor-pointer p-0 select-none">
+            <div class="w-16 h-16 shrink-0 flex items-center justify-center bg-surface-container border-r border-outline/30">
+              {% if item.cover and not "cenit.com" in item.cover and not "unsplash.com" in item.cover %}
+                <img src="{{ item.cover }}" alt="{{ item.title }}" class="w-full h-full object-cover object-center shrink-0">
+              {% else %}
+                <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-lg font-black text-primary tracking-wider uppercase select-none">
+                  {{ item.title|slice:":2"|upper }}
+                </div>
+              {% endif %}
+            </div>
+            <span class="text-sm font-semibold text-on-surface truncate pr-2 group-hover:text-primary transition-colors">{{ item.title }}</span>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Rail 1: Hecho para ti (Playlists) -->
+  <section aria-labelledby="foryou-heading" class="rail-section relative">
+    <div class="flex items-center justify-between mb-4">
+      <h2 id="foryou-heading" class="font-display text-2xl font-bold text-on-surface">Hecho para ti</h2>
+    </div>
+    <button class="rail-nav-btn absolute left-0 top-[40%] -translate-y-1/2 -translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-foryou', -1)">
+      <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+    </button>
+    <button class="rail-nav-btn absolute right-0 top-[40%] -translate-y-1/2 translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-foryou', 1)">
+      <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+    </button>
+    <div id="rail-foryou" class="rail">
+      {% for p in all_playlists %}
+        <div onclick="switchView('playlist', '{{ p.id }}')" class="rail-item media-card w-[170px] group cursor-pointer">
+          <div class="w-full aspect-square rounded-xl overflow-hidden relative bg-surface-container shadow-lg mb-3 flex items-center justify-center">
+            {% if p.imagen_portada %}
+              {% if "gradient:" in p.imagen_portada %}
+                <!-- Gradient color selected: NO initials -->
+                <div class="w-full h-full shrink-0 {{ p.imagen_portada|cut:"gradient:" }} border border-outline/30 shadow-md"></div>
+              {% elif "cenit.com" in p.imagen_portada or "unsplash.com" in p.imagen_portada %}
+                <!-- Mock URL: show initials -->
+                <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-3xl font-black text-primary tracking-wider uppercase select-none">
+                  {{ p.nombre|slice:":2"|upper }}
+                </div>
+              {% else %}
+                <img src="{{ p.imagen_portada }}" alt="{{ p.nombre }}" class="w-full h-full object-cover object-center shrink-0">
+              {% endif %}
+            {% else %}
+              <!-- Empty: show initials -->
+              <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-3xl font-black text-primary tracking-wider uppercase select-none">
+                {{ p.nombre|slice:":2"|upper }}
+              </div>
+            {% endif %}
+            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <button onclick="event.stopPropagation(); playPlaylist('{{ p.id }}')" class="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow translate-y-2 group-hover:translate-y-0 transition-transform shrink-0">
+                <span class="material-symbols-outlined text-xl ml-0.5" style="font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+            </div>
+          </div>
+          <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">{{ p.nombre }}</h3>
+          <p class="text-xs text-text-dim mt-0.5 truncate">{{ p.descripcion|default:p.canciones|length|yesno:"canciones,Sin canciones" }}</p>
+        </div>
+      {% empty %}
+        <p class="text-xs text-text-dim italic py-4">No hay listas creadas o públicas.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Rail 2: Álbumes populares -->
+  <section aria-labelledby="albums-heading" class="rail-section relative">
+    <div class="flex items-center justify-between mb-4">
+      <h2 id="albums-heading" class="font-display text-2xl font-bold text-on-surface">Álbumes populares</h2>
+    </div>
+    <button class="rail-nav-btn absolute left-0 top-[40%] -translate-y-1/2 -translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-albums', -1)">
+      <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+    </button>
+    <button class="rail-nav-btn absolute right-0 top-[40%] -translate-y-1/2 translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-albums', 1)">
+      <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+    </button>
+    <div id="rail-albums" class="rail">
+      {% for al in albumes %}
+        <div onclick="switchView('album', '{{ al.id }}')" class="rail-item media-card w-[170px] group cursor-pointer">
+          <div class="w-full aspect-square rounded-xl overflow-hidden relative bg-surface-container shadow-lg mb-3 flex items-center justify-center">
+            {% if al.url_portada and not "cenit.com" in al.url_portada and not "unsplash.com" in al.url_portada %}
+              <img src="{{ al.url_portada }}" alt="{{ al.titulo }}" class="w-full h-full object-cover object-center shrink-0">
+            {% else %}
+              <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-3xl font-black text-primary tracking-wider uppercase select-none">
+                {{ al.titulo|slice:":2"|upper }}
+              </div>
+            {% endif %}
+            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <button onclick="event.stopPropagation(); playAlbum('{{ al.id }}')" class="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow translate-y-2 group-hover:translate-y-0 transition-transform shrink-0">
+                <span class="material-symbols-outlined text-xl ml-0.5" style="font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+            </div>
+          </div>
+          <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">{{ al.titulo }}</h3>
+          <p class="text-xs text-text-dim mt-0.5 truncate">{{ al.artista_name }}</p>
+        </div>
+      {% empty %}
+        <p class="text-xs text-text-dim italic py-4">No hay álbumes registrados.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Rail 3: Artistas populares -->
+  <section aria-labelledby="artists-heading" class="rail-section relative">
+    <div class="flex items-center justify-between mb-4">
+      <h2 id="artists-heading" class="font-display text-2xl font-bold text-on-surface">Artistas populares</h2>
+    </div>
+    <button class="rail-nav-btn absolute left-0 top-[35%] -translate-y-1/2 -translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-artists', -1)">
+      <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+    </button>
+    <button class="rail-nav-btn absolute right-0 top-[35%] -translate-y-1/2 translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-artists', 1)">
+      <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+    </button>
+    <div id="rail-artists" class="rail">
+      {% for art in artistas %}
+        <div onclick="switchView('artist', {{ art.id }})" class="rail-item media-card w-[150px] group cursor-pointer text-center">
+          <div class="w-full aspect-square rounded-full overflow-hidden relative bg-surface-container shadow-lg mb-3 flex items-center justify-center">
+            {% if art.url_perfil and not "cenit.com" in art.url_perfil and not "unsplash.com" in art.url_perfil %}
+              <img src="{{ art.url_perfil }}" alt="{{ art.nombre }}" class="w-full h-full object-cover object-center rounded-full shrink-0">
+            {% else %}
+              <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-2xl md:text-3xl font-black text-primary tracking-wider uppercase select-none rounded-full">
+                {{ art.nombre|slice:":2"|upper }}
+              </div>
+            {% endif %}
+            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+              <button onclick="event.stopPropagation(); playArtistTracks({{ art.id }})" class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow shrink-0">
+                <span class="material-symbols-outlined text-lg ml-0.5" style="font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+            </div>
+          </div>
+          <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">{{ art.nombre }}</h3>
+          <p class="text-xs text-text-dim mt-0.5">Artista</p>
+        </div>
+      {% empty %}
+        <p class="text-xs text-text-dim italic py-4">No hay artistas disponibles.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Rail 4: Recién publicado -->
+  <section aria-labelledby="newsongs-heading" class="rail-section relative">
+    <div class="flex items-center justify-between mb-4">
+      <h2 id="newsongs-heading" class="font-display text-2xl font-bold text-on-surface">Recién publicado</h2>
+    </div>
+    <button class="rail-nav-btn absolute left-0 top-[40%] -translate-y-1/2 -translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-newsongs', -1)">
+      <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+    </button>
+    <button class="rail-nav-btn absolute right-0 top-[40%] -translate-y-1/2 translate-x-3 z-20 w-9 h-9 rounded-full flex items-center justify-center text-on-surface" onclick="scrollRail('rail-newsongs', 1)">
+      <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+    </button>
+    <div id="rail-newsongs" class="rail">
+      {% for song in new_songs %}
+        <div onclick="playSongFromUI('{{ song.id }}', 'all')" class="rail-item media-card w-[170px] group cursor-pointer">
+          <div class="w-full aspect-square rounded-xl overflow-hidden relative bg-surface-container shadow-lg mb-3 flex items-center justify-center">
+            {% if song.url_portada and not "cenit.com" in song.url_portada and not "unsplash.com" in song.url_portada %}
+              <img src="{{ song.url_portada }}" alt="{{ song.titulo }}" class="w-full h-full object-cover object-center shrink-0">
+            {% else %}
+              <div class="w-full h-full shrink-0 bg-surface-container-high border border-outline/30 flex items-center justify-center text-3xl font-black text-primary tracking-wider uppercase select-none">
+                {{ song.titulo|slice:":2"|upper }}
+              </div>
+            {% endif %}
+            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <button onclick="event.stopPropagation(); playSongFromUI('{{ song.id }}', 'all')" class="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center play-glow translate-y-2 group-hover:translate-y-0 transition-transform shrink-0">
+                <span class="material-symbols-outlined text-xl ml-0.5" style="font-variation-settings:'FILL' 1">play_arrow</span>
+              </button>
+            </div>
+          </div>
+          <h3 class="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">{{ song.titulo }}</h3>
+          <p class="text-xs text-text-dim mt-0.5 truncate">{{ song.artista }}</p>
+        </div>
+      {% empty %}
+        <p class="text-xs text-text-dim italic py-4">No hay lanzamientos recientes.</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
