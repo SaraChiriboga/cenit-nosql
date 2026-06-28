@@ -1,4 +1,7 @@
 import secrets
+import datetime
+from bson import ObjectId
+from cenit.mongo_client import db as mongo_db
 
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password
@@ -251,50 +254,34 @@ def users_overview(request):
     error_db = None
 
     try:
-        with connection.cursor() as cursor:
-            # Construimos la consulta base con JOIN para traer el Rol
-            query = """
-                SELECT 
-                    u.idUsuario, 
-                    u.nombre, 
-                    u.apellido, 
-                    u.email, 
-                    u.estadoCuenta AS estado, 
-                    r.nombreRol AS rol_nombre 
-                FROM Usuario.Usuario u
-                LEFT JOIN Usuario.Rol r ON u.idUsuario = r.Usuario_idUsuario
-                WHERE 1=1
-            """
-            params = []
+        query = {}
+        if q:
+            query["$or"] = [
+                {"nombre": {"$regex": q, "$options": "i"}},
+                {"apellido": {"$regex": q, "$options": "i"}},
+                {"email": {"$regex": q, "$options": "i"}}
+            ]
+        if rol_filter:
+            query["rol.nombreRol"] = rol_filter
 
-            # Aplicamos filtros de búsqueda si existen
-            if q:
-                query += " AND (u.nombre LIKE %s OR u.apellido LIKE %s OR u.email LIKE %s)"
-                params.extend([f'%{q}%', f'%{q}%', f'%{q}%'])
-
-            if rol_filter:
-                query += " AND r.nombreRol = %s"
-                params.append(rol_filter)
-
-            query += " ORDER BY u.idUsuario DESC"
-
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
-
-            # Mapeamos los resultados para la plantilla
-            for row in rows:
-                usuarios.append({
-                    'idUsuario': row[0],
-                    'nombre': row[1],
-                    'apellido': row[2],
-                    'email': row[3],
-                    'estado': row[4],
-                    'rol_nombre': row[5] or 'Usuario'
-                })
+        mongo_users = mongo_db["usuarios"].find(query).sort("_id", -1)
+        
+        for u in mongo_users:
+            rol_data = u.get("rol", {})
+            nombre_rol = rol_data.get("nombreRol", "Usuario") if isinstance(rol_data, dict) else str(rol_data)
+            
+            usuarios.append({
+                'idUsuario': str(u.get("_id")),
+                'nombre': u.get("nombre", ""),
+                'apellido': u.get("apellido", ""),
+                'email': u.get("email", ""),
+                'estado': u.get("estadoCuenta", "Activo"),
+                'rol_nombre': nombre_rol
+            })
 
     except Exception as e:
         error_db = str(e)
-        print(f"❌ ERROR SQL EN USERS_OVERVIEW: {error_db}")
+        print(f"❌ ERROR MONGODB EN USERS_OVERVIEW: {error_db}")
 
     context = {
         'usuarios': usuarios,
@@ -309,58 +296,41 @@ def users_overview(request):
 @login_required
 def add_user(request):
     if request.method == 'POST':
-        print("\n--- 🟢 INICIANDO REGISTRO DE USUARIO ---")
         nombre = request.POST.get('nombre')
         apellido = request.POST.get('apellido')
         email = request.POST.get('email')
         rol_nombre = request.POST.get('rol_nombre')
 
-        print(f"-> DATOS RECIBIDOS: Nombre={nombre}, Apellido={apellido}, Email={email}, Rol={rol_nombre}")
-
         password_temporal = secrets.token_urlsafe(8)
-        password_hash = make_password(password_temporal).encode('utf-8')
+        password_hash = make_password(password_temporal)
 
         try:
-            with connection.cursor() as cursor:
-                print("-> 1. Intentando insertar en Usuario.Usuario...")
-                cursor.execute("""
-                    INSERT INTO Usuario.Usuario (nombre, apellido, email, passwordHash, estadoPlan, fechaRegistro, estadoCuenta, debeCambiarPassword)
-                    OUTPUT inserted.idUsuario
-                    VALUES (%s, %s, %s, %s, 'Free', GETDATE(), 'Activo', 1)
-                """, [nombre, apellido, email, password_hash])
-
-                nuevo_id_usuario = cursor.fetchone()[0]
-                print(f"-> ÉXITO 1: Usuario insertado con ID: {nuevo_id_usuario}")
-
-                print(
-                    f"-> 2. Intentando insertar en Usuario.Rol con idUsuario={nuevo_id_usuario} y rol='{rol_nombre}'...")
-                cursor.execute("""
-                                    INSERT INTO Usuario.Rol (nombreRol, descripcion, Usuario_idUsuario)
-                                    VALUES (%s, %s, %s)
-                                """, [rol_nombre, rol_nombre, nuevo_id_usuario])
-
-                print("-> ÉXITO 2: Rol insertado correctamente.")
-
-            print(f"✅ CICLO COMPLETO EXITOSO. Clave temporal: {password_temporal}")
-            print("----------------------------------------\n")
-            return JsonResponse({'status': 'success', 'message': f'Usuario {nombre} creado con éxito.'})
-
-        except Exception as e:
-            error_str = str(e)
-            print(f"❌ ERROR SQL CRÍTICO: {error_str}")
-            print("----------------------------------------\n")
-
-            if 'Usuario_email_UN' in error_str or 'UNIQUE KEY' in error_str:
+            if mongo_db["usuarios"].find_one({"email": email}):
                 return JsonResponse({
                     'status': 'error',
                     'message': 'Este correo ya está registrado en el sistema.'
                 }, status=400)
 
-            # Mandamos el error directamente al Toast para verlo en pantalla
-            return JsonResponse({
-                'status': 'error',
-                'message': f'Error SQL: {error_str}'
-            }, status=500)
+            new_user = {
+                "nombre": nombre,
+                "apellido": apellido,
+                "email": email,
+                "contrasena": password_hash,
+                "estadoPlan": "Free",
+                "fechaRegistro": datetime.datetime.now(),
+                "estadoCuenta": "Activo",
+                "debeCambiarPassword": True,
+                "rol": {
+                    "nombreRol": rol_nombre,
+                    "descripcion": rol_nombre
+                }
+            }
+            
+            mongo_db["usuarios"].insert_one(new_user)
+            return JsonResponse({'status': 'success', 'message': f'Usuario {nombre} creado con éxito. Clave temporal: {password_temporal}'})
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': f'Error: {str(e)}'}, status=500)
 
     return render(request, 'usuarios/usuarios/add_user.html')
 
@@ -373,37 +343,28 @@ def add_user(request):
 def read_user(request, idUsuario):
     u = None
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT 
-                    u.idUsuario, u.nombre, u.apellido, u.email, 
-                    u.estadoCuenta, u.fechaRegistro, u.estadoPlan, u.debeCambiarPassword,
-                    r.nombreRol, r.descripcion
-                FROM Usuario.Usuario u
-                LEFT JOIN Usuario.Rol r ON u.idUsuario = r.Usuario_idUsuario
-                WHERE u.idUsuario = %s
-            """, [idUsuario])
-            row = cursor.fetchone()
-
-            if row:
-                u = {
-                    'idUsuario': row[0],
-                    'nombre': row[1],
-                    'apellido': row[2],
-                    'email': row[3],
-                    'estado': row[4],  # Mapeamos estadoCuenta a 'estado' para la plantilla
-                    'fechaRegistro': row[5],
-                    'estadoPlan': row[6],
-                    'debeCambiarPassword': row[7],
-                    'rol_nombre': row[8] or 'Usuario',
-                    'rol_descripcion': row[9] or 'Acceso básico a la plataforma.'
-                }
-            else:
-                # Si no encuentra al usuario, redirigir al overview
-                return redirect('users_overview')
-
+        mongo_user = mongo_db["usuarios"].find_one({"_id": ObjectId(idUsuario)})
+        if mongo_user:
+            rol_data = mongo_user.get("rol", {})
+            nombre_rol = rol_data.get("nombreRol", "Usuario") if isinstance(rol_data, dict) else str(rol_data)
+            desc_rol = rol_data.get("descripcion", nombre_rol) if isinstance(rol_data, dict) else str(rol_data)
+            
+            u = {
+                'idUsuario': str(mongo_user.get("_id")),
+                'nombre': mongo_user.get("nombre", ""),
+                'apellido': mongo_user.get("apellido", ""),
+                'email': mongo_user.get("email", ""),
+                'estado': mongo_user.get("estadoCuenta", "Activo"),
+                'fechaRegistro': mongo_user.get("fechaRegistro", ""),
+                'estadoPlan': mongo_user.get("estadoPlan", "Free"),
+                'debeCambiarPassword': mongo_user.get("debeCambiarPassword", True),
+                'rol_nombre': nombre_rol,
+                'rol_descripcion': desc_rol
+            }
+        else:
+            return redirect('users_overview')
     except Exception as e:
-        print(f"❌ ERROR SQL EN READ_USER: {str(e)}")
+        print(f"❌ ERROR EN READ_USER: {str(e)}")
         return redirect('users_overview')
 
     return render(request, 'usuarios/usuarios/read_user.html', {'u': u})
@@ -414,7 +375,7 @@ def read_user(request, idUsuario):
 # ══════════════════════════════════════════
 
 @login_required
-def edit_user(request, idUsuario):  # <-- CAMBIO 1: Recibe idUsuario
+def edit_user(request, idUsuario):
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
         apellido = request.POST.get('apellido')
@@ -423,50 +384,48 @@ def edit_user(request, idUsuario):  # <-- CAMBIO 1: Recibe idUsuario
         estado_cuenta = request.POST.get('estadoCuenta')
 
         try:
-            with connection.cursor() as cursor:
-                # 1. Actualizamos el Usuario
-                cursor.execute("""
-                    UPDATE Usuario.Usuario 
-                    SET nombre = %s, apellido = %s, email = %s, estadoCuenta = %s
-                    WHERE idUsuario = %s
-                """, [nombre, apellido, email, estado_cuenta, idUsuario])  # <-- CAMBIO 2: Usa idUsuario
-
-                # 2. Actualizamos el Rol (usando el nombre dos veces para la restricción CHECK)
-                cursor.execute("""
-                    UPDATE Usuario.Rol 
-                    SET nombreRol = %s, descripcion = %s
-                    WHERE Usuario_idUsuario = %s
-                """, [rol_nombre, rol_nombre, idUsuario])  # <-- CAMBIO 3: Usa idUsuario
-
-            return JsonResponse({'status': 'success', 'message': 'Usuario actualizado con éxito.'})
-
-        except Exception as e:
-            error_str = str(e)
-            print(f"❌ ERROR SQL EN EDIT_USER: {error_str}")
-
-            if 'Usuario_email_UN' in error_str or 'UNIQUE KEY' in error_str:
+            # Check if email is used by another user
+            existing = mongo_db["usuarios"].find_one({"email": email, "_id": {"$ne": ObjectId(idUsuario)}})
+            if existing:
                 return JsonResponse({'status': 'error', 'message': 'Este correo ya está en uso.'}, status=400)
 
-            return JsonResponse({'status': 'error', 'message': f'Error SQL: {error_str}'}, status=500)
+            mongo_db["usuarios"].update_one(
+                {"_id": ObjectId(idUsuario)},
+                {"$set": {
+                    "nombre": nombre,
+                    "apellido": apellido,
+                    "email": email,
+                    "estadoCuenta": estado_cuenta,
+                    "rol": {
+                        "nombreRol": rol_nombre,
+                        "descripcion": rol_nombre
+                    }
+                }}
+            )
+            return JsonResponse({'status': 'success', 'message': 'Usuario actualizado con éxito.'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': f'Error: {str(e)}'}, status=500)
 
-    # Si es GET, traemos los datos actuales para llenar el formulario
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.estadoCuenta, r.nombreRol 
-            FROM Usuario.Usuario u
-            LEFT JOIN Usuario.Rol r ON u.idUsuario = r.Usuario_idUsuario
-            WHERE u.idUsuario = %s
-        """, [idUsuario])  # <-- CAMBIO 4: Usa idUsuario
-        row = cursor.fetchone()
-
-    if not row:
+    try:
+        mongo_user = mongo_db["usuarios"].find_one({"_id": ObjectId(idUsuario)})
+        if not mongo_user:
+            return redirect('users_overview')
+            
+        rol_data = mongo_user.get("rol", {})
+        nombre_rol = rol_data.get("nombreRol", "Usuario") if isinstance(rol_data, dict) else str(rol_data)
+        
+        u = {
+            'idUsuario': str(mongo_user.get("_id")),
+            'nombre': mongo_user.get("nombre", ""),
+            'apellido': mongo_user.get("apellido", ""),
+            'email': mongo_user.get("email", ""),
+            'estadoCuenta': mongo_user.get("estadoCuenta", "Activo"),
+            'nombreRol': nombre_rol
+        }
+        return render(request, 'usuarios/usuarios/edit_user.html', {'u': u})
+    except Exception as e:
+        print(f"❌ ERROR EN EDIT_USER: {str(e)}")
         return redirect('users_overview')
-
-    u = {
-        'idUsuario': row[0], 'nombre': row[1], 'apellido': row[2],
-        'email': row[3], 'estadoCuenta': row[4], 'nombreRol': row[5] or 'Usuario'
-    }
-    return render(request, 'usuarios/usuarios/edit_user.html', {'u': u})
 
 # ══════════════════════════════════════════
 #  ACTIVAR / SUSPENDER (toggle_user)
@@ -478,23 +437,19 @@ from django.views.decorators.http import require_POST
 @require_POST
 def toggle_user(request, idUsuario):
     try:
-        with connection.cursor() as cursor:
-            # CORRECCIÓN: Usar Usuario.Usuario
-            cursor.execute("SELECT estadoCuenta FROM Usuario.Usuario WHERE idUsuario = %s", [idUsuario])
-            row = cursor.fetchone()
-
-            if not row:
-                return JsonResponse({'status': 'error', 'message': 'Usuario no encontrado.'}, status=404)
-
-            estado_actual = row[0]
-            nuevo_estado = 'Suspendido' if estado_actual == 'Activo' else 'Activo'
-
-            # CORRECCIÓN: Usar Usuario.Usuario
-            cursor.execute("UPDATE Usuario.Usuario SET estadoCuenta = %s WHERE idUsuario = %s", [nuevo_estado, idUsuario])
-
+        mongo_user = mongo_db["usuarios"].find_one({"_id": ObjectId(idUsuario)})
+        if not mongo_user:
+            return JsonResponse({'status': 'error', 'message': 'Usuario no encontrado.'}, status=404)
+            
+        estado_actual = mongo_user.get("estadoCuenta", "Activo")
+        nuevo_estado = 'Suspendido' if estado_actual == 'Activo' else 'Activo'
+        
+        mongo_db["usuarios"].update_one(
+            {"_id": ObjectId(idUsuario)},
+            {"$set": {"estadoCuenta": nuevo_estado}}
+        )
         return JsonResponse({'status': 'success', 'message': f'Estado actualizado a {nuevo_estado}.'})
     except Exception as e:
-        print(f"❌ ERROR SQL EN TOGGLE_USER: {str(e)}")
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 
@@ -503,130 +458,94 @@ def toggle_user(request, idUsuario):
 def roles_overview(request):
     roles = []
     error_db = None
-
-    # 1. Capturamos los filtros del GET
     query = request.GET.get('q', '').strip()
     rol_filtro = request.GET.get('rol', '').strip()
 
     try:
-        with connection.cursor() as cursor:
-            # 2. Construcción dinámica de la consulta
-            sql = """
-                SELECT 
-                    r.idRol, r.nombreRol, r.descripcion, 
-                    u.idUsuario, u.nombre, u.apellido, u.email
-                FROM Usuario.Rol r
-                INNER JOIN Usuario.Usuario u ON r.Usuario_idUsuario = u.idUsuario
-                WHERE 1=1
-            """
-            params = []
+        mongo_query = {}
+        if query:
+            mongo_query["$or"] = [
+                {"nombre": {"$regex": query, "$options": "i"}},
+                {"apellido": {"$regex": query, "$options": "i"}},
+                {"rol.nombreRol": {"$regex": query, "$options": "i"}}
+            ]
+        if rol_filtro:
+            mongo_query["rol.nombreRol"] = rol_filtro
 
-            # Filtrar por texto (nombre usuario, apellido o nombre de rol)
-            if query:
-                sql += " AND (u.nombre LIKE %s OR u.apellido LIKE %s OR r.nombreRol LIKE %s)"
-                search_term = f"%{query}%"
-                params.extend([search_term, search_term, search_term])
-
-            # Filtrar por tipo de rol específico
-            if rol_filtro:
-                sql += " AND r.nombreRol = %s"
-                params.append(rol_filtro)
-
-            sql += " ORDER BY r.idRol DESC"
-
-            cursor.execute(sql, params)
-
-            for row in cursor.fetchall():
-                roles.append({
-                    'idRol': row[0],
-                    'nombreRol': row[1],
-                    'descripcion': row[2],
-                    'idUsuario': row[3],
-                    'usuario_nombre': f"{row[4]} {row[5]}",
-                    'usuario_email': row[6]
-                })
-
+        mongo_users = mongo_db["usuarios"].find(mongo_query).sort("_id", -1)
+        for u in mongo_users:
+            rol_data = u.get("rol", {})
+            nombre_rol = rol_data.get("nombreRol", "Usuario") if isinstance(rol_data, dict) else str(rol_data)
+            desc_rol = rol_data.get("descripcion", nombre_rol) if isinstance(rol_data, dict) else str(rol_data)
+            
+            roles.append({
+                'idRol': str(u.get("_id")), # En mongo usamos el id del usuario ya que el rol esta embedido
+                'nombreRol': nombre_rol,
+                'descripcion': desc_rol,
+                'idUsuario': str(u.get("_id")),
+                'usuario_nombre': f"{u.get('nombre', '')} {u.get('apellido', '')}".strip(),
+                'usuario_email': u.get("email", "")
+            })
     except Exception as e:
         error_db = str(e)
-        print(f"❌ ERROR SQL EN FILTROS ROLES: {error_db}")
+        print(f"❌ ERROR MONGODB EN ROLES_OVERVIEW: {error_db}")
 
     return render(request, 'usuarios/roles/roles_overview.html', {'roles': roles, 'error_db': error_db})
 @login_required
-def edit_role(request, idRol):  # <-- Faltaba el idRol y el request
+def edit_role(request, idRol):
     if request.method == 'POST':
         nombre_rol = request.POST.get('nombreRol')
-
         try:
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    UPDATE Usuario.Rol 
-                    SET nombreRol = %s, descripcion = %s
-                    WHERE idRol = %s
-                """, [nombre_rol, nombre_rol, idRol])
+            mongo_db["usuarios"].update_one(
+                {"_id": ObjectId(idRol)},
+                {"$set": {
+                    "rol": {
+                        "nombreRol": nombre_rol,
+                        "descripcion": nombre_rol
+                    }
+                }}
+            )
             return JsonResponse({'status': 'success', 'message': 'Nivel de acceso actualizado.'})
         except Exception as e:
-            print(f"❌ ERROR SQL EN EDIT_ROLE: {str(e)}")
             return JsonResponse({'status': 'error', 'message': 'Error al actualizar el rol.'}, status=500)
 
-    # Si es GET, buscamos los datos actuales para llenar el formulario
-    rol = None
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT r.idRol, r.nombreRol, u.nombre, u.apellido 
-                FROM Usuario.Rol r
-                INNER JOIN Usuario.Usuario u ON r.Usuario_idUsuario = u.idUsuario
-                WHERE r.idRol = %s
-            """, [idRol])
-            row = cursor.fetchone()
-
-            if row:
-                rol = {
-                    'idRol': row[0],
-                    'nombreRol': row[1],
-                    'usuario_nombre': f"{row[2]} {row[3]}"
-                }
+        mongo_user = mongo_db["usuarios"].find_one({"_id": ObjectId(idRol)})
+        if not mongo_user:
+            return redirect('roles_overview')
+            
+        rol_data = mongo_user.get("rol", {})
+        nombre_rol = rol_data.get("nombreRol", "Usuario") if isinstance(rol_data, dict) else str(rol_data)
+        
+        rol = {
+            'idRol': str(mongo_user.get("_id")),
+            'nombreRol': nombre_rol,
+            'usuario_nombre': f"{mongo_user.get('nombre', '')} {mongo_user.get('apellido', '')}".strip()
+        }
+        return render(request, 'usuarios/roles/edit_role.html', {'rol': rol})
     except Exception as e:
-        print(f"❌ ERROR SQL: {str(e)}")
-
-    if not rol:
         return redirect('roles_overview')
-
-    return render(request, 'usuarios/roles/edit_role.html', {'rol': rol})
 
 @login_required
 def read_role(request, idRol):
-    # Buscamos el rol y unimos con el usuario para traer el nombre
-    rol = None
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT 
-                    r.idRol, 
-                    r.nombreRol, 
-                    r.descripcion, 
-                    u.nombre, 
-                    u.apellido 
-                FROM Usuario.Rol r
-                INNER JOIN Usuario.Usuario u ON r.Usuario_idUsuario = u.idUsuario
-                WHERE r.idRol = %s
-            """, [idRol])
-            row = cursor.fetchone()
-
-            if row:
-                rol = {
-                    'idRol': row[0],
-                    'nombreRol': row[1],
-                    'descripcion': row[2],
-                    'usuario_nombre': f"{row[3]} {row[4]}"
-                }
+        mongo_user = mongo_db["usuarios"].find_one({"_id": ObjectId(idRol)})
+        if not mongo_user:
+            return redirect('roles_overview')
+            
+        rol_data = mongo_user.get("rol", {})
+        nombre_rol = rol_data.get("nombreRol", "Usuario") if isinstance(rol_data, dict) else str(rol_data)
+        desc_rol = rol_data.get("descripcion", nombre_rol) if isinstance(rol_data, dict) else str(rol_data)
+        
+        rol = {
+            'idRol': str(mongo_user.get("_id")),
+            'nombreRol': nombre_rol,
+            'descripcion': desc_rol,
+            'usuario_nombre': f"{mongo_user.get('nombre', '')} {mongo_user.get('apellido', '')}".strip()
+        }
+        return render(request, 'usuarios/roles/read_role.html', {'rol': rol})
     except Exception as e:
-        print(f"❌ ERROR SQL EN READ_ROLE: {str(e)}")
-
-    if not rol:
         return redirect('roles_overview')
-
-    return render(request, 'usuarios/roles/read_role.html', {'rol': rol})
 
 
 # ══════════════════════════════════════════
@@ -744,4 +663,4 @@ def login_player_view(request):
 
 class _fake_error_form:
     """Objeto mínimo para que {% if form.errors %} sea True en los templates."""
-    errors = True
+    errors = True

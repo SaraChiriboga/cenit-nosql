@@ -5,14 +5,14 @@ urlpatterns = [
     # ── Usuarios ──
     path('', views.users_overview, name='users_overview'),
     path('nuevo/', views.add_user, name='add_user'),
-    path('<int:idUsuario>/', views.read_user, name='read_user'),
-    path('<int:idUsuario>/editar/', views.edit_user, name='edit_user'),
-    path('<int:idUsuario>/toggle/', views.toggle_user, name='toggle_user'),
+    path('<str:idUsuario>/', views.read_user, name='read_user'),
+    path('<str:idUsuario>/editar/', views.edit_user, name='edit_user'),
+    path('<str:idUsuario>/toggle/', views.toggle_user, name='toggle_user'),
 
     # ── Roles ──
     path('roles/', views.roles_overview, name='roles_overview'),
-    path('roles/<int:idRol>/editar/', views.edit_role, name='edit_role'),
-    path('roles/<int:idRol>/', views.read_role, name='read_role'),
+    path('roles/<str:idRol>/editar/', views.edit_role, name='edit_role'),
+    path('roles/<str:idRol>/', views.read_role, name='read_role'),
 
     # ══════════════════════════════════════════
     #  AUDITORÍA DE ACCESO
