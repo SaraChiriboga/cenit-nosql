@@ -127,14 +127,71 @@ def _build_excel_response(wb, filename):
     return response
 
 
-def _estilo_excel_header(ws, headers):
-    """Aplica formato bold + color a la fila 1 y escribe headers."""
-    from openpyxl.styles import Font, PatternFill, Alignment
-    for col, h in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=h)
-        cell.font = Font(bold=True, color='00363A')
-        cell.fill = PatternFill('solid', fgColor='45F3FF')
-        cell.alignment = Alignment(horizontal='center')
+def _estilo_excel_sheet(ws, headers):
+    """Aplica formato de tabla nativa de Excel y estilos básicos de fuente/anchos."""
+    from openpyxl.worksheet.table import Table, TableStyleInfo, TableColumn
+    from openpyxl.utils import get_column_letter
+    from openpyxl.styles import Font, Alignment
+    import re
+    
+    # 1. Definir rango de la tabla y añadir objeto Table nativo
+    last_col = get_column_letter(len(headers))
+    last_row = ws.max_row
+    
+    # Sanitizar displayName para evitar caracteres especiales inválidos en Excel
+    clean_title = re.sub(r'[^a-zA-Z0-9_]', '', ws.title.replace(' ', '_'))
+    if not clean_title:
+        clean_title = "Tabla_Datos"
+        
+    displayName = f"Tabla_{clean_title}"
+    table_range = f"A1:{last_col}{last_row}"
+    
+    # Crear y agregar la tabla
+    tab = Table(displayName=displayName, ref=table_range)
+    
+    # IMPORTANTE: Inicializar las columnas explícitamente para que Excel active los filtros y ordenación
+    tab.tableColumns = [TableColumn(id=i, name=h) for i, h in enumerate(headers, 1)]
+    
+    # TableStyleMedium9 tiene una gama cian/verde azulado excelente para Cénit
+    style = TableStyleInfo(
+        name="TableStyleMedium9", 
+        showFirstColumn=False,
+        showLastColumn=False, 
+        showRowStripes=True, 
+        showColumnStripes=False
+    )
+    tab.tableStyleInfo = style
+    ws.add_table(tab)
+    
+    # 2. Aplicar fuentes, alineaciones y formatos básicos (Segoe UI y alturas)
+    font_data = Font(name='Segoe UI', size=10)
+    align_center = Alignment(horizontal='center', vertical='center')
+    align_left = Alignment(horizontal='left', vertical='center')
+    
+    # Alturas
+    ws.row_dimensions[1].height = 26
+    for row_idx in range(2, last_row + 1):
+        ws.row_dimensions[row_idx].height = 20
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.font = font_data
+            
+            # Alineación según contenido
+            val = cell.value
+            if isinstance(val, (int, float)) or (isinstance(val, str) and val.startswith('2026-')):
+                cell.alignment = align_center
+            else:
+                cell.alignment = align_left
+                
+    # 3. Auto-ajustar anchos de columna
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            val_str = str(cell.value or '')
+            if len(val_str) > max_len:
+                max_len = len(val_str)
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
 
 
 # ── Helpers de datos para reportes (DRY) ────────────────
@@ -188,20 +245,59 @@ def _render_pdf(request, template_name, context, filename):
     return response
 
 
-def _enviar_pdf_correo(request, template_name, context, filename, subject, body):
-    """Genera PDF y lo envía por correo al usuario autenticado."""
-    html_string = render_to_string(template_name, context, request=request)
-    pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-    destinatario = request.user.email or 'admin@cenit.com'
-    email = EmailMessage(
-        subject=subject,
-        body=body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[destinatario],
-    )
-    email.attach(filename, pdf_file, 'application/pdf')
-    email.send()
-    return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+def _dispatch_report_email(request, pdf_template, pdf_context, pdf_filename, excel_headers, write_excel_data_fn, excel_filename):
+    """
+    Genera y envía reportes por correo personalizando destinatario, mensaje y archivos adjuntos (PDF, Excel o ambos).
+    """
+    import json
+    from django.core.mail import EmailMessage
+    from weasyprint import HTML
+    import openpyxl
+    
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'error': 'Método no permitido'}, status=405)
+        
+    try:
+        data = json.loads(request.body)
+        destinatario = data.get('destinatario', request.user.email or 'admin@cenit.com')
+        subject = data.get('asunto', 'Reporte Cénit')
+        body = data.get('mensaje', 'Adjuntamos el informe solicitado.')
+        adjuntar_pdf = data.get('adjuntar_pdf', True)
+        adjuntar_excel = data.get('adjuntar_excel', True)
+        
+        email = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[destinatario],
+        )
+        
+        # 1. Adjuntar PDF si es solicitado
+        if adjuntar_pdf and pdf_template:
+            html_string = render_to_string(pdf_template, pdf_context, request=request)
+            pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+            email.attach(pdf_filename, pdf_file, 'application/pdf')
+            
+        # 2. Adjuntar Excel si es solicitado y existe función generadora
+        if adjuntar_excel and write_excel_data_fn:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = 'Reporte'
+            # Escribir los datos usando la función de callback
+            write_excel_data_fn(ws)
+            # Aplicar formato de tabla nativa y estilos
+            _estilo_excel_sheet(ws, excel_headers)
+            
+            # Guardar en buffer
+            buffer = BytesIO()
+            wb.save(buffer)
+            buffer.seek(0)
+            email.attach(excel_filename, buffer.read(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            
+        email.send()
+        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'error': f'Error al enviar correo: {str(e)}'}, status=500)
 
 
 # ══════════════════════════════════════════
@@ -1093,12 +1189,29 @@ def exportar_vencimientos_pdf(request):
 def enviar_vencimientos_correo(request):
     try:
         docs = _data_vencimientos()
-        context = {**_contexto_base(request), 'proximas': docs, 'hoy': datetime.now(), 'limite': datetime.now() + timedelta(days=5)}
-        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_vencimientos.html', context,
-                                 'Suscripciones_Expiradas.pdf', 'CÉNIT — Informe de Suscripciones Expiradas',
-                                 'Adjuntamos el informe detallado de suscripciones Premium inactivas/expiradas.')
+        pdf_context = {**_contexto_base(request), 'proximas': docs, 'hoy': datetime.now(), 'limite': datetime.now() + timedelta(days=5)}
+        headers = ['Usuario', 'Plan', 'Fecha Inicio', 'Fecha Fin', 'Estado']
+        
+        def write_excel_data(ws):
+            for i, d in enumerate(docs, 2):
+                ws.cell(row=i, column=1, value=d.usuario_nombre or '—')
+                nombre_plan = d.tipoSuscripcion.nombrePlan if d.tipoSuscripcion else '—'
+                ws.cell(row=i, column=2, value=nombre_plan)
+                ws.cell(row=i, column=3, value=str(d.fechaInicio or '—'))
+                ws.cell(row=i, column=4, value=str(d.fechaFin or '—'))
+                ws.cell(row=i, column=5, value=d.estado or '—')
+                
+        return _dispatch_report_email(
+            request=request,
+            pdf_template='Suscripciones/reportes/pdf_vencimientos.html',
+            pdf_context=pdf_context,
+            pdf_filename='Suscripciones_Expiradas.pdf',
+            excel_headers=headers,
+            write_excel_data_fn=write_excel_data,
+            excel_filename='Suscripciones_Expiradas.xlsx'
+        )
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
 
 @login_required
 def exportar_vencimientos_excel(request):
@@ -1108,7 +1221,7 @@ def exportar_vencimientos_excel(request):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'Vencimientos'
-        _estilo_excel_header(ws, ['Usuario', 'Plan', 'Fecha Inicio', 'Fecha Fin', 'Estado'])
+        headers = ['Usuario', 'Plan', 'Fecha Inicio', 'Fecha Fin', 'Estado']
         for i, d in enumerate(docs, 2):
             ws.cell(row=i, column=1, value=d.usuario_nombre or '—')
             nombre_plan = d.tipoSuscripcion.nombrePlan if d.tipoSuscripcion else '—'
@@ -1116,8 +1229,7 @@ def exportar_vencimientos_excel(request):
             ws.cell(row=i, column=3, value=str(d.fechaInicio or '—'))
             ws.cell(row=i, column=4, value=str(d.fechaFin or '—'))
             ws.cell(row=i, column=5, value=d.estado or '—')
-        ws.column_dimensions['A'].width = 30
-        ws.column_dimensions['B'].width = 25
+        _estilo_excel_sheet(ws, headers)
         return _build_excel_response(wb, 'Suscripciones_Expiradas.xlsx')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
@@ -1137,12 +1249,28 @@ def exportar_promociones_vencidas_pdf(request):
 def enviar_promociones_vencidas_correo(request):
     try:
         docs = _data_promociones_vencidas()
-        context = {**_contexto_base(request), 'vencidas': docs, 'ahora': datetime.now()}
-        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_promociones_vencidas.html', context,
-                                 'Promociones_Alto_Descuento.pdf', 'CÉNIT — Promociones Activas con Alto Descuento',
-                                 'Adjuntamos el informe ejecutivo de las promociones con descuento superior al 20%.')
+        pdf_context = {**_contexto_base(request), 'vencidas': docs, 'ahora': datetime.now()}
+        headers = ['Promoción ID', 'Nombre', 'Descuento %', 'Fecha Expira', 'Estado']
+        
+        def write_excel_data(ws):
+            for i, d in enumerate(docs, 2):
+                ws.cell(row=i, column=1, value=d.promo_id or '—')
+                ws.cell(row=i, column=2, value=d.nombre or '—')
+                ws.cell(row=i, column=3, value=d.porcentajeDesc or 0)
+                ws.cell(row=i, column=4, value=str(d.fechaExpira or '—'))
+                ws.cell(row=i, column=5, value='Activa' if d.estadoActivo else 'Inactiva')
+                
+        return _dispatch_report_email(
+            request=request,
+            pdf_template='Suscripciones/reportes/pdf_promociones_vencidas.html',
+            pdf_context=pdf_context,
+            pdf_filename='Promociones_Alto_Descuento.pdf',
+            excel_headers=headers,
+            write_excel_data_fn=write_excel_data,
+            excel_filename='Promociones_Alto_Descuento.xlsx'
+        )
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
 
 @login_required
 def exportar_promociones_vencidas_excel(request):
@@ -1152,15 +1280,14 @@ def exportar_promociones_vencidas_excel(request):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'Promociones'
-        _estilo_excel_header(ws, ['Promoción ID', 'Nombre', 'Descuento %', 'Fecha Expira', 'Estado'])
+        headers = ['Promoción ID', 'Nombre', 'Descuento %', 'Fecha Expira', 'Estado']
         for i, d in enumerate(docs, 2):
             ws.cell(row=i, column=1, value=d.promo_id or '—')
             ws.cell(row=i, column=2, value=d.nombre or '—')
             ws.cell(row=i, column=3, value=d.porcentajeDesc or 0)
             ws.cell(row=i, column=4, value=str(d.fechaExpira or '—'))
             ws.cell(row=i, column=5, value='Activa' if d.estadoActivo else 'Inactiva')
-        ws.column_dimensions['A'].width = 15
-        ws.column_dimensions['B'].width = 30
+        _estilo_excel_sheet(ws, headers)
         return _build_excel_response(wb, 'Promociones_Alto_Descuento.xlsx')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
@@ -1205,12 +1332,27 @@ def exportar_usuarios_premium_pdf(request):
 def enviar_usuarios_premium_correo(request):
     try:
         usuarios = obtener_usuarios_premium_activos()
-        context = {**_contexto_base(request), 'usuarios': usuarios}
-        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_usuarios_premium.html', context,
-                                 'Usuarios_Premium_Activos.pdf', 'CÉNIT — Usuarios con Plan Premium Activo',
-                                 'Adjuntamos el informe detallado de usuarios con suscripción Premium activa.')
+        pdf_context = {**_contexto_base(request), 'usuarios': usuarios}
+        headers = ['Nombre', 'Email', 'Plan', 'Registro']
+        
+        def write_excel_data(ws):
+            for i, u in enumerate(usuarios, 2):
+                ws.cell(row=i, column=1, value=u.get('nombre_completo', '—'))
+                ws.cell(row=i, column=2, value=u.get('email', '—'))
+                ws.cell(row=i, column=3, value=u.get('estadoPlan', '—'))
+                ws.cell(row=i, column=4, value=str(u.get('fechaRegistro', '—')))
+                
+        return _dispatch_report_email(
+            request=request,
+            pdf_template='Suscripciones/reportes/pdf_usuarios_premium.html',
+            pdf_context=pdf_context,
+            pdf_filename='Usuarios_Premium_Activos.pdf',
+            excel_headers=headers,
+            write_excel_data_fn=write_excel_data,
+            excel_filename='Usuarios_Premium_Activos.xlsx'
+        )
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
 
 @login_required
 def exportar_usuarios_premium_excel(request):
@@ -1220,14 +1362,13 @@ def exportar_usuarios_premium_excel(request):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'Premium Activos'
-        _estilo_excel_header(ws, ['Nombre', 'Email', 'Plan', 'Registro'])
+        headers = ['Nombre', 'Email', 'Plan', 'Registro']
         for i, u in enumerate(usuarios, 2):
             ws.cell(row=i, column=1, value=u.get('nombre_completo', '—'))
             ws.cell(row=i, column=2, value=u.get('email', '—'))
             ws.cell(row=i, column=3, value=u.get('estadoPlan', '—'))
             ws.cell(row=i, column=4, value=str(u.get('fechaRegistro', '—')))
-        ws.column_dimensions['A'].width = 30
-        ws.column_dimensions['B'].width = 35
+        _estilo_excel_sheet(ws, headers)
         return _build_excel_response(wb, 'Usuarios_Premium_Activos.xlsx')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
@@ -1272,12 +1413,27 @@ def exportar_usuarios_free_pdf(request):
 def enviar_usuarios_free_correo(request):
     try:
         usuarios = obtener_candidatos_premium()
-        context = {**_contexto_base(request), 'usuarios': usuarios}
-        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_usuarios_free.html', context,
-                                 'Candidatos_Plan_Premium.pdf', 'CÉNIT — Candidatos a Conversión Premium (Plan Free)',
-                                 'Adjuntamos el informe de usuarios activos en plan Free para campañas de conversión.')
+        pdf_context = {**_contexto_base(request), 'usuarios': usuarios}
+        headers = ['Nombre', 'Email', 'Plan', 'Registro']
+        
+        def write_excel_data(ws):
+            for i, u in enumerate(usuarios, 2):
+                ws.cell(row=i, column=1, value=u.get('nombre_completo', '—'))
+                ws.cell(row=i, column=2, value=u.get('email', '—'))
+                ws.cell(row=i, column=3, value=u.get('estadoPlan', '—'))
+                ws.cell(row=i, column=4, value=str(u.get('fechaRegistro', '—')))
+                
+        return _dispatch_report_email(
+            request=request,
+            pdf_template='Suscripciones/reportes/pdf_usuarios_free.html',
+            pdf_context=pdf_context,
+            pdf_filename='Candidatos_Plan_Premium.pdf',
+            excel_headers=headers,
+            write_excel_data_fn=write_excel_data,
+            excel_filename='Candidatos_Plan_Premium.xlsx'
+        )
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
 
 @login_required
 def exportar_usuarios_free_excel(request):
@@ -1287,14 +1443,13 @@ def exportar_usuarios_free_excel(request):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'Candidatos Premium'
-        _estilo_excel_header(ws, ['Nombre', 'Email', 'Plan', 'Registro'])
+        headers = ['Nombre', 'Email', 'Plan', 'Registro']
         for i, u in enumerate(usuarios, 2):
             ws.cell(row=i, column=1, value=u.get('nombre_completo', '—'))
             ws.cell(row=i, column=2, value=u.get('email', '—'))
             ws.cell(row=i, column=3, value=u.get('estadoPlan', '—'))
             ws.cell(row=i, column=4, value=str(u.get('fechaRegistro', '—')))
-        ws.column_dimensions['A'].width = 30
-        ws.column_dimensions['B'].width = 35
+        _estilo_excel_sheet(ws, headers)
         return _build_excel_response(wb, 'Candidatos_Plan_Premium.xlsx')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
@@ -1339,12 +1494,27 @@ def exportar_accesos_fallidos_pdf(request):
 def enviar_accesos_fallidos_correo(request):
     try:
         accesos = obtener_accesos_fallidos()
-        context = {**_contexto_base(request), 'accesos': accesos}
-        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_accesos_fallidos.html', context,
-                                 'Accesos_Fallidos_Audit.pdf', 'CÉNIT — Auditoría de Intentos de Acceso Fallidos',
-                                 'Adjuntamos la auditoría de seguridad detallando los intentos fallidos de inicio de sesión.')
+        pdf_context = {**_contexto_base(request), 'accesos': accesos}
+        headers = ['Usuario', 'Acción', 'IP', 'Fecha']
+        
+        def write_excel_data(ws):
+            for i, d in enumerate(accesos, 2):
+                ws.cell(row=i, column=1, value=d.get('usuario_nombre', '—'))
+                ws.cell(row=i, column=2, value=d.get('accion', '—'))
+                ws.cell(row=i, column=3, value=d.get('ipOrigen', '—'))
+                ws.cell(row=i, column=4, value=str(getattr(d, 'fechaHora', d.get('fechaHora', '—'))[:19] if hasattr(d, 'fechaHora') else '—'))
+                
+        return _dispatch_report_email(
+            request=request,
+            pdf_template='Suscripciones/reportes/pdf_accesos_fallidos.html',
+            pdf_context=pdf_context,
+            pdf_filename='Accesos_Fallidos_Audit.pdf',
+            excel_headers=headers,
+            write_excel_data_fn=write_excel_data,
+            excel_filename='Accesos_Fallidos_Audit.xlsx'
+        )
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
 
 @login_required
 def exportar_accesos_fallidos_excel(request):
@@ -1354,15 +1524,13 @@ def exportar_accesos_fallidos_excel(request):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'Accesos Fallidos'
-        _estilo_excel_header(ws, ['Usuario', 'Acción', 'IP', 'Fecha'])
+        headers = ['Usuario', 'Acción', 'IP', 'Fecha']
         for i, d in enumerate(accesos, 2):
             ws.cell(row=i, column=1, value=d.get('usuario_nombre', '—'))
             ws.cell(row=i, column=2, value=d.get('accion', '—'))
             ws.cell(row=i, column=3, value=d.get('ipOrigen', '—'))
             ws.cell(row=i, column=4, value=str(getattr(d, 'fechaHora', d.get('fechaHora', '—'))[:19] if hasattr(d, 'fechaHora') else '—'))
-        ws.column_dimensions['A'].width = 30
-        ws.column_dimensions['B'].width = 25
-        ws.column_dimensions['C'].width = 20
+        _estilo_excel_sheet(ws, headers)
         return _build_excel_response(wb, 'Accesos_Fallidos_Audit.xlsx')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
@@ -1415,12 +1583,27 @@ def exportar_acciones_admin_pdf(request):
 def enviar_acciones_admin_correo(request):
     try:
         acciones = obtener_acciones_admin()
-        context = {**_contexto_base(request), 'acciones': acciones}
-        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_acciones_admin.html', context,
-                                 'Acciones_Administracion_Audit.pdf', 'CÉNIT — Auditoría de Acciones de Administración',
-                                 'Adjuntamos la auditoría detallada de acciones administrativas críticas en la plataforma.')
+        pdf_context = {**_contexto_base(request), 'acciones': acciones}
+        headers = ['Usuario', 'Acción', 'IP', 'Fecha']
+        
+        def write_excel_data(ws):
+            for i, d in enumerate(acciones, 2):
+                ws.cell(row=i, column=1, value=d.get('usuario_nombre', '—'))
+                ws.cell(row=i, column=2, value=d.get('accion', '—'))
+                ws.cell(row=i, column=3, value=d.get('ipOrigen', '—'))
+                ws.cell(row=i, column=4, value=str(d.get('fechaHora', '—'))[:19])
+                
+        return _dispatch_report_email(
+            request=request,
+            pdf_template='Suscripciones/reportes/pdf_acciones_admin.html',
+            pdf_context=pdf_context,
+            pdf_filename='Acciones_Administracion_Audit.pdf',
+            excel_headers=headers,
+            write_excel_data_fn=write_excel_data,
+            excel_filename='Acciones_Administracion_Audit.xlsx'
+        )
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
 
 @login_required
 def exportar_acciones_admin_excel(request):
@@ -1430,14 +1613,13 @@ def exportar_acciones_admin_excel(request):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'Acciones Admin'
-        _estilo_excel_header(ws, ['Usuario', 'Acción', 'IP', 'Fecha'])
+        headers = ['Usuario', 'Acción', 'IP', 'Fecha']
         for i, d in enumerate(acciones, 2):
             ws.cell(row=i, column=1, value=d.get('usuario_nombre', '—'))
             ws.cell(row=i, column=2, value=d.get('accion', '—'))
             ws.cell(row=i, column=3, value=d.get('ipOrigen', '—'))
             ws.cell(row=i, column=4, value=str(d.get('fechaHora', '—'))[:19])
-        ws.column_dimensions['A'].width = 30
-        ws.column_dimensions['B'].width = 25
+        _estilo_excel_sheet(ws, headers)
         return _build_excel_response(wb, 'Acciones_Administracion_Audit.xlsx')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
@@ -1555,3 +1737,448 @@ def analista_dashboard_data(request):
     """Endpoint JSON para refrescar KPIs vía AJAX."""
     data = _dashboard_kpis()
     return JsonResponse(data)
+
+
+# ── VISTAS Y APIS DE REPORTES PERSONALIZADOS ──
+
+def _es_query_segura(pipeline):
+    """
+    Verifica que el pipeline de agregación sea seguro (solo lectura).
+    Evita etapas destructivas de MongoDB.
+    """
+    etapas_prohibidas = {'$out', '$merge', '$writeConcern', '$collStats'}
+    for etapa in pipeline:
+        if not isinstance(etapa, dict):
+            return False
+        for key in etapa.keys():
+            if key in etapas_prohibidas:
+                return False
+    return True
+
+
+@login_required
+def crear_reporte_hub(request):
+    return render(request, 'Suscripciones/reportes/crear_reporte_hub.html')
+
+
+@login_required
+def crear_reporte_mongodb(request):
+    return render(request, 'Suscripciones/reportes/crear_reporte_mongodb.html')
+
+
+@login_required
+def crear_reporte_powerbi(request):
+    if request.method == 'POST':
+        import json
+        data = json.loads(request.body)
+        workspace_id = data.get('workspace_id')
+        report_id = data.get('report_id')
+        
+        # En producción real se negociaría el token seguro con MSAL/Azure AD.
+        # Retornamos un token dummy de demostración.
+        return JsonResponse({
+            'status': 'success',
+            'embed_token': 'dummy-embed-token-powerbi-1234567890abcdef',
+            'embed_url': f'https://app.powerbi.com/reportEmbed?reportId={report_id}&groupId={workspace_id}',
+        })
+    return render(request, 'Suscripciones/reportes/crear_reporte_powerbi.html')
+
+
+@login_required
+def crear_reporte_ia(request):
+    return render(request, 'Suscripciones/reportes/crear_reporte_ia.html')
+
+
+@login_required
+def ver_reporte_personalizado(request, report_id):
+    import json
+    from bson import ObjectId, json_util
+    try:
+        report_doc = db['reportes_personalizados'].find_one({'_id': ObjectId(report_id)})
+        if not report_doc:
+            return redirect('crear_reporte_hub')
+            
+        metodo = report_doc.get('metodo')
+        config = report_doc.get('configuracion', {})
+        
+        context = {
+            'report_id': report_id,
+            'report_title': report_doc.get('titulo'),
+            'report_config': json_util.dumps(config)
+        }
+        
+        if metodo == 'mongodb':
+            return render(request, 'Suscripciones/reportes/crear_reporte_mongodb.html', context)
+        elif metodo == 'powerbi':
+            return render(request, 'Suscripciones/reportes/crear_reporte_powerbi.html', context)
+        elif metodo == 'ia':
+            # Ejecutamos el pipeline guardado para enviar los resultados pre-renderizados
+            coleccion = config.get('coleccion')
+            pipeline = config.get('pipeline', [])
+            resultados = list(db[coleccion].aggregate(pipeline))
+            context['report_results'] = json_util.dumps(resultados)
+            return render(request, 'Suscripciones/reportes/crear_reporte_ia.html', context)
+            
+    except Exception as e:
+        print("Error al cargar reporte personalizado:", e)
+    return redirect('crear_reporte_hub')
+
+
+@login_required
+def ejecutar_query_mongo_api(request):
+    if request.method == 'POST':
+        import json
+        from bson import json_util
+        try:
+            data = json.loads(request.body)
+            coleccion = data.get('coleccion')
+            pipeline = json.loads(data.get('pipeline'))
+            
+            # Forzar limit para prevenir sobrecarga de memoria
+            tiene_limit = False
+            for etapa in pipeline:
+                if '$limit' in etapa:
+                    tiene_limit = True
+                    if etapa['$limit'] > 1000:
+                        etapa['$limit'] = 1000
+            
+            if not tiene_limit:
+                pipeline.append({'$limit': 200})
+                
+            if not _es_query_segura(pipeline):
+                return JsonResponse({'error': 'La consulta contiene etapas no permitidas.'})
+                
+            resultados = list(db[coleccion].aggregate(pipeline))
+            return HttpResponse(json_util.dumps(resultados), content_type='application/json')
+        except Exception as e:
+            return JsonResponse({'error': str(e)})
+    return JsonResponse({'error': 'Método no permitido'})
+
+
+@login_required
+def ia_generar_query_api(request):
+    if request.method == 'POST':
+        import os
+        import json
+        import requests
+        from bson import json_util
+        try:
+            data = json.loads(request.body)
+            prompt_usuario = data.get('prompt')
+            
+            gemini_key = getattr(settings, 'GEMINI_API_KEY', os.environ.get('GEMINI_API_KEY', ''))
+            
+            prompt_sistema = (
+                "Actúa como un traductor experto de lenguaje natural a pipelines de agregación de MongoDB para el proyecto Cénit.\n"
+                "Nuestras colecciones y sus estructuras reales en la base de datos son:\n"
+                "- 'Cancion': { cancion_id: int, tituloCancion: str, album_id: int, genero_id: int, escuchas: int } (Nota: genero_id relaciona con Genero.genero_id; album_id relaciona con Album.album_id)\n"
+                "- 'Artista': { artista_id: int, nombreArtistico: str, paisOrigen: str, biografia: str, estadoActivo: str }\n"
+                "- 'Album': { album_id: int, tituloAlbum: str, artista_id: int, fechaLanzamiento: date }\n"
+                "- 'Genero': { genero_id: int, nombreGenero: str }\n"
+                "- 'usuarios': { id: int, nombre: str, apellido: str, email: str, rol: { nombreRol: str } }\n"
+                "- 'suscripciones': { idSuscripcion: int, idUsuario: int, plan: str, estado: str }\n"
+                "- 'tipoSuscripciones': { tipo_id: int, nombrePlan: str, precio: float, moneda: str, duracion: int } (Nota: relaciona tipoSuscripciones.tipo_id con suscripciones.plan)\n"
+                "- 'promociones': { idPromocion: int, codigo: str, descuento: float, estado: str }\n"
+                "- 'playlists': { idPlaylist: int, idUsuario: int, nombre: str, canciones: array }\n"
+                "- 'notificaciones': { tipoNotif: str, mensaje: str, fechaEnvio: str, idUsuario: int, idPromocion: int }\n"
+                "- 'auditoriaAcceso': { idAuditoria: int, email: str, resultado: str, fechaHora: date }\n"
+                "- 'estadisticasDiarias': { fecha: date, escuchasTotales: int, usuariosActivos: int }\n"
+                "- 'seguimientos': { idUsuario: int, idArtista: int, nombreArtista: str, fechaSeguimiento: str, activo: int } (relaciona qué usuarios siguen a qué artistas)\n"
+                "- 'cancionesFavoritas': { idUsuario: int, idCancion: int, tituloCancion: str, artista: str, album: str, fechaLike: str } (relaciona canciones con me gusta de cada usuario)\n"
+                "- 'roles': { _id: int, nombreRol: str, descripcion: str, activo: int, fechaCreacion: str }\n\n"
+                "REGLA CRÍTICA DE BÚSQUEDA DE TEXTO:\n"
+                "Como las consultas en MongoDB son estrictamente sensibles a mayúsculas y minúsculas (case-sensitive), cuando filtres por campos de texto (ej. nombres de artistas, títulos de canciones, planes, etc.), debes usar expresiones regulares insensibles a mayúsculas y minúsculas con $regex y $options: 'i'. Por ejemplo:\n"
+                "{ \"artistaInfo.nombreArtistico\": { \"$regex\": \"^Lana del Rey$\", \"$options\": \"i\" } } en lugar de una igualdad directa.\n\n"
+                "Retorna ÚNICAMENTE un objeto JSON válido con el siguiente formato, sin texto descriptivo ni formato markdown:\n"
+                "{\n"
+                "  \"titulo\": \"Título representativo para el reporte\",\n"
+                "  \"coleccion\": \"Nombre exacto de la colección de MongoDB a consultar\",\n"
+                "  \"pipeline\": [ ...lista de fases de agregación... ]\n"
+                "}\n"
+                "Asegúrate de que la colección empiece por mayúscula si es Cancion, Artista, Album o Genero, y minúscula para las demás."
+            )
+            
+            generated_json = None
+            if gemini_key:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+                payload = {
+                    "contents": [{
+                        "parts": [
+                            {"text": prompt_sistema},
+                            {"text": f"Pregunta del Analista: {prompt_usuario}"}
+                        ]
+                    }],
+                    "generationConfig": {
+                        "responseMimeType": "application/json"
+                    }
+                }
+                response = requests.post(url, json=payload, headers={"Content-Type": "application/json"})
+                if response.status_code == 200:
+                    res_json = response.json()
+                    try:
+                        text = res_json['candidates'][0]['content']['parts'][0]['text']
+                        generated_json = json.loads(text)
+                    except Exception as e:
+                        print("Error al analizar respuesta de Gemini:", e)
+            
+            # Mock Fallback local
+            if not generated_json:
+                p_lower = prompt_usuario.lower()
+                if 'rock' in p_lower or 'cancion' in p_lower:
+                    generated_json = {
+                        "titulo": "Canciones de Rock Populares (IA Mock)",
+                        "coleccion": "Cancion",
+                        "pipeline": [
+                            { "$match": { "genero": "Rock" } },
+                            { "$sort": { "escuchas": -1 } },
+                            { "$limit": 10 }
+                        ]
+                    }
+                elif 'usuario' in p_lower or 'premium' in p_lower:
+                    generated_json = {
+                        "titulo": "Usuarios Registrados Recientes (IA Mock)",
+                        "coleccion": "usuarios",
+                        "pipeline": [
+                            { "$sort": { "id": -1 } },
+                            { "$limit": 10 }
+                        ]
+                    }
+                else:
+                    generated_json = {
+                        "titulo": "Canciones Generales del Catálogo (IA Mock)",
+                        "coleccion": "Cancion",
+                        "pipeline": [
+                            { "$sort": { "escuchas": -1 } },
+                            { "$limit": 10 }
+                        ]
+                    }
+            
+            coleccion = generated_json.get('coleccion')
+            pipeline = generated_json.get('pipeline', [])
+            
+            # Limit de seguridad
+            pipeline.append({'$limit': 200})
+            if not _es_query_segura(pipeline):
+                return JsonResponse({'status': 'error', 'message': 'Pipeline generado no seguro.'})
+                
+            resultados = list(db[coleccion].aggregate(pipeline))
+            
+            return JsonResponse({
+                'status': 'success',
+                'titulo': generated_json.get('titulo'),
+                'coleccion': coleccion,
+                'pipeline': pipeline[:-1],  # Remove limit para mostrar limpio
+                'pregunta': prompt_usuario,
+                'resultados': json.loads(json_util.dumps(resultados))
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'})
+
+
+@login_required
+def guardar_reporte_api(request):
+    if request.method == 'POST':
+        import json
+        import datetime
+        try:
+            data = json.loads(request.body)
+            titulo = data.get('titulo')
+            metodo = data.get('metodo')
+            configuracion = data.get('configuracion')
+            
+            doc = {
+                "titulo": titulo,
+                "creador": request.user.username,
+                "metodo": metodo,
+                "configuracion": configuracion,
+                "fechaCreacion": datetime.datetime.now()
+            }
+            
+            db['reportes_personalizados'].insert_one(doc)
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'error': str(e)})
+    return JsonResponse({'status': 'error', 'error': 'Método no permitido'})
+
+
+@login_required
+def exportar_reporte_dinamico_pdf(request):
+    if request.method == 'POST':
+        import json
+        import datetime
+        from bson import ObjectId
+        try:
+            coleccion = request.POST.get('coleccion')
+            pipeline_str = request.POST.get('pipeline')
+            titulo = request.POST.get('titulo', 'Reporte Personalizado')
+            
+            pipeline = json.loads(pipeline_str)
+            resultados = list(db[coleccion].aggregate(pipeline))
+            
+            # Obtener columnas únicas
+            columnas = []
+            for item in resultados:
+                for key in item.keys():
+                    if key not in columnas:
+                        columnas.append(key)
+            
+            # Formatear filas como lista de listas
+            datos_lista = []
+            for item in resultados:
+                fila = []
+                for col in columnas:
+                    val = item.get(col, '-')
+                    if isinstance(val, ObjectId):
+                        val = str(val)
+                    elif isinstance(val, (datetime.datetime, datetime.date)):
+                        val = val.strftime('%d/%m/%Y %H:%M') if isinstance(val, datetime.datetime) else val.strftime('%d/%m/%Y')
+                    elif isinstance(val, (dict, list)):
+                        val = json.dumps(val, default=str)
+                    fila.append(val)
+                datos_lista.append(fila)
+            
+            context = {
+                'titulo': titulo,
+                'coleccion': coleccion,
+                'fecha': datetime.datetime.now().strftime('%d/%m/%Y %H:%M'),
+                'columnas': columnas,
+                'datos_lista': datos_lista,
+                'usuario_generador': request.user.username
+            }
+            
+            from weasyprint import HTML
+            html_string = render_to_string('Suscripciones/reportes/pdf_reporte_dinamico.html', context)
+            pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+            
+            response = HttpResponse(pdf_file, content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="reporte_dinamico.pdf"'
+            return response
+        except Exception as e:
+            return HttpResponse(f"Error al generar PDF: {str(e)}", status=500)
+    return HttpResponse("Método no permitido", status=405)
+
+
+@login_required
+def exportar_reporte_dinamico_excel(request):
+    if request.method == 'POST':
+        import json
+        import openpyxl
+        import datetime
+        from bson import ObjectId
+        try:
+            coleccion = request.POST.get('coleccion')
+            pipeline_str = request.POST.get('pipeline')
+            titulo = request.POST.get('titulo', 'Reporte_Personalizado')
+            pipeline = json.loads(pipeline_str)
+            resultados = list(db[coleccion].aggregate(pipeline))
+            
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = 'Resultados'
+            
+            if not resultados:
+                return _build_excel_response(wb, 'Reporte_Vacio.xlsx')
+                
+            columnas = []
+            for item in resultados:
+                for key in item.keys():
+                    if key not in columnas:
+                        columnas.append(key)
+            
+            # Escribir filas de datos
+            for row_idx, item in enumerate(resultados, 2):
+                for col_idx, col_name in enumerate(columnas, 1):
+                    val = item.get(col_name, '')
+                    if isinstance(val, ObjectId):
+                        val = str(val)
+                    elif isinstance(val, (datetime.datetime, datetime.date)):
+                        val = val.strftime('%d/%m/%Y %H:%M') if isinstance(val, datetime.datetime) else val.strftime('%d/%m/%Y')
+                    elif isinstance(val, (dict, list)):
+                        val = json.dumps(val, default=str)
+                    ws.cell(row=row_idx, column=col_idx, value=val)
+                    
+            # Aplicar formato de hoja premium
+            _estilo_excel_sheet(ws, columnas)
+            
+            # Sanitizar nombre del archivo
+            filename = f"{titulo.replace(' ', '_')}.xlsx"
+            return _build_excel_response(wb, filename)
+        except Exception as e:
+            return HttpResponse(f"Error al generar Excel: {str(e)}", status=500)
+    return HttpResponse("Método no permitido", status=405)
+
+
+@login_required
+def eliminar_reporte(request, report_id):
+    from bson import ObjectId
+    try:
+        result = db['reportes_personalizados'].delete_one({'_id': ObjectId(report_id)})
+        if result.deleted_count > 0:
+            messages.success(request, "El reporte personalizado fue eliminado exitosamente.")
+        else:
+            messages.error(request, "No se encontró el reporte a eliminar.")
+    except Exception as e:
+        messages.error(request, f"Error al eliminar el reporte: {str(e)}")
+    return redirect('analista_dashboard')
+
+
+@login_required
+def enviar_reporte_dinamico_correo(request):
+    import json
+    import datetime
+    from bson import ObjectId
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'error': 'Método no permitido'}, status=405)
+        
+    try:
+        data = json.loads(request.body)
+        coleccion = data.get('coleccion')
+        pipeline_str = data.get('pipeline')
+        titulo = data.get('titulo', 'Reporte_Personalizado')
+        
+        # Parse pipeline y ejecutar agregación
+        pipeline = json.loads(pipeline_str)
+        resultados = list(db[coleccion].aggregate(pipeline))
+        
+        # 1. Configurar columnas y contexto para PDF
+        columnas = []
+        if resultados:
+            for item in resultados:
+                for key in item.keys():
+                    if key not in columnas:
+                        columnas.append(key)
+                        
+        pdf_context = {
+            **_contexto_base(request),
+            'titulo': titulo,
+            'coleccion': coleccion,
+            'columnas': columnas,
+            'resultados': resultados,
+            'fecha': datetime.datetime.now()
+        }
+        
+        # 2. Configurar callback para Excel
+        def write_excel_data(ws):
+            for row_idx, item in enumerate(resultados, 2):
+                for col_idx, col_name in enumerate(columnas, 1):
+                    val = item.get(col_name, '')
+                    if isinstance(val, ObjectId):
+                        val = str(val)
+                    elif isinstance(val, (datetime.datetime, datetime.date)):
+                        val = val.strftime('%d/%m/%Y %H:%M') if isinstance(val, datetime.datetime) else val.strftime('%d/%m/%Y')
+                    elif isinstance(val, (dict, list)):
+                        val = json.dumps(val, default=str)
+                    ws.cell(row=row_idx, column=col_idx, value=val)
+                    
+        return _dispatch_report_email(
+            request=request,
+            pdf_template='Suscripciones/reportes/pdf_reporte_dinamico.html',
+            pdf_context=pdf_context,
+            pdf_filename=f"{titulo.replace(' ', '_')}.pdf",
+            excel_headers=columnas,
+            write_excel_data_fn=write_excel_data,
+            excel_filename=f"{titulo.replace(' ', '_')}.xlsx"
+        )
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'error': f"Error al procesar envío de correo: {str(e)}"}, status=500)

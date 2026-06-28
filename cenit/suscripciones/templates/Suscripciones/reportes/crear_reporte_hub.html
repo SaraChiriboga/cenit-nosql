@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Crear Nuevo Reporte{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'analista_dashboard' %}" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Crear Reporte</span>
+{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-6xl mx-auto py-6">
+    <div class="mb-10 text-center md:text-left">
+        <h1 class="text-4xl font-extrabold text-white flex items-center justify-center md:justify-start gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl">add_chart</span>
+            Diseñar Nuevo Reporte
+        </h1>
+        <p class="text-on-surface-variant mt-2 text-sm max-w-2xl">
+            Selecciona el motor o interfaz para generar tu reporte analítico personalizado. Puedes conectarte a MongoDB, integrar un dashboard de PowerBI o interactuar con nuestra IA.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- CARD MONGO DB -->
+        <div class="glass-panel group relative rounded-3xl border border-white/5 bg-white/[0.02] p-8 transition-all duration-300 hover:bg-white/[0.06] hover:border-[#45F3FF]/30 flex flex-col justify-between shadow-2xl">
+            <div>
+                <div class="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mb-6 border border-white/10 group-hover:scale-110 transition-transform">
+                    <!-- MongoDB Original Logo (Colores Originales) -->
+                    <img src="{% static 'MongoDB.svg' %}" class="w-8 h-8 object-contain" alt="MongoDB">
+                </div>
+                <h3 class="text-xl font-bold text-white mb-3">MongoDB Query Builder</h3>
+                <p class="text-on-surface-variant text-sm leading-relaxed mb-6">
+                    Construye reportes consultando las colecciones nativas mediante pipelines de agregación. Ideal para consultas estructuradas directas de base de datos.
+                </p>
+            </div>
+            <a href="{% url 'crear_reporte_mongodb' %}" class="w-full py-3 text-center bg-white/5 hover:bg-[#45F3FF] hover:text-black rounded-xl font-bold text-sm text-white transition-all">
+                Usar Query Builder
+            </a>
+        </div>
+
+        <!-- CARD POWER BI -->
+        <div class="glass-panel group relative rounded-3xl border border-white/5 bg-white/[0.02] p-8 transition-all duration-300 hover:bg-white/[0.06] hover:border-[#45F3FF]/30 flex flex-col justify-between shadow-2xl">
+            <div>
+                <div class="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mb-6 border border-white/10 group-hover:scale-110 transition-transform">
+                    <!-- PowerBI Original Logo (Colores Originales) -->
+                    <img src="{% static 'Microsoft-Power-Bi--Streamline-Svg-Logos.svg' %}" class="w-8 h-8 object-contain" alt="PowerBI">
+                </div>
+                <h3 class="text-xl font-bold text-white mb-3">PowerBI Embedded</h3>
+                <p class="text-on-surface-variant text-sm leading-relaxed mb-6">
+                    Integra reportes interactivos hospedados de forma segura en PowerBI. Permite incorporar tableros dinámicos empresariales completos.
+                </p>
+            </div>
+            <a href="{% url 'crear_reporte_powerbi' %}" class="w-full py-3 text-center bg-white/5 hover:bg-[#45F3FF] hover:text-black rounded-xl font-bold text-sm text-white transition-all">
+                Integrar PowerBI
+            </a>
+        </div>
+
+        <!-- CARD IA -->
+        <div class="glass-panel group relative rounded-3xl border border-white/5 bg-white/[0.02] p-8 transition-all duration-300 hover:bg-white/[0.06] hover:border-[#45F3FF]/30 flex flex-col justify-between shadow-2xl">
+            <div>
+                <div class="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mb-6 border border-white/10 group-hover:scale-110 transition-transform">
+                    <!-- Gemini Sparkle Original Logo (Colores Originales) -->
+                    <img src="{% static 'gemini-color.svg' %}" class="w-8 h-8 object-contain" alt="Gemini">
+                </div>
+                <h3 class="text-xl font-bold text-white mb-3">Preguntar a la IA</h3>
+                <p class="text-on-surface-variant text-sm leading-relaxed mb-6">
+                    Genera reportes conversando en lenguaje natural. Nuestro asistente generará la consulta y la renderizará de forma automática.
+                </p>
+            </div>
+            <a href="{% url 'crear_reporte_ia' %}" class="w-full py-3 text-center bg-white/5 hover:bg-[#45F3FF] hover:text-black rounded-xl font-bold text-sm text-white transition-all">
+                Conversar con IA
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

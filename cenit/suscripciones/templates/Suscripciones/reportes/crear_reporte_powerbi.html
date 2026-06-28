@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}PowerBI Embedded Integration{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'analista_dashboard' %}" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<a href="{% url 'crear_reporte_hub' %}" class="hover:text-primary transition-colors">Crear Reporte</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">PowerBI Embedded</span>
+{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-6xl mx-auto py-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+        <div>
+            <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                <!-- PowerBI Vector Logo in Cyan -->
+                <svg class="w-8 h-8 text-[#45F3FF] fill-current" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="currentColor" d="M51.9167 4.91667C51.9167 2.75355 53.6703 1 55.8333 1h23.5C81.4964 1 83.25 2.75355 83.25 4.91667V91.0833C83.25 93.2464 81.4964 95 79.3333 95H16.6667c-2.1631 0-3.9167-1.7536-3.9167-3.9167V51.9167C12.75 49.7536 14.5036 48 16.6667 48h15.6667V28.4167c0-2.1631 1.7536-3.9167 3.9167-3.9167h15.6666V4.91667Z" opacity="0.3"></path>
+                    <path fill="currentColor" d="M83.2503 1v94H51.917V1h31.3333Z"></path>
+                    <path fill="currentColor" d="M63.6663 28.4167V95H32.333V24.5h27.4167c2.1631 0 3.9166 1.7536 3.9166 3.9167Z" opacity="0.6"></path>
+                    <path fill="currentColor" d="M12.75 48v47h31.3333V51.9167c0-2.1631-1.7536-3.9167-3.9166-3.9167H12.75Z" opacity="0.8"></path>
+                </svg>
+                {% if report_title %}{{ report_title }}{% else %}PowerBI Embedded Integration{% endif %}
+            </h1>
+            <p class="text-on-surface-variant mt-1 text-sm">Visualiza reportes dinámicos interactivos de PowerBI conectados a tu organización.</p>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <button onclick="openConfigModal()" class="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/20 rounded-xl text-xs font-bold transition-all">
+                <span class="material-symbols-outlined text-[16px]">settings</span> Configurar Embed
+            </button>
+            
+            {% if report_id %}
+            <a href="{% url 'eliminar_reporte' report_id %}" 
+               onclick="return confirm('¿Estás seguro de que deseas eliminar este reporte personalizado de forma permanente?');"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-all">
+                <span class="material-symbols-outlined text-[16px]">delete</span> Eliminar Reporte
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- CONTENEDOR DEL REPORTE -->
+    <div class="glass-panel rounded-3xl border border-white/5 bg-white/[0.02] shadow-xl overflow-hidden min-h-[600px] flex flex-col items-center justify-center relative" id="reportContainer">
+        <!-- VISTA DE CARGA INICIAL -->
+        <div id="embed-placeholder" class="text-center p-12">
+            <span class="material-symbols-outlined text-white/20 text-7xl mb-4">monitoring</span>
+            <h3 class="text-xl font-bold text-white mb-2">Integrar Reporte PowerBI</h3>
+            <p class="text-on-surface-variant text-xs max-w-sm mx-auto mb-6">Proporciona los identificadores de tu reporte de PowerBI y el Workspace para incrustarlo de manera segura.</p>
+            <button onclick="openConfigModal()" class="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl text-xs font-bold transition-all hover:scale-105 shadow-lg shadow-purple-500/20">Configurar credenciales</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CONFIGURAR EMBED -->
+<div id="config-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+    <div class="glass-panel rounded-3xl border border-white/10 bg-[#0F1015]/95 max-w-md w-full p-8 shadow-2xl scale-95 transition-all">
+        <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+            <span class="material-symbols-outlined text-purple-400">bar_chart_4_bars</span> Credenciales PowerBI
+        </h3>
+        <p class="text-xs text-on-surface-variant mb-6">Ingresa el Workspace ID y el Report ID de PowerBI para renderizar el reporte embebido.</p>
+        
+        <div class="flex flex-col gap-4">
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">Nombre / Título de Reporte</label>
+                <input type="text" id="report-title" placeholder="Ej: Métricas Mensuales" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">Workspace ID (Group ID)</label>
+                <input type="text" id="workspace-id" placeholder="12345678-abcd-1234-abcd-123456789abc" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">Report ID</label>
+                <input type="text" id="report-id" placeholder="abcdef12-3456-7890-abcd-ef1234567890" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500">
+            </div>
+            
+            <div class="flex items-center gap-3 mt-4">
+                <button onclick="closeConfigModal()" class="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-all border border-white/10">Cancelar</button>
+                <button onclick="loadPowerBIReport()" class="flex-1 py-2.5 bg-purple-600 text-white hover:scale-105 rounded-xl text-xs font-bold transition-all shadow-lg shadow-purple-600/20">Cargar Reporte</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SDK JavaScript de PowerBI -->
+<script src="https://cdn.jsdelivr.net/npm/powerbi-client@2.21.1/dist/powerbi.min.js"></script>
+
+<script>
+    function openConfigModal() {
+        document.getElementById('config-modal').classList.remove('hidden');
+        document.getElementById('config-modal').classList.add('flex');
+    }
+
+    function closeConfigModal() {
+        document.getElementById('config-modal').classList.remove('flex');
+        document.getElementById('config-modal').classList.add('hidden');
+    }
+
+    async function loadPowerBIReport() {
+        const title = document.getElementById('report-title').value;
+        const workspaceId = document.getElementById('workspace-id').value;
+        const reportId = document.getElementById('report-id').value;
+
+        if (!workspaceId.trim() || !reportId.trim() || !title.trim()) {
+            alert('Por favor, completa todos los campos.');
+            return;
+        }
+
+        closeConfigModal();
+        
+        const container = document.getElementById('reportContainer');
+        container.innerHTML = `
+            <div class="text-center p-12" id="loading-spinner">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mb-4 mx-auto"></div>
+                <h3 class="text-lg font-bold text-white">Solicitando Embed Token...</h3>
+                <p class="text-on-surface-variant text-xs mt-1">Negociando token seguro con Microsoft Azure AD.</p>
+            </div>
+        `;
+
+        try {
+            // Llamar al backend para obtener el token e inicializar el embed
+            const response = await fetch('{% url "crear_reporte_powerbi" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    titulo: title,
+                    workspace_id: workspaceId,
+                    report_id: reportId
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'error') {
+                container.innerHTML = `
+                    <div class="text-center p-12 text-error">
+                        <span class="material-symbols-outlined text-6xl mb-4">error</span>
+                        <h3 class="text-lg font-bold">Error de Autenticación</h3>
+                        <p class="text-xs text-on-surface-variant max-w-md mx-auto mb-4">${data.message}</p>
+                        <button onclick="openConfigModal()" class="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold border border-white/10 text-white">Reintentar</button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Inyectar el div para el SDK
+            container.innerHTML = `<div id="embedContainer" class="w-full h-full min-h-[600px]"></div>`;
+
+            // Inicializar el reporte usando PowerBI JS SDK
+            const models = window['powerbi-client'].models;
+            const config = {
+                type: 'report',
+                tokenType: models.TokenType.Embed,
+                accessToken: data.embed_token,
+                embedUrl: data.embed_url,
+                id: reportId,
+                permissions: models.Permissions.All,
+                settings: {
+                    filterPaneEnabled: true,
+                    navContentPaneEnabled: true
+                }
+            };
+
+            const embedContainer = document.getElementById('embedContainer');
+            const powerbi = window.powerbi;
+            const report = powerbi.embed(embedContainer, config);
+
+            // Al cargar correctamente el reporte, podemos guardar esta configuración en la colección de reportes guardados
+            await fetch('{% url "guardar_reporte_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    titulo: title,
+                    metodo: 'powerbi',
+                    configuracion: {
+                        workspace_id: workspaceId,
+                        report_id: reportId
+                    }
+                })
+            });
+
+        } catch (error) {
+            console.error(error);
+            container.innerHTML = `
+                <div class="text-center p-12 text-error">
+                    <span class="material-symbols-outlined text-6xl mb-4">cloud_off</span>
+                    <h3 class="text-lg font-bold">Fallo en la conexión</h3>
+                    <p class="text-xs text-on-surface-variant max-w-md mx-auto mb-4">No se pudo establecer contacto con el backend de Cénit.</p>
+                    <button onclick="openConfigModal()" class="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold border border-white/10 text-white">Reintentar</button>
+                </div>
+            `;
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        {% if report_config %}
+        try {
+            const config = {{ report_config|safe }};
+            document.getElementById('report-title').value = "{{ report_title }}";
+            document.getElementById('workspace-id').value = config.workspace_id;
+            document.getElementById('report-id').value = config.report_id;
+            loadPowerBIReport();
+        } catch (e) {
+            console.error('Error loading PowerBI config:', e);
+        }
+        {% endif %}
+    });
+</script>
+{% endblock %}

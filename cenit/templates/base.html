@@ -107,6 +107,11 @@
                 <span class="material-symbols-outlined text-[20px]">home</span>
                 <span class="font-body-md text-body-md">Dashboard</span>
             </a>
+            <a href="{% url 'crear_reporte_hub' %}"
+               class="flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider text-black bg-gradient-to-r from-[#45F3FF] to-[#00B4D8] hover:scale-[1.03] hover:brightness-110 transition-all duration-300 shadow-lg shadow-[#45F3FF]/15 hover:shadow-[#45F3FF]/35 mb-2 mt-1">
+                <span class="material-symbols-outlined text-[18px]">add_chart</span>
+                Crear Reporte
+            </a>
             <div class="h-px bg-white/5 my-1"></div>
             {% endif %}
 
@@ -340,6 +345,48 @@
                 </div>
             </div>
 
+            {% if user_role == 'Analista' and reportes_personalizados %}
+            <div>
+                <button id="custom-reports-toggle"
+                    class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
+                           {% if '/reportes/ver/' in request.path %}text-[#45F3FF] bg-[#45F3FF]/5{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                    <span class="material-symbols-outlined text-[20px]">dashboard_customize</span>
+                    <span class="font-body-md text-body-md flex-1 text-left">Reportes Custom</span>
+                    <span class="material-symbols-outlined text-[16px] submenu-arrow transition-transform duration-200
+                          {% if '/reportes/ver/' in request.path %}rotated{% endif %}" id="custom-reports-arrow">chevron_right</span>
+                </button>
+
+                <div class="submenu {% if '/reportes/ver/' in request.path %}open{% endif %}" id="custom-reports-submenu">
+                    <div class="ml-3 pl-3 border-l border-white/10 mt-1 flex flex-col gap-0.5 pb-2">
+                        {% for r in reportes_personalizados %}
+                        <a href="{% url 'ver_reporte_personalizado' r.id_str %}" class="submenu-item flex items-center gap-2.5 px-3 py-1.5 rounded-r-lg text-xs transition-all duration-150 {% if r.id_str in request.path %}active{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                            {% if r.metodo == 'mongodb' %}
+                            <!-- MongoDB Icon (cyan) -->
+                            <svg class="w-3.5 h-3.5 text-[#45F3FF] fill-current" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M88.038 42.812c1.605 4.643 2.761 9.383 3.141 14.296.472 6.095.256 12.147-1.029 18.142-.035.165-.109.32-.164.48-.403.001-.814-.049-1.208.012-3.329.523-6.655 1.065-9.981 1.604-3.438.557-6.881 1.092-10.313 1.687-1.216.21-2.721-.041-3.212 1.641-.014.046-.154.054-.235.08l.166-10.051-.169-24.252 1.602-.275c2.62-.429 5.24-.864 7.862-1.281 3.129-.497 6.261-.98 9.392-1.465 1.381-.215 2.764-.412 4.148-.618zM61.729 110.054c-1.69-1.453-3.439-2.842-5.059-4.37-8.717-8.222-15.093-17.899-18.233-29.566-.865-3.211-1.442-6.474-1.627-9.792-.13-2.322-.318-4.665-.154-6.975.437-6.144 1.325-12.229 3.127-18.147l.099-.138c.175.233.427.439.516.702 1.759 5.18 3.505 10.364 5.242 15.551 5.458 16.3 10.909 32.604 16.376 48.9.107.318.384.579.583.866l-.87 2.969zM88.038 42.812c-1.384.206-2.768.403-4.149.616-3.131.485-6.263.968-9.392 1.465-2.622.417-5.242.852-7.862 1.281l-1.602.275-.012-1.045c-.053-.859-.144-1.717-.154-2.576-.069-5.478-.112-10.956-.18-16.434-.042-3.429-.105-6.857-.175-10.285-.043-2.13-.089-4.261-.185-6.388-.052-1.143-.236-2.28-.311-3.423-.042-.657.016-1.319.029-1.979.817 1.583 1.616 3.178 2.456 4.749 1.327 2.484 3.441 4.314 5.344 6.311 7.523 7.892 12.864 17.068 16.193 27.433zM65.036 80.753c.081-.026.222-.034.235-.08.491-1.682 1.996-1.431 3.212-1.641 3.432-.594 6.875-1.13 10.313-1.687 3.326-.539 6.652-1.081 9.981-1.604.394-.062.805-.011 1.208-.012-.622 2.22-1.112 4.488-1.901 6.647-.896 2.449-1.98 4.839-3.131 7.182a49.142 49.142 0 01-6.353 9.763c-1.919 2.308-4.058 4.441-6.202 6.548-1.185 1.165-2.582 2.114-3.882 3.161l-.337-.23-1.214-1.038-1.256-2.753a41.402 41.402 0 01-1.394-9.838l.023-.561.171-2.426c.057-.828.133-1.655.168-2.485.129-2.982.241-5.964.359-8.946zM65.036 80.753c-.118 2.982-.23 5.964-.357 8.947-.035.83-.111 1.657-.168 2.485l-.765.289c-1.699-5.002-3.399-9.951-5.062-14.913-2.75-8.209-5.467-16.431-8.213-24.642a4498.887 4498.887 0 00-6.7-19.867c-.105-.31-.407-.552-.617-.826l4.896-9.002c.168.292.39.565.496.879a6167.476 6167.476 0 016.768 20.118c2.916 8.73 5.814 17.467 8.728 26.198.116.349.308.671.491 1.062l.67-.78-.167 10.052zM43.155 32.227c.21.274.511.516.617.826a4498.887 4498.887 0 016.7 19.867c2.746 8.211 5.463 16.433 8.213 24.642 1.662 4.961 3.362 9.911 5.062 14.913l.765-.289-.171 2.426-.155.559c-.266 2.656-.49 5.318-.814 7.968-.163 1.328-.509 2.632-.772 3.947-.198-.287-.476-.548-.583-.866-5.467-16.297-10.918-32.6-16.376-48.9a3888.972 3888.972 0 00-5.242-15.551c-.089-.263-.34-.469-.516-.702l3.272-8.84zM65.202 70.702l-.67.78c-.183-.391-.375-.714-.491-1.062-2.913-8.731-5.812-17.468-8.728-26.198a6167.476 6167.476 0 00-6.768-20.118c-.105-.314-.327-.588-.496-.879l6.055-7.965c.191.255.463.482.562.769 1.681 4.921 3.347 9.848 5.003 14.778 1.547 4.604 3.071 9.215 4.636 13.813.105.308.47.526.714.786l.012 1.045c.058 8.082.115 16.167.171 24.251zM65.021 45.404c-.244-.26-.609-.478-.714-.786-1.565-4.598-3.089-9.209-4.636-13.813-1.656-4.93-3.322-9.856-5.003-14.778-.099-.287-.371-.514-.562-.769 1.969-1.928 3.877-3.925 5.925-5.764 1.821-1.634 3.285-3.386 3.352-5.968.003-.107.059-.214.145-.514l.519 1.306c-.013.661-.072 1.322-.029 1.979.075 1.143.259 2.28.311 3.423.096 2.127.142 4.258.185 6.388.069 3.428.132 6.856.175 10.285.067 5.478.111 10.956.18 16.434.008.861.098 1.718.152 2.577zM62.598 107.085c.263-1.315.609-2.62.772-3.947.325-2.649.548-5.312.814-7.968l.066-.01.066.011a41.402 41.402 0 001.394 9.838c-.176.232-.425.439-.518.701-.727 2.05-1.412 4.116-2.143 6.166-.1.28-.378.498-.574.744l-.747-2.566.87-2.969zM62.476 112.621c.196-.246.475-.464.574-.744.731-2.05 1.417-4.115 2.143-6.166.093-.262.341-.469.518-.701l1.255 2.754c-.248.352-.59.669-.728 1.061l-2.404 7.059c-.099.283-.437.483-.663.722l-.695-3.985zM63.171 116.605c.227-.238.564-.439.663-.722l2.404-7.059c.137-.391.48-.709.728-1.061l1.215 1.037c-.587.58-.913 1.25-.717 2.097l-.369 1.208c-.168.207-.411.387-.494.624-.839 2.403-1.64 4.819-2.485 7.222-.107.305-.404.544-.614.812-.109-1.387-.22-2.771-.331-4.158zM63.503 120.763c.209-.269.506-.508.614-.812.845-2.402 1.646-4.818 2.485-7.222.083-.236.325-.417.494-.624l-.509 5.545c-.136.157-.333.294-.398.477-.575 1.614-1.117 3.24-1.694 4.854-.119.333-.347.627-.525.938-.158-.207-.441-.407-.454-.623-.051-.841-.016-1.688-.013-2.533zM63.969 123.919c.178-.312.406-.606.525-.938.578-1.613 1.119-3.239 1.694-4.854.065-.183.263-.319.398-.477l.012 3.64-1.218 3.124-1.411-.495zM65.38 124.415l1.218-3.124.251 3.696-1.469-.572zM67.464 110.898c-.196-.847.129-1.518.717-2.097l.337.23-1.054 1.867zM64.316 95.172l-.066-.011-.066.01.155-.559-.023.56z"/>
+                            </svg>
+                            {% elif r.metodo == 'powerbi' %}
+                            <!-- PowerBI Icon (cyan) -->
+                            <svg class="w-3.5 h-3.5 text-[#45F3FF] fill-current" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+                                <path fill="currentColor" d="M51.9167 4.91667C51.9167 2.75355 53.6703 1 55.8333 1h23.5C81.4964 1 83.25 2.75355 83.25 4.91667V91.0833C83.25 93.2464 81.4964 95 79.3333 95H16.6667c-2.1631 0-3.9167-1.7536-3.9167-3.9167V51.9167C12.75 49.7536 14.5036 48 16.6667 48h15.6667V28.4167c0-2.1631 1.7536-3.9167 3.9167-3.9167h15.6666V4.91667Z" opacity="0.3"></path>
+                                <path fill="currentColor" d="M83.2503 1v94H51.917V1h31.3333Z"></path>
+                                <path fill="currentColor" d="M63.6663 28.4167V95H32.333V24.5h27.4167c2.1631 0 3.9166 1.7536 3.9166 3.9167Z" opacity="0.6"></path>
+                                <path fill="currentColor" d="M12.75 48v47h31.3333V51.9167c0-2.1631-1.7536-3.9167-3.9166-3.9167H12.75Z" opacity="0.8"></path>
+                            </svg>
+                            {% else %}
+                            <!-- Gemini Icon (cyan) -->
+                            <svg class="w-3.5 h-3.5 text-[#45F3FF]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="currentColor"/>
+                            </svg>
+                            {% endif %}
+                            {{ r.titulo }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
         </nav>
 
     </aside>
@@ -350,6 +397,18 @@
             <a href="/" class="hover:text-primary transition-colors">Dashboard</a>
             {% endblock %}
         </div>
+
+        {% if user_role == 'Analista' and reportes_personalizados %}
+        <!-- Barra de búsqueda de reportes personalizados -->
+        <div class="relative w-64 mr-auto ml-8 hidden md:block">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-on-surface-variant pointer-events-none">
+                <span class="material-symbols-outlined text-[16px] leading-none">search</span>
+            </span>
+            <input type="text" id="search-custom-reports" onkeyup="filterCustomReports()"
+                   placeholder="Buscar reporte personalizado..." 
+                   class="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#45F3FF] rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-white/40 focus:outline-none transition-colors font-body-md">
+        </div>
+        {% endif %}
 
         <div class="flex items-center gap-5">
             <div class="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-surface-container-highest/30">
@@ -436,6 +495,24 @@
                     localStorage.setItem('reportesOpen', repSubmenu.classList.contains('open'));
                 });
             }
+
+            // ── SUBMENÚ REPORTES PERSONALIZADOS ──
+            const customToggle = document.getElementById('custom-reports-toggle');
+            const customSubmenu = document.getElementById('custom-reports-submenu');
+            const customArrow = document.getElementById('custom-reports-arrow');
+
+            if (customToggle && customSubmenu && customArrow) {
+                if (localStorage.getItem('customReportsOpen') === 'true') {
+                    customSubmenu.classList.add('open');
+                    customArrow.classList.add('rotated');
+                }
+
+                customToggle.addEventListener('click', () => {
+                    customSubmenu.classList.toggle('open');
+                    customArrow.classList.toggle('rotated');
+                    localStorage.setItem('customReportsOpen', customSubmenu.classList.contains('open'));
+                });
+            }
         });
 
         // ── ⌘K shortcut ──
@@ -509,6 +586,131 @@
                 const modal = document.getElementById('logout-confirm-modal');
                 if (modal) modal.classList.add('hidden');
             };
+
+            // ── EMAIL CUSTOMIZATION MODAL JS ──
+            let currentEmailEndpoint = '';
+            let currentExtraPayload = null;
+            
+            window.enviarReporteCorreo = function(url, extraPayload = null) {
+                currentEmailEndpoint = url;
+                currentExtraPayload = extraPayload;
+                
+                const subjectInput = document.getElementById('email-subject');
+                const bodyInput = document.getElementById('email-body');
+                
+                // Asunto e información contextual inteligente
+                if (url.includes('vencimientos')) {
+                    subjectInput.value = "CÉNIT — Informe de Suscripciones Expiradas";
+                    bodyInput.value = "Adjuntamos el informe detallado de suscripciones Premium inactivas o expiradas para su revisión.";
+                } else if (url.includes('promociones')) {
+                    subjectInput.value = "CÉNIT — Informe de Promociones con Alto Descuento";
+                    bodyInput.value = "Adjuntamos el informe ejecutivo detallando las promociones vigentes con descuentos superiores al 20%.";
+                } else if (url.includes('premium')) {
+                    subjectInput.value = "CÉNIT — Informe de Usuarios Premium Activos";
+                    bodyInput.value = "Adjuntamos el listado detallado de usuarios con suscripción Premium activa en la plataforma.";
+                } else if (url.includes('free')) {
+                    subjectInput.value = "CÉNIT — Informe de Candidatos a Conversión Premium (Plan Free)";
+                    bodyInput.value = "Adjuntamos el informe de usuarios activos en plan Free idóneos para campañas de conversión comercial.";
+                } else if (url.includes('fallidos')) {
+                    subjectInput.value = "CÉNIT — Auditoría de Intentos de Acceso Fallidos";
+                    bodyInput.value = "Adjuntamos la auditoría de seguridad detallando los intentos fallidos de inicio de sesión detectados.";
+                } else if (url.includes('acciones-admin')) {
+                    subjectInput.value = "CÉNIT — Auditoría de Acciones Administrativas";
+                    bodyInput.value = "Adjuntamos la auditoría de seguridad detallando las operaciones de administración crítica realizadas en la consola.";
+                } else {
+                    subjectInput.value = "CÉNIT — Envío de Reporte Analítico";
+                    bodyInput.value = "Adjuntamos el reporte personalizado de datos generado desde la Consola de Analista.";
+                }
+                
+                const modal = document.getElementById('email-custom-modal');
+                if (modal) modal.classList.remove('hidden');
+            };
+            
+            window.closeEmailModal = function() {
+                const modal = document.getElementById('email-custom-modal');
+                if (modal) modal.classList.add('hidden');
+            };
+            
+            window.confirmSendEmail = async function() {
+                const to = document.getElementById('email-to').value;
+                const subject = document.getElementById('email-subject').value;
+                const body = document.getElementById('email-body').value;
+                const attachPdf = document.getElementById('attach-pdf').checked;
+                const attachExcel = document.getElementById('attach-excel').checked;
+                
+                if (!to) {
+                    alert('Por favor especifica un correo de destino.');
+                    return;
+                }
+                if (!attachPdf && !attachExcel) {
+                    alert('Debes seleccionar al menos un archivo para adjuntar (PDF o Excel).');
+                    return;
+                }
+                
+                const btn = document.getElementById('btn-confirm-send-mail');
+                const oldHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[16px] leading-none">progress_activity</span> Enviando...';
+                
+                try {
+                    const payload = {
+                        destinatario: to,
+                        asunto: subject,
+                        mensaje: body,
+                        adjuntar_pdf: attachPdf,
+                        adjuntar_excel: attachExcel,
+                        ...(currentExtraPayload || {})
+                    };
+                    
+                    const response = await fetch(currentEmailEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await response.json();
+                    alert(data.status === 'success' ? '¡Éxito! ' + data.message : 'Error: ' + data.error);
+                    if (data.status === 'success') {
+                        closeEmailModal();
+                    }
+                } catch(e) {
+                    console.error(e);
+                    alert('Fallo de red al despachar el informe por correo.');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = oldHtml;
+                }
+            };
+
+            // ── CUSTOM REPORTS SIDEBAR FILTER JS ──
+            window.filterCustomReports = function() {
+                const searchVal = document.getElementById('search-custom-reports').value.toLowerCase();
+                const submenu = document.getElementById('custom-reports-submenu');
+                if (!submenu) return;
+                
+                const items = submenu.getElementsByTagName('a');
+                let anyVisible = false;
+                
+                for (let item of items) {
+                    const text = item.textContent.toLowerCase();
+                    if (text.includes(searchVal)) {
+                        item.style.display = 'flex';
+                        anyVisible = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                }
+                
+                // Si el usuario escribe y hay resultados, asegurar que el menú se despliegue
+                if (searchVal.length > 0 && anyVisible) {
+                    const arrow = document.getElementById('custom-reports-arrow');
+                    submenu.classList.add('open');
+                    if (arrow) arrow.classList.add('rotated');
+                    localStorage.setItem('customReportsOpen', 'true');
+                }
+            };
     </script>
 
     <!-- Logout Confirmation Modal -->
@@ -523,10 +725,70 @@
         </div>
         <div class="flex justify-center gap-3 pt-2">
           <button onclick="closeLogoutModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-on-surface-variant hover:text-white transition-colors font-body-md">Cancelar</button>
-          <form action="{% url 'logout' %}" method="post" class="inline">
+          <form action="{% url 'logout' %}?next={% if user_role == 'Analista' %}{% url 'login_analista' %}{% else %}{% url 'login' %}{% endif %}" method="post" class="inline">
             {% csrf_token %}
             <button type="submit" class="px-5 py-2 bg-secondary text-on-secondary-fixed-variant hover:bg-secondary/80 active:scale-95 rounded-xl text-xs font-bold transition-all shadow-lg shadow-secondary/10 font-body-md">Salir</button>
           </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email Customization Modal -->
+    <div id="email-custom-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden">
+      <div class="glass-panel w-full max-w-md rounded-2xl p-6 border border-white/10 space-y-4 glow-cyan">
+        <div class="flex items-center justify-between border-b border-white/5 pb-3">
+          <div class="flex items-center gap-2 text-[#45F3FF]">
+            <span class="material-symbols-outlined text-[24px]">mail</span>
+            <h3 class="text-base font-bold text-white">Enviar Reporte por Correo</h3>
+          </div>
+          <button onclick="closeEmailModal()" class="text-on-surface-variant hover:text-white transition-colors">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+        
+        <div class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-on-surface-variant mb-1" for="email-to">Destinatario</label>
+            <input type="email" id="email-to" value="{{ request.user.email|default:'analista@cenit.com' }}"
+                   class="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#45F3FF] transition-colors font-body-md"
+                   placeholder="correo@ejemplo.com">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-on-surface-variant mb-1" for="email-subject">Asunto</label>
+            <input type="text" id="email-subject" value="CÉNIT — Envío de Reporte Analítico"
+                   class="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#45F3FF] transition-colors font-body-md"
+                   placeholder="Asunto del correo">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-on-surface-variant mb-1" for="email-body">Mensaje / Descripción</label>
+            <textarea id="email-body" rows="3"
+                      class="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#45F3FF] transition-colors resize-none font-body-md"
+                      placeholder="Escribe un mensaje explicativo para el destinatario..."></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-xs font-semibold text-on-surface-variant mb-2">Formatos a Adjuntar</label>
+            <div class="flex items-center gap-6">
+              <label class="flex items-center gap-2 text-xs text-white cursor-pointer select-none">
+                <input type="checkbox" id="attach-pdf" checked
+                       class="accent-[#45F3FF] w-4 h-4 rounded border-white/10 bg-white/5">
+                <span>Documento PDF</span>
+              </label>
+              <label class="flex items-center gap-2 text-xs text-white cursor-pointer select-none">
+                <input type="checkbox" id="attach-excel" checked
+                       class="accent-[#45F3FF] w-4 h-4 rounded border-white/10 bg-white/5">
+                <span>Tabla Excel (.xlsx)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 pt-2 border-t border-white/5">
+          <button onclick="closeEmailModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-on-surface-variant hover:text-white transition-colors font-body-md">Cancelar</button>
+          <button id="btn-confirm-send-mail" onclick="confirmSendEmail()"
+                  class="px-5 py-2 bg-gradient-to-r from-[#45F3FF] to-[#00B4D8] text-black hover:brightness-110 active:scale-95 rounded-xl text-xs font-bold transition-all shadow-lg shadow-[#45F3FF]/10 flex items-center gap-1.5 font-body-md">
+            <span class="material-symbols-outlined text-[16px] leading-none">send</span> Enviar
+          </button>
         </div>
       </div>
     </div>

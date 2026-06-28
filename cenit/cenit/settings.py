@@ -27,6 +27,15 @@ with open(credentials_path, encoding='utf-8') as f:
 MONGODB_URI = db_config.pop("MONGODB_URI", "mongodb://localhost:27017/")
 MONGODB_NAME = db_config.pop("MONGODB_NAME", "Cenit")
 
+# Load secrets from secrets.json
+secrets_path = os.path.join(BASE_DIR, 'secrets.json')
+if os.path.exists(secrets_path):
+    with open(secrets_path, encoding='utf-8') as f:
+        secrets_config = json.load(f)
+        GEMINI_API_KEY = secrets_config.get("GEMINI_API_KEY", "")
+else:
+    GEMINI_API_KEY = ""
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -80,6 +89,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'usuarios.context_processors.user_role',
+                'usuarios.context_processors.custom_reports',
             ],
         },
     },
@@ -163,9 +173,28 @@ LOGIN_REDIRECT_URL = 'songs_overview'
 # A dónde ir después de cerrar sesión
 LOGOUT_REDIRECT_URL = 'landing'
 
-# Email backend configuration for local development
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'admin@cenit.com'
+# Email backend configuration
+SMTP_CONFIGURED = False
+if os.path.exists(secrets_path):
+    try:
+        with open(secrets_path, 'r', encoding='utf-8') as f:
+            secrets_data = json.load(f)
+            if 'EMAIL_HOST' in secrets_data:
+                EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+                EMAIL_HOST = secrets_data.get('EMAIL_HOST')
+                EMAIL_PORT = int(secrets_data.get('EMAIL_PORT', 587))
+                EMAIL_USE_TLS = secrets_data.get('EMAIL_USE_TLS', True)
+                EMAIL_HOST_USER = secrets_data.get('EMAIL_HOST_USER')
+                EMAIL_HOST_PASSWORD = secrets_data.get('EMAIL_HOST_PASSWORD')
+                DEFAULT_FROM_EMAIL = secrets_data.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+                SMTP_CONFIGURED = True
+    except Exception:
+        pass
+
+if not SMTP_CONFIGURED:
+    # Fallback to printing in console for development
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = 'admin@cenit.com'
 
 # Custom Authentication Backends
 AUTHENTICATION_BACKENDS = [

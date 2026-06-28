@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+
+{% block title %}Preguntar a la IA{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'analista_dashboard' %}" class="hover:text-primary transition-colors">Dashboard</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<a href="{% url 'crear_reporte_hub' %}" class="hover:text-primary transition-colors">Crear Reporte</a>
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-primary font-semibold">Preguntar a la IA</span>
+{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-6xl mx-auto py-4">
+    <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+            <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                <!-- Gemini Icon (cyan) -->
+                <svg class="w-8 h-8 text-[#45F3FF]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="currentColor"/>
+                </svg>
+                {% if report_title %}{{ report_title }}{% else %}Preguntar a la IA{% endif %}
+            </h1>
+            <p class="text-on-surface-variant mt-1 text-sm">Obtén reportes instantáneos conversando en lenguaje natural con el asistente de Cénit.</p>
+        </div>
+        
+        {% if report_id %}
+        <div>
+            <a href="{% url 'eliminar_reporte' report_id %}" 
+               onclick="return confirm('¿Estás seguro de que deseas eliminar este reporte personalizado de forma permanente?');"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-all">
+                <span class="material-symbols-outlined text-[16px]">delete</span> Eliminar Reporte
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <!-- SECCIÓN DE CHAT (IZQUIERDA) -->
+        <div class="lg:col-span-5 flex flex-col gap-4 h-[600px] glass-panel rounded-3xl border border-white/5 bg-white/[0.02] p-6 shadow-xl relative">
+            <h2 class="text-xs font-bold uppercase tracking-widest text-white/40 mb-2">Chat con Asistente</h2>
+            
+            <!-- CONTENEDOR DE MENSAJES -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto pr-2 flex flex-col gap-4">
+                <!-- MENSAJE DE BIENVENIDA -->
+                <div class="flex gap-3 max-w-[85%]">
+                    <div class="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-cyan-400 text-[18px]">smart_toy</span>
+                    </div>
+                    <div class="bg-white/5 rounded-2xl rounded-tl-none p-3.5 text-xs text-white/90 leading-relaxed shadow-md">
+                        ¡Hola! Soy tu asistente de Cénit. ¿Qué reporte te gustaría generar hoy?<br><br>
+                        <em>Por ejemplo: "Muéstrame las 10 canciones más populares de Rock con su número de escuchas" o "Enséñame qué suscripciones vencieron en el último mes".</em>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INPUT DE CHAT -->
+            <div class="mt-auto border-t border-white/5 pt-4">
+                <div class="flex items-center gap-3 bg-black/40 border border-white/10 rounded-2xl px-4 py-2 focus-within:border-[#45F3FF]">
+                    <input type="text" id="chat-input" placeholder="Escribe tu consulta aquí..." class="flex-1 bg-transparent text-xs text-white focus:outline-none placeholder-white/30" onkeypress="handleKeyPress(event)">
+                    <button onclick="sendChatMessage()" class="w-8 h-8 rounded-xl bg-cyan-400 text-black hover:scale-105 transition-transform flex items-center justify-center shrink-0 shadow-lg shadow-cyan-400/20">
+                        <span class="material-symbols-outlined text-[18px] font-bold">arrow_upward</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN DE RESULTADOS (DERECHA) -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+            <!-- PLACEHOLDER RESULTADO -->
+            <div id="report-placeholder" class="glass-panel rounded-3xl border border-white/5 bg-white/[0.02] p-12 text-center shadow-xl flex flex-col items-center justify-center min-h-[600px]">
+                <span class="material-symbols-outlined text-white/10 text-7xl mb-4">analytics</span>
+                <h3 class="text-xl font-bold text-white/80 mb-2">Visualizador de Reportes IA</h3>
+                <p class="text-on-surface-variant text-xs max-w-sm mx-auto">Cuando el asistente genere la consulta, la tabla de datos y los gráficos dinámicos se cargarán automáticamente aquí.</p>
+            </div>
+
+            <!-- RESULTADO DETECTADO -->
+            <div id="report-container" class="hidden flex flex-col gap-6">
+                <!-- CABECERA DE REPORTE Y ACCIONES -->
+                <div class="glass-panel rounded-3xl border border-white/5 bg-white/[0.02] p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-white" id="report-title">Reporte Generado por IA</h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-[10px] bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/20 uppercase font-black" id="badge-collection">Cancion</span>
+                            <span class="text-xs text-on-surface-variant" id="report-subtitle">Generado a partir de tu solicitud</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportReport('pdf')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-secondary text-black hover:scale-105 rounded-xl text-xs font-bold transition-transform">
+                            <span class="material-symbols-outlined text-[14px]">picture_as_pdf</span> PDF
+                        </button>
+                        <button onclick="exportReport('excel')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-xs font-bold transition-all">
+                            <span class="material-symbols-outlined text-[14px]">table_view</span> Excel
+                        </button>
+                        <button onclick="exportReport('email')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/20 rounded-xl text-xs font-bold transition-all">
+                            <span class="material-symbols-outlined text-[14px]">mail</span> Enviar Correo
+                        </button>
+                        <button onclick="saveReport()" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/20 rounded-xl text-xs font-bold transition-all">
+                            <span class="material-symbols-outlined text-[14px]">save</span> Guardar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- GRÁFICO -->
+                <div id="chart-panel" class="glass-panel rounded-3xl border border-white/5 bg-white/[0.02] p-6 shadow-xl">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-white/40 mb-4">Gráfico Analítico</h3>
+                    <canvas id="dynamicChart" height="100"></canvas>
+                </div>
+
+                <!-- TABLA HTML -->
+                <div class="glass-panel rounded-3xl border border-white/5 bg-white/[0.02] shadow-xl overflow-hidden">
+                    <div class="p-6 border-b border-white/5">
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-white/40">Tabla de Datos</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-black/40 text-on-surface-variant text-xs uppercase tracking-wider font-bold" id="table-head">
+                                <!-- Generado Dinámicamente -->
+                            </thead>
+                            <tbody class="divide-y divide-white/5 text-xs text-white/90" id="table-body">
+                                <!-- Generado Dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CÓDIGO MONGO GENERADO (ACORDEÓN) -->
+                <div class="glass-panel rounded-3xl border border-white/5 bg-white/[0.02] p-5 shadow-xl">
+                    <details class="group">
+                        <summary class="flex items-center justify-between cursor-pointer font-bold text-xs uppercase text-white/40 select-none">
+                            <span>Ver Consulta MongoDB Generada</span>
+                            <span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+                        </summary>
+                        <pre id="mongo-pipeline-preview" class="mt-4 p-4 bg-black/50 border border-white/5 rounded-xl text-[10px] text-green-400 font-mono overflow-x-auto leading-relaxed"></pre>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SDK Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    let currentReport = null;
+    let chartInstance = null;
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendChatMessage();
+        }
+    }
+
+    async function sendChatMessage() {
+        const inputEl = document.getElementById('chat-input');
+        const prompt = inputEl.value.trim();
+        if (!prompt) return;
+
+        inputEl.value = '';
+
+        // Agregar mensaje del usuario
+        appendMessage('user', prompt);
+
+        // Ocultar placeholder del reporte, ocultar reporte anterior y mostrar loading en chat
+        document.getElementById('report-placeholder').innerHTML = `
+            <div class="text-center p-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mb-4 mx-auto"></div>
+                <h3 class="text-lg font-bold text-white">IA Generando Reporte...</h3>
+                <p class="text-on-surface-variant text-xs mt-1">Escribiendo pipeline de agregación y consultando MongoDB Atlas.</p>
+            </div>
+        `;
+        document.getElementById('report-placeholder').classList.remove('hidden');
+        document.getElementById('report-container').classList.add('hidden');
+
+        try {
+            const response = await fetch('{% url "ia_generar_query_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ prompt: prompt })
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'error') {
+                appendMessage('ai', 'Lo siento, no pude procesar esa consulta. Error: ' + data.message);
+                resetPlaceholder();
+                return;
+            }
+
+            appendMessage('ai', `He generado el reporte de la colección **${data.coleccion}**. Los resultados se muestran a la derecha.`);
+            
+            // Cargar datos del reporte
+            currentReport = data;
+            renderReport(data);
+
+        } catch (e) {
+            console.error(e);
+            appendMessage('ai', 'Hubo un error de comunicación con el servidor.');
+            resetPlaceholder();
+        }
+    }
+
+    function resetPlaceholder() {
+        document.getElementById('report-placeholder').innerHTML = `
+            <span class="material-symbols-outlined text-white/10 text-7xl mb-4">analytics</span>
+            <h3 class="text-xl font-bold text-white/80 mb-2">Visualizador de Reportes IA</h3>
+            <p class="text-on-surface-variant text-xs max-w-sm mx-auto">Cuando el asistente genere la consulta, la tabla de datos y los gráficos dinámicos se cargarán automáticamente aquí.</p>
+        `;
+    }
+
+    function appendMessage(sender, text) {
+        const container = document.getElementById('chat-messages');
+        const bubble = document.createElement('div');
+        bubble.className = sender === 'user' ? 'flex gap-3 justify-end' : 'flex gap-3 max-w-[85%]';
+
+        const avatar = sender === 'user' ? '' : `
+            <div class="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-cyan-400 text-[18px]">smart_toy</span>
+            </div>
+        `;
+
+        const contentClass = sender === 'user'
+            ? 'bg-cyan-500 text-black rounded-2xl rounded-tr-none p-3 text-xs font-semibold shadow-md max-w-[80%]'
+            : 'bg-white/5 rounded-2xl rounded-tl-none p-3.5 text-xs text-white/90 leading-relaxed shadow-md';
+
+        bubble.innerHTML = `
+            ${avatar}
+            <div class="${contentClass}">
+                ${text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}
+            </div>
+        `;
+        
+        container.appendChild(bubble);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function renderReport(data) {
+        document.getElementById('report-placeholder').classList.add('hidden');
+        document.getElementById('report-container').classList.remove('hidden');
+
+        document.getElementById('report-title').innerText = data.titulo || 'Reporte de IA';
+        document.getElementById('badge-collection').innerText = data.coleccion;
+        document.getElementById('mongo-pipeline-preview').innerText = JSON.stringify(data.pipeline, null, 2);
+
+        // 1. Renderizar tabla
+        const tableHead = document.getElementById('table-head');
+        const tableBody = document.getElementById('table-body');
+        
+        tableHead.innerHTML = '';
+        tableBody.innerHTML = '';
+
+        const keys = [];
+        data.resultados.forEach(item => {
+            Object.keys(item).forEach(key => {
+                if (!keys.includes(key)) keys.push(key);
+            });
+        });
+
+        // Crear cabecera
+        const trHead = document.createElement('tr');
+        keys.forEach(key => {
+            const th = document.createElement('th');
+            th.className = 'p-4 font-semibold';
+            th.innerText = key;
+            trHead.appendChild(th);
+        });
+        tableHead.appendChild(trHead);
+
+        // Crear filas
+        data.resultados.forEach(item => {
+            const trRow = document.createElement('tr');
+            trRow.className = 'hover:bg-white/5 transition-colors';
+            keys.forEach(key => {
+                const td = document.createElement('td');
+                td.className = 'p-4';
+                
+                let val = item[key];
+                if (typeof val === 'object' && val !== null) {
+                    if (val.$oid) val = val.$oid;
+                    else if (val.$date) val = new Date(val.$date).toLocaleDateString();
+                    else val = JSON.stringify(val);
+                }
+                td.innerText = val !== undefined ? val : '-';
+                trRow.appendChild(td);
+            });
+            tableBody.appendChild(trRow);
+        });
+
+        // 2. Renderizar Gráfico
+        renderChart(data.resultados, keys);
+    }
+
+    function renderChart(resultados, keys) {
+        const ctx = document.getElementById('dynamicChart').getContext('2d');
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        // Buscar claves candidatas
+        let labelKey = keys.find(k => k === '_id' || k === 'nombre' || k === 'titulo' || k === 'tituloCancion' || k === 'username' || k === 'nombreRol');
+        let valueKey = keys.find(k => k !== labelKey && (typeof resultados[0][k] === 'number'));
+
+        if (!labelKey) labelKey = keys[0];
+        if (!valueKey) {
+            document.getElementById('chart-panel').classList.add('hidden');
+            return;
+        }
+        document.getElementById('chart-panel').classList.remove('hidden');
+
+        const labels = resultados.map(item => {
+            let val = item[labelKey];
+            if (typeof val === 'object' && val !== null && val.$oid) return val.$oid.substring(18);
+            return val !== undefined ? val : 'Sin ID';
+        });
+        const values = resultados.map(item => item[valueKey] || 0);
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: valueKey.toUpperCase(),
+                    data: values,
+                    backgroundColor: 'rgba(69, 243, 255, 0.2)',
+                    borderColor: 'rgba(69, 243, 255, 1)',
+                    borderWidth: 2,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#bac9ca' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#bac9ca' }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: 'white' } }
+                }
+            }
+        });
+    }
+
+    async function saveReport() {
+        if (!currentReport) return;
+
+        try {
+            const response = await fetch('{% url "guardar_reporte_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    titulo: currentReport.titulo,
+                    metodo: 'ia',
+                    configuracion: {
+                        pregunta: currentReport.pregunta,
+                        coleccion: currentReport.coleccion,
+                        pipeline: currentReport.pipeline
+                    }
+                })
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                alert('Reporte guardado exitosamente.');
+                window.location.reload(); // Recargar para actualizar el sidebar
+            } else {
+                alert('Error al guardar: ' + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error de conexión.');
+        }
+    }
+
+    function exportReport(format) {
+        if (!currentReport) return;
+
+        if (format === 'email') {
+            window.enviarReporteCorreo('{% url "enviar_reporte_dinamico_correo" %}', {
+                coleccion: currentReport.coleccion,
+                pipeline: JSON.stringify(currentReport.pipeline),
+                titulo: currentReport.titulo
+            });
+            return;
+        }
+
+        const url = format === 'pdf' 
+            ? '{% url "exportar_reporte_dinamico_pdf" %}' 
+            : '{% url "exportar_reporte_dinamico_excel" %}';
+
+        // Crear formulario dinámico
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+        form.target = '_blank';
+
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = '{{ csrf_token }}';
+        form.appendChild(csrfInput);
+
+        const colInput = document.createElement('input');
+        colInput.type = 'hidden';
+        colInput.name = 'coleccion';
+        colInput.value = currentReport.coleccion;
+        form.appendChild(colInput);
+
+        const pipeInput = document.createElement('input');
+        pipeInput.type = 'hidden';
+        pipeInput.name = 'pipeline';
+        pipeInput.value = JSON.stringify(currentReport.pipeline);
+        form.appendChild(pipeInput);
+
+        const titleInput = document.createElement('input');
+        titleInput.type = 'hidden';
+        titleInput.name = 'titulo';
+        titleInput.value = currentReport.titulo;
+        form.appendChild(titleInput);
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        {% if report_config %}
+        try {
+            const config = {{ report_config|safe }};
+            appendMessage('user', config.pregunta);
+            currentReport = {
+                titulo: "{{ report_title }}",
+                coleccion: config.coleccion,
+                pipeline: config.pipeline,
+                resultados: {{ report_results|safe }}
+            };
+            appendMessage('ai', `Cargando reporte guardado para la colección **${config.coleccion}**.`);
+            renderReport(currentReport);
+        } catch (e) {
+            console.error('Error loading IA config:', e);
+        }
+        {% endif %}
+    });
+</script>
+{% endblock %}
