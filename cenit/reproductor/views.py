@@ -942,4 +942,324 @@ def registrar_reproduccion(request):
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
+@login_required(login_url='login_player')
+def player_settings_view(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+        
+        # User details
+        user_doc = db["usuarios"].find_one({"id": user_id})
+        
+        # Subscription details
+        sub_doc = db["suscripciones"].find_one({"idUsuario": user_id, "estado": {"$in": ["Activa", "Cancelada"]}})
+        if sub_doc:
+            if "tipoSuscripcion" in sub_doc and isinstance(sub_doc["tipoSuscripcion"], dict):
+                sub_doc["tipoSuscripcion"]["id"] = sub_doc["tipoSuscripcion"].get("_id")
+            if "promocion" in sub_doc and isinstance(sub_doc["promocion"], dict):
+                sub_doc["promocion"]["id"] = sub_doc["promocion"].get("_id")
+        
+        # Followed artists
+        follow_docs = list(db["seguimientos"].find({"idUsuario": user_id, "activo": 1}))
+        
+        # Favorite songs
+        fav_docs = list(db["cancionesFavoritas"].find({"idUsuario": user_id}))
+        fav_ids = [f.get("idCancion") for f in fav_docs]
+        fav_songs = list(db["Cancion"].find({"cancion_id": {"$in": fav_ids}}))
+        
+        # Convert fav_songs to format used in UI
+        fav_songs_list = []
+        for s in fav_songs:
+            colabs = s.get("colaboradores", [])
+            artist_name = colabs[0].get("nombreArtista", "Artista") if colabs else "Artista"
+            fav_songs_list.append({
+                "id": s.get("cancion_id"),
+                "titulo": s.get("tituloCancion", ""),
+                "artista": artist_name
+            })
+            
+        # Notifications
+        notif_docs = list(db["notificaciones"].find({"idUsuario": user_id}))
+        notif_docs.sort(key=lambda x: x.get("fechaEnvio", ""), reverse=True)
+        
+        # Auditoria Acceso
+        audit_docs = list(db["auditoriaAcceso"].find({"idUsuario": user_id}))
+        audit_docs.sort(key=lambda x: x.get("fechaHora", ""), reverse=True)
+        audit_docs = audit_docs[:10]
+        
+        # Available premium plans
+        planes = list(db["tipoSuscripciones"].find({"tipo_id": {"$ne": 1}}))
+        
+        context = {
+            "user_profile": user_doc,
+            "subscription": sub_doc,
+            "followed_artists": follow_docs,
+            "favorite_songs": fav_songs_list,
+            "notifications": notif_docs,
+            "audit_logs": audit_docs,
+            "planes": planes,
+        }
+        return render(request, 'reproductor/views/settings.html', context)
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+@login_required(login_url='login_player')
+@require_POST
+def api_settings_profile(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+        
+        data = json.loads(request.body)
+        nombre = data.get("nombre", "").strip()
+        apellido = data.get("apellido", "").strip()
+        email = data.get("email", "").strip()
+        new_password = data.get("password", "").strip()
+        
+        if not nombre or not apellido or not email:
+            return JsonResponse({"status": "error", "message": "Nombre, apellido y correo son requeridos."}, status=400)
+            
+        existing = db["usuarios"].find_one({"email": email, "id": {"$ne": user_id}})
+        if existing:
+            return JsonResponse({"status": "error", "message": "El correo ya está registrado por otro usuario."}, status=400)
+            
+        django_user = request.user
+        django_user.first_name = nombre
+        django_user.last_name = apellido
+        django_user.email = email
+        if new_password:
+            django_user.set_password(new_password)
+        django_user.save()
+        
+        from django.contrib.auth.hashers import make_password
+        update_fields = {
+            "nombre": nombre,
+            "apellido": apellido,
+            "email": email,
+        }
+        if new_password:
+            update_fields["contrasena"] = make_password(new_password)
+            
+        db["usuarios"].update_one(
+            {"id": user_id},
+            {"$set": update_fields}
+        )
+        
+        if new_password:
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, django_user)
+            
+        return JsonResponse({"status": "success", "message": "Perfil actualizado correctamente."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required(login_url='login_player')
+@require_POST
+def api_settings_upgrade(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+        
+        data = json.loads(request.body)
+        plan_id = int(data.get("plan_id", 2))
+        
+        existing = db["suscripciones"].find_one({"idUsuario": user_id, "estado": "Activa"})
+        if existing:
+            return JsonResponse({"status": "error", "message": "Ya tienes una suscripción Premium activa."}, status=400)
+            
+        import datetime
+        today = datetime.date.today()
+        fecha_inicio = today.isoformat() + "T00:00:00"
+        fecha_fin = (today + datetime.timedelta(days=30)).isoformat() + "T00:00:00"
+        
+        plan_doc = db["tipoSuscripciones"].find_one({"tipo_id": plan_id})
+        if not plan_doc:
+            return JsonResponse({"status": "error", "message": "Plan no encontrado."}, status=404)
+            
+        tipo_embed = {
+            '_id': plan_id,
+            'nombrePlan': plan_doc['nombrePlan'],
+            'precio': plan_doc['precio'],
+        }
+        
+        promo_doc = db["promociones"].find_one({"tipoSuscripcion._id": plan_id, "estadoActivo": True})
+        promo_embed = {'_id': None, 'descripcion': None, 'porcentajeDesc': None}
+        if promo_doc:
+            promo_embed = {
+                '_id': promo_doc.get('promo_id'),
+                'descripcion': promo_doc.get('descripcion'),
+                'porcentajeDesc': promo_doc.get('porcentajeDesc'),
+            }
+            
+        db["usuarios"].update_one(
+            {"id": user_id},
+            {"$set": {"estadoPlan": "Premium"}}
+        )
+        
+        db["suscripciones"].insert_one({
+            'fechaInicio':      fecha_inicio,
+            'fechaFin':         fecha_fin,
+            'estado':           'Activa',
+            'idUsuario':        user_id,
+            'tipoSuscripcion':  tipo_embed,
+            'promocion':        promo_embed,
+        })
+        
+        return JsonResponse({"status": "success", "message": f"Suscripción al plan {plan_doc['nombrePlan']} activada exitosamente."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required(login_url='login_player')
+@require_POST
+def api_settings_cancel(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+        
+        sub = db["suscripciones"].find_one({"idUsuario": user_id, "estado": "Activa"})
+        if not sub:
+            return JsonResponse({"status": "error", "message": "No tienes una suscripción activa para cancelar."}, status=400)
+            
+        db["suscripciones"].update_one(
+            {"_id": sub["_id"]},
+            {"$set": {"estado": "Cancelada"}}
+        )
+        
+        return JsonResponse({"status": "success", "message": "Tu suscripción ha sido cancelada. Mantendrás el acceso Premium hasta el final de tu periodo de facturación actual."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required(login_url='login_player')
+@require_POST
+def api_settings_change_sub(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+        
+        data = json.loads(request.body)
+        new_plan_id = int(data.get("plan_id"))
+        
+        sub = db["suscripciones"].find_one({"idUsuario": user_id, "estado": "Activa"})
+        if not sub:
+            return JsonResponse({"status": "error", "message": "No tienes una suscripción activa para modificar."}, status=400)
+            
+        plan_doc = db["tipoSuscripciones"].find_one({"tipo_id": new_plan_id})
+        if not plan_doc:
+            return JsonResponse({"status": "error", "message": "Plan no encontrado."}, status=404)
+            
+        tipo_embed = {
+            '_id': new_plan_id,
+            'nombrePlan': plan_doc['nombrePlan'],
+            'precio': plan_doc['precio'],
+        }
+        
+        promo_doc = db["promociones"].find_one({"tipoSuscripcion._id": new_plan_id, "estadoActivo": True})
+        promo_embed = {'_id': None, 'descripcion': None, 'porcentajeDesc': None}
+        if promo_doc:
+            promo_embed = {
+                '_id': promo_doc.get('promo_id'),
+                'descripcion': promo_doc.get('descripcion'),
+                'porcentajeDesc': promo_doc.get('porcentajeDesc'),
+            }
+            
+        db["suscripciones"].update_one(
+            {"_id": sub["_id"]},
+            {"$set": {
+                "tipoSuscripcion": tipo_embed,
+                "promocion": promo_embed
+            }}
+        )
+        
+        return JsonResponse({"status": "success", "message": f"Suscripción actualizada exitosamente al plan {plan_doc['nombrePlan']}."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required(login_url='login_player')
+@require_POST
+def api_settings_privacy(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+        
+        data = json.loads(request.body)
+        make_public = data.get("make_public", False)
+        
+        db["usuarios"].update_one(
+            {"id": user_id},
+            {"$set": {"defaultPlaylistPrivacy": "public" if make_public else "private"}}
+        )
+        
+        es_publicada = make_public
+        es_privada = not make_public
+        
+        db["playlists"].update_many(
+            {"idUsuario": user_id},
+            {"$set": {
+                "esPublicada": es_publicada,
+                "esPrivada": es_privada
+            }}
+        )
+        
+        return JsonResponse({"status": "success", "message": "Preferencia de privacidad actualizada y aplicada a todas tus playlists."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required(login_url='login_player')
+@require_POST
+def api_settings_unfollow(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+        
+        data = json.loads(request.body)
+        artista_id = int(data.get("artista_id"))
+        
+        db["seguimientos"].update_one(
+            {"idUsuario": user_id, "idArtista": artista_id},
+            {"$set": {"activo": 0}}
+        )
+        
+        return JsonResponse({"status": "success", "message": "Has dejado de seguir al artista."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required(login_url='login_player')
+@require_POST
+def api_settings_unfavorite(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+        
+        data = json.loads(request.body)
+        cancion_id = int(data.get("cancion_id"))
+        
+        db["cancionesFavoritas"].delete_one({"idUsuario": user_id, "idCancion": cancion_id})
+        
+        return JsonResponse({"status": "success", "message": "Canción removida de favoritas."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required(login_url='login_player')
+@require_POST
+def api_settings_notif_pref(request):
+    try:
+        mongo_user = _get_mongo_user(request.user)
+        user_id = mongo_user.get("id")
+        
+        data = json.loads(request.body)
+        pref = {
+            "seguridad": data.get("seguridad", True),
+            "lanzamientos": data.get("lanzamientos", True),
+            "pagos": data.get("pagos", True)
+        }
+        
+        db["usuarios"].update_one(
+            {"id": user_id},
+            {"$set": {"preferenciasNotificaciones": pref}}
+        )
+        
+        return JsonResponse({"status": "success", "message": "Preferencias de notificaciones guardadas."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
 

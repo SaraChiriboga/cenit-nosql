@@ -177,7 +177,7 @@ tailwind.config = {
 <!-- ============ SIDEBAR ============ -->
 <nav aria-label="Navegación principal" class="hidden md:flex bg-surface-container-low fixed left-0 top-0 h-full w-[248px] border-r border-outline/60 flex-col py-6 z-50">
   <!-- Brand logo -->
-  <div class="px-6 mb-8 flex items-center gap-2.5">
+  <div class="w-full flex items-center justify-center gap-2.5 mb-8">
     <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path d="M13 2L23 13L13 24L3 13L13 2Z" stroke="#45F3FF" stroke-width="1.6"/>
       <path d="M13 8L18 13L13 18L8 13L13 8Z" fill="#45F3FF"/>
@@ -258,12 +258,9 @@ tailwind.config = {
       <input aria-label="Buscar" id="top-search-input" oninput="triggerTopSearch(this.value)" class="w-full bg-white/[0.06] border border-white/10 rounded-full py-2 pl-10 pr-4 text-sm text-on-surface placeholder:text-text-dim focus:outline-none focus:border-primary/40 focus:bg-white/10 transition-all" placeholder="Buscar canciones, artistas..." type="text"/>
     </div>
     <div class="flex items-center gap-3 ml-auto">
-      <button onclick="switchView('library')" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/[0.06] transition-colors" title="Favoritos">
-        <span class="material-symbols-outlined text-[20px]">favorite</span>
+      <button onclick="switchView('settings')" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/[0.06] transition-colors" title="Configuración">
+        <span class="material-symbols-outlined text-[22px]">settings</span>
       </button>
-      <div class="w-9 h-9 rounded-full overflow-hidden border border-white/10 flex items-center justify-center bg-surface-container">
-        <span class="material-symbols-outlined text-[20px] text-primary">headphones</span>
-      </div>
     </div>
   </div>
 
@@ -1591,6 +1588,280 @@ tailwind.config = {
       }
     });
   }
+
+  // -------------------------------------------------------------
+  // USER CONFIGURATIONS / SETTINGS FUNCTIONS
+  // -------------------------------------------------------------
+  function showSuccessMsg(elementId, message) {
+    const el = document.getElementById(elementId);
+    if (el) {
+      el.textContent = message;
+      el.classList.remove('opacity-0');
+      el.classList.add('opacity-100');
+      setTimeout(() => {
+        el.classList.remove('opacity-100');
+        el.classList.add('opacity-0');
+      }, 3000);
+    }
+  }
+
+  window.switchSettingsTab = function(tabId) {
+    document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+      btn.className = btn.className.replace('text-primary bg-primary/10', 'text-on-surface-variant hover:text-white hover:bg-white/[0.04]');
+      if (!btn.className.includes('text-on-surface-variant')) {
+        btn.classList.add('text-on-surface-variant');
+      }
+    });
+
+    const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+    if (activeBtn) {
+      activeBtn.className = `settings-tab-btn active w-full flex items-center justify-start gap-3 px-4 py-2.5 rounded-lg text-xs font-bold transition-all text-primary bg-primary/10`;
+    }
+
+    document.querySelectorAll('.settings-section').forEach(sect => {
+      sect.classList.add('hidden');
+    });
+
+    const activeSect = document.getElementById(`settings-sect-${tabId}`);
+    if (activeSect) {
+      activeSect.classList.remove('hidden');
+    }
+  };
+
+  window.filterNotifs = function(type, event) {
+    document.querySelectorAll('.notif-filter').forEach(btn => {
+      btn.className = btn.className.replace('bg-white/5 text-white', 'text-text-dim hover:text-white');
+      if (!btn.className.includes('text-text-dim')) {
+        btn.classList.add('text-text-dim');
+      }
+    });
+
+    if (event && event.currentTarget) {
+      event.currentTarget.className = "notif-filter active px-2.5 py-1 rounded-full text-[10px] font-bold border border-white/10 bg-white/5 text-white";
+    }
+
+    document.querySelectorAll('.notif-item').forEach(item => {
+      if (type === 'all' || item.getAttribute('data-type') === type) {
+        item.style.display = '';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  };
+
+  window.submitUpdateProfile = function(event) {
+    event.preventDefault();
+    const nombre = document.getElementById('profile-name').value.trim();
+    const apellido = document.getElementById('profile-lastname').value.trim();
+    const email = document.getElementById('profile-email').value.trim();
+    const password = document.getElementById('profile-password').value.trim();
+    const confirmPassword = document.getElementById('profile-confirm-password').value.trim();
+
+    if (password && password.length < 6) {
+      alert("La nueva contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      alert("Las contraseñas no coinciden.");
+      return;
+    }
+
+    fetch('/player/api/settings/profile/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ nombre, apellido, email, password })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        showSuccessMsg("profile-success-msg", "✓ Cambios guardados");
+        setTimeout(() => {
+          switchView('settings');
+        }, 1500);
+      } else {
+        alert("Error: " + payload.message);
+      }
+    })
+    .catch(err => console.error(err));
+  };
+
+  window.upgradeToPremium = function(planId, planName) {
+    if (!confirm(`¿Deseas activar tu suscripción Premium al plan ${planName}?`)) return;
+    
+    fetch('/player/api/settings/upgrade/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ plan_id: planId })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        alert(`¡Felicidades! Tu plan ${planName} ha sido activado exitosamente.`);
+        switchView('settings');
+      } else {
+        alert("Error: " + payload.message);
+      }
+    })
+    .catch(err => console.error(err));
+  };
+
+  window.cancelSubscription = function() {
+    if (!confirm("¿Seguro que deseas cancelar tu suscripción Premium? Conservarás los beneficios hasta que termine tu ciclo de facturación actual.")) return;
+    
+    fetch('/player/api/settings/cancel/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      }
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        alert(payload.message);
+        switchView('settings');
+      } else {
+        alert("Error: " + payload.message);
+      }
+    })
+    .catch(err => console.error(err));
+  };
+
+  window.changeSubscriptionPlan = function(planId, planName) {
+    if (!confirm(`¿Deseas cambiar tu tipo de suscripción al plan ${planName}?`)) return;
+    
+    fetch('/player/api/settings/change-sub/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ plan_id: planId })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        alert("Plan de suscripción cambiado correctamente.");
+        switchView('settings');
+      } else {
+        alert("Error: " + payload.message);
+      }
+    })
+    .catch(err => console.error(err));
+  };
+
+  window.togglePlaylistPrivacy = function() {
+    const toggleBtn = document.getElementById('playlist-privacy-toggle');
+    const isCurrentlyPublic = toggleBtn.classList.contains('bg-primary');
+    const makePublic = !isCurrentlyPublic;
+    
+    const confirmMsg = makePublic 
+      ? "¿Deseas hacer públicas todas tus playlists existentes y futuras?" 
+      : "¿Deseas hacer privadas todas tus playlists existentes y futuras?";
+      
+    if (!confirm(confirmMsg)) return;
+
+    fetch('/player/api/settings/privacy/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ make_public: makePublic })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        showSuccessMsg("privacy-success-msg", "✓ Privacidad actualizada");
+        setTimeout(() => {
+          switchView('settings');
+        }, 1500);
+      } else {
+        alert("Error: " + payload.message);
+      }
+    })
+    .catch(err => console.error(err));
+  };
+
+  window.settingsUnfollowArtist = function(artistId) {
+    if (!confirm("¿Deseas dejar de seguir a este artista?")) return;
+    
+    fetch('/player/api/settings/unfollow/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ artista_id: artistId })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        alert("Artista removido.");
+        switchView('settings');
+      } else {
+        alert("Error: " + payload.message);
+      }
+    })
+    .catch(err => console.error(err));
+  };
+
+  window.settingsUnfavoriteSong = function(songId) {
+    if (!confirm("¿Deseas quitar esta canción de tus favoritas?")) return;
+    
+    fetch('/player/api/settings/unfavorite/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ cancion_id: songId })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        alert("Canción removida.");
+        switchView('settings');
+      } else {
+        alert("Error: " + payload.message);
+      }
+    })
+    .catch(err => console.error(err));
+  };
+
+  window.saveNotificationPreferences = function() {
+    const seguridad = document.getElementById('pref-security').checked;
+    const lanzamientos = document.getElementById('pref-releases').checked;
+    const pagos = document.getElementById('pref-payments').checked;
+
+    fetch('/player/api/settings/notif-preference/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ seguridad, lanzamientos, pagos })
+    })
+    .then(res => res.json())
+    .then(payload => {
+      if (payload.status === 'success') {
+        showSuccessMsg("notif-success-msg", "✓ Preferencias guardadas");
+        setTimeout(() => {
+          switchView('settings');
+        }, 1500);
+      } else {
+        alert("Error: " + payload.message);
+      }
+    })
+    .catch(err => console.error(err));
+  };
 </script>
 </body>
 </html>

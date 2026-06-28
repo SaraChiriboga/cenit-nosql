@@ -1,0 +1,402 @@
+<div class="px-6 md:px-10 py-8 max-w-5xl mx-auto space-y-8 select-none">
+  <!-- Title -->
+  <div class="space-y-1">
+    <h1 class="font-display text-2xl md:text-3xl font-black text-white tracking-tight">Configuración</h1>
+    <p class="text-xs text-text-dim">Administra tu perfil, suscripción, privacidad y preferencias de la cuenta.</p>
+  </div>
+
+  <!-- Settings Grid Layout -->
+  <div class="grid grid-cols-1 md:grid-cols-[16rem_1fr] gap-8 items-start">
+    
+    <!-- Left Navigation Sidebar Tabs -->
+    <div class="flex flex-row md:flex-col overflow-x-auto md:overflow-x-visible gap-1.5 p-1 bg-white/[0.02] md:bg-transparent rounded-xl border border-white/5 md:border-none shrink-0 scrollbar-none">
+      <button onclick="switchSettingsTab('profile')" id="tab-btn-profile" class="settings-tab-btn active w-full flex items-center justify-start gap-3 px-4 py-2.5 rounded-lg text-xs font-bold transition-all text-primary bg-primary/10">
+        <span class="material-symbols-outlined text-[18px]">person</span> Perfil
+      </button>
+      <button onclick="switchSettingsTab('subscription')" id="tab-btn-subscription" class="settings-tab-btn w-full flex items-center justify-start gap-3 px-4 py-2.5 rounded-lg text-xs font-bold transition-all text-on-surface-variant hover:text-white hover:bg-white/[0.04]">
+        <span class="material-symbols-outlined text-[18px]">payments</span> Suscripción
+      </button>
+      <button onclick="switchSettingsTab('privacy')" id="tab-btn-privacy" class="settings-tab-btn w-full flex items-center justify-start gap-3 px-4 py-2.5 rounded-lg text-xs font-bold transition-all text-on-surface-variant hover:text-white hover:bg-white/[0.04]">
+        <span class="material-symbols-outlined text-[18px]">shield</span> Privacidad
+      </button>
+      <button onclick="switchSettingsTab('notifications')" id="tab-btn-notifications" class="settings-tab-btn w-full flex items-center justify-start gap-3 px-4 py-2.5 rounded-lg text-xs font-bold transition-all text-on-surface-variant hover:text-white hover:bg-white/[0.04]">
+        <span class="material-symbols-outlined text-[18px]">notifications</span> Notificaciones
+      </button>
+      <button onclick="switchSettingsTab('security')" id="tab-btn-security" class="settings-tab-btn w-full flex items-center justify-start gap-3 px-4 py-2.5 rounded-lg text-xs font-bold transition-all text-on-surface-variant hover:text-white hover:bg-white/[0.04]">
+        <span class="material-symbols-outlined text-[18px]">security</span> Seguridad y Sesión
+      </button>
+    </div>
+
+    <!-- Right Content Card Area -->
+    <div class="bg-surface-container/30 border border-outline/30 rounded-2xl p-6 md:p-8 relative min-h-[450px]">
+      
+      <!-- 1. PROFILE SECTION -->
+      <div id="settings-sect-profile" class="settings-section space-y-6">
+        <div class="border-b border-white/5 pb-4">
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider">Detalles del Perfil</h2>
+          <p class="text-[11px] text-text-dim mt-0.5">Edita tu información personal y contraseña.</p>
+        </div>
+        
+        <form onsubmit="submitUpdateProfile(event)" class="space-y-4 max-w-md">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] font-semibold text-text-dim uppercase tracking-wider mb-1.5">Nombre</label>
+              <input type="text" id="profile-name" value="{{ user_profile.nombre }}" class="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-primary/50">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-text-dim uppercase tracking-wider mb-1.5">Apellido</label>
+              <input type="text" id="profile-lastname" value="{{ user_profile.apellido }}" class="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-primary/50">
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-[10px] font-semibold text-text-dim uppercase tracking-wider mb-1.5">Correo Electrónico</label>
+            <input type="email" id="profile-email" value="{{ user_profile.email }}" class="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-primary/50">
+          </div>
+          
+          <div>
+            <label class="block text-[10px] font-semibold text-text-dim/50 uppercase tracking-wider mb-1.5">Fecha de Registro</label>
+            <input type="text" value="{{ user_profile.fechaRegistro|slice:':10' }}" disabled class="w-full bg-white/[0.02] border border-white/5 text-text-dim rounded-xl px-4 py-2 text-xs cursor-not-allowed">
+          </div>
+          
+          <div class="pt-4 border-t border-white/5 space-y-4">
+            <h3 class="text-xs font-bold text-white uppercase tracking-wider">Cambiar Contraseña</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[10px] font-semibold text-text-dim uppercase tracking-wider mb-1.5">Nueva Contraseña</label>
+                <input type="password" id="profile-password" placeholder="Mínimo 6 caracteres" class="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-primary/50">
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold text-text-dim uppercase tracking-wider mb-1.5">Confirmar Contraseña</label>
+                <input type="password" id="profile-confirm-password" placeholder="Repite la contraseña" class="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-primary/50">
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 flex justify-end items-center gap-3">
+            <span id="profile-success-msg" class="text-green-400 text-xs font-bold transition-opacity duration-300 opacity-0"></span>
+            <button type="submit" class="px-5 py-2 bg-primary text-on-primary font-bold rounded-xl text-xs play-glow active:scale-95 transition-all">Guardar cambios</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 2. SUBSCRIPTION SECTION -->
+      <div id="settings-sect-subscription" class="settings-section space-y-6 hidden">
+        <div class="border-b border-white/5 pb-4">
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider">Plan y Suscripción</h2>
+          <p class="text-[11px] text-text-dim mt-0.5">Controla la facturación y tipo de cuenta.</p>
+        </div>
+
+        <!-- Plan Info Badge -->
+        <div class="p-5 rounded-2xl border border-white/10 bg-white/[0.02] flex items-center justify-between gap-4">
+          <div class="space-y-1">
+            <p class="text-[10px] text-text-dim uppercase tracking-wider font-semibold">Estado del Plan</p>
+            <div class="flex items-center gap-3">
+              {% if user_profile.estadoPlan == 'Premium' %}
+                <span class="text-lg font-black text-white">Premium</span>
+                <span class="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-primary/10 border border-primary/20 text-primary uppercase tracking-wide">Activo</span>
+              {% else %}
+                <span class="text-lg font-black text-white">Free</span>
+                <span class="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-white/10 border border-white/20 text-text-dim uppercase tracking-wide">Gratuito</span>
+              {% endif %}
+            </div>
+          </div>
+          <span class="material-symbols-outlined text-[36px] text-primary/30">workspace_premium</span>
+        </div>
+
+        {% if user_profile.estadoPlan == 'Premium' and subscription %}
+          <!-- Premium Plan Details -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-4 p-5 rounded-2xl border border-white/5 bg-white/[0.01]">
+              <h3 class="text-xs font-bold text-white uppercase tracking-wider">Detalles de Facturación</h3>
+              
+              <div class="space-y-2 text-xs">
+                <div class="flex justify-between border-b border-white/5 pb-2">
+                  <span class="text-text-dim">Tipo de Plan:</span>
+                  <span class="font-bold text-white">{{ subscription.tipoSuscripcion.nombrePlan }}</span>
+                </div>
+                <div class="flex justify-between border-b border-white/5 pb-2">
+                  <span class="text-text-dim">Costo Mensual:</span>
+                  <span class="font-bold text-white font-mono-num">${{ subscription.tipoSuscripcion.precio }} USD</span>
+                </div>
+                <div class="flex justify-between border-b border-white/5 pb-2">
+                  <span class="text-text-dim">Fin de Ciclo:</span>
+                  <span class="font-bold text-white font-mono-num">{{ subscription.fechaFin|slice:':10' }}</span>
+                </div>
+                <div class="flex justify-between pb-1">
+                  <span class="text-text-dim">Estado:</span>
+                  <span class="font-bold {% if subscription.estado == 'Activa' %}text-green-400{% else %}text-red-400{% endif %}">{{ subscription.estado }}</span>
+                </div>
+              </div>
+
+              {% if subscription.estado == 'Activa' %}
+                <button onclick="cancelSubscription()" class="w-full py-2 border border-red-500/20 hover:border-red-500/50 hover:bg-red-500/10 text-red-400 text-xs font-bold rounded-xl active:scale-95 transition-all">Cancelar suscripción</button>
+              {% endif %}
+            </div>
+
+            <div class="space-y-4 p-5 rounded-2xl border border-white/5 bg-white/[0.01]">
+              <h3 class="text-xs font-bold text-white uppercase tracking-wider">Cambiar Tipo de Suscripción</h3>
+              
+              <div class="space-y-3">
+                {% for plan in planes %}
+                  <button onclick="changeSubscriptionPlan({{ plan.tipo_id }}, '{{ plan.nombrePlan }}')" class="w-full p-3 border border-white/5 hover:border-primary/20 rounded-xl flex items-center justify-between text-left transition-all hover:bg-white/[0.02] {% if subscription.tipoSuscripcion.id == plan.tipo_id %}border-primary/45 bg-primary/5 cursor-default pointer-events-none{% endif %}">
+                    <div>
+                      <p class="text-xs font-bold text-white">{{ plan.nombrePlan }}</p>
+                      <p class="text-[10px] text-text-dim font-mono-num">${{ plan.precio }} USD / mes</p>
+                    </div>
+                    {% if subscription.tipoSuscripcion.id == plan.tipo_id %}
+                      <span class="px-2 py-0.5 rounded-full text-[8px] font-bold bg-primary text-on-primary uppercase tracking-wide">Activo</span>
+                    {% else %}
+                      <span class="material-symbols-outlined text-sm text-text-dim">chevron_right</span>
+                    {% endif %}
+                  </button>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Promotion Applied -->
+          {% if subscription.promocion.id %}
+            <div class="p-4 rounded-2xl border border-primary/20 bg-primary/5 flex items-center justify-between">
+              <div class="space-y-0.5">
+                <h4 class="text-xs font-bold text-white">Promoción Aplicada: {{ subscription.promocion.descripcion }}</h4>
+                <p class="text-[10px] text-text-dim">Porcentaje de descuento: <span class="font-bold text-primary font-mono-num">{{ subscription.promocion.porcentajeDesc }}%</span></p>
+              </div>
+              <span class="material-symbols-outlined text-[24px] text-primary">local_offer</span>
+            </div>
+          {% endif %}
+
+        {% else %}
+          <!-- Free Upgrade Call To Action with Plan Options -->
+          <div class="space-y-6">
+            <div class="border-b border-white/5 pb-4">
+              <h3 class="text-sm font-bold text-white uppercase tracking-wider">Elige tu plan Premium</h3>
+              <p class="text-[11px] text-text-dim mt-0.5">Disfruta de música sin límites, sin anuncios y descargas offline.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {% for plan in planes %}
+                <div class="p-5 rounded-2xl border border-white/10 bg-white/[0.02] flex flex-col justify-between gap-4 hover:border-primary/30 transition-all hover:bg-white/[0.03]">
+                  <div class="space-y-2">
+                    <div class="flex justify-between items-start">
+                      <span class="text-xs font-black text-white uppercase tracking-wider">{{ plan.nombrePlan }}</span>
+                      <span class="px-2 py-0.5 rounded text-[8px] bg-primary/10 border border-primary/20 text-primary uppercase font-bold tracking-wider">30 Días</span>
+                    </div>
+                    <p class="text-lg font-black text-white font-mono-num">${{ plan.precio }} <span class="text-xs text-text-dim font-normal">USD / mes</span></p>
+                    <ul class="text-[10px] text-text-dim space-y-1 pt-2 border-t border-white/5">
+                      {% if plan.tipo_id == 2 %}
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> 1 Cuenta Premium</li>
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> Saltos ilimitados y sin anuncios</li>
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> Descargas offline</li>
+                      {% elif plan.tipo_id == 3 %}
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> 2 Cuentas Premium (Dúo)</li>
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> Saltos ilimitados y sin anuncios</li>
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> Descargas offline</li>
+                      {% elif plan.tipo_id == 4 %}
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> Hasta 6 Cuentas Premium (Familiar)</li>
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> Control parental integrado</li>
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> Saltos ilimitados y sin anuncios</li>
+                      {% elif plan.tipo_id == 5 %}
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> 1 Cuenta verificada estudiante</li>
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> Descuento especial del 40%</li>
+                        <li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary">check</span> Saltos ilimitados y sin anuncios</li>
+                      {% endif %}
+                    </ul>
+                  </div>
+                  <button onclick="upgradeToPremium({{ plan.tipo_id }}, '{{ plan.nombrePlan }}')" class="w-full py-2 bg-primary hover:bg-primary/80 active:scale-95 text-on-primary text-xs font-bold rounded-xl transition-all shadow-md">Adquirir {{ plan.nombrePlan }}</button>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- 3. PRIVACY SECTION -->
+      <div id="settings-sect-privacy" class="settings-section space-y-6 hidden">
+        <div class="border-b border-white/5 pb-4">
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider">Privacidad y Contenido</h2>
+          <p class="text-[11px] text-text-dim mt-0.5">Configura la visibilidad por defecto y gestiona tus listas.</p>
+        </div>
+
+        <!-- Default Playlist Privacy Toggle -->
+        <div class="p-5 rounded-2xl border border-white/5 bg-white/[0.01] flex items-center justify-between gap-4">
+          <div class="space-y-0.5">
+            <h3 class="text-xs font-bold text-white">Marcar todas mis playlists como públicas</h3>
+            <p class="text-[10px] text-text-dim max-w-sm">Si se activa, todas tus listas de reproducción existentes y nuevas se configurarán como públicas por defecto.</p>
+            <span id="privacy-success-msg" class="block text-green-400 text-[10px] font-bold transition-opacity duration-300 opacity-0 mt-1"></span>
+          </div>
+          <button onclick="togglePlaylistPrivacy()" id="playlist-privacy-toggle" class="w-11 h-6 rounded-full p-0.5 transition-colors duration-200 outline-none {% if user_profile.defaultPlaylistPrivacy == 'public' %}bg-primary{% else %}bg-white/10{% endif %}">
+            <div class="w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 {% if user_profile.defaultPlaylistPrivacy == 'public' %}translate-x-5{% else %}translate-x-0{% endif %}"></div>
+          </button>
+        </div>
+
+        <!-- Followed Artists & Favorite Songs Management -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+          
+          <!-- Followed Artists List -->
+          <div class="space-y-4">
+            <h3 class="text-xs font-bold text-white uppercase tracking-wider">Artistas que sigues</h3>
+            
+            <div class="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+              {% for artist in followed_artists %}
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04]">
+                  <span class="text-xs font-bold text-white">{{ artist.nombreArtista }}</span>
+                  <button onclick="settingsUnfollowArtist({{ artist.idArtista }})" class="px-3 py-1 hover:bg-red-500/10 text-red-400 text-[10px] font-bold rounded-lg transition-colors border border-red-500/20">Dejar de seguir</button>
+                </div>
+              {% empty %}
+                <p class="text-[11px] text-text-dim italic">No sigues a ningún artista todavía.</p>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Favorite Songs List -->
+          <div class="space-y-4">
+            <h3 class="text-xs font-bold text-white uppercase tracking-wider">Canciones Favoritas</h3>
+            
+            <div class="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+              {% for song in favorite_songs %}
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04]">
+                  <div class="min-w-0">
+                    <p class="text-xs font-bold text-white truncate">{{ song.titulo }}</p>
+                    <p class="text-[9px] text-text-dim truncate">{{ song.artista }}</p>
+                  </div>
+                  <button onclick="settingsUnfavoriteSong({{ song.id }})" class="w-7 h-7 flex items-center justify-center hover:bg-red-500/10 text-red-400 rounded-lg transition-colors border border-red-500/20" title="Eliminar de favoritos">
+                    <span class="material-symbols-outlined text-[16px]">delete</span>
+                  </button>
+                </div>
+              {% empty %}
+                <p class="text-[11px] text-text-dim italic">No tienes canciones favoritas todavía.</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. NOTIFICATIONS SECTION -->
+      <div id="settings-sect-notifications" class="settings-section space-y-6 hidden">
+        <div class="border-b border-white/5 pb-4">
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider">Centro de Notificaciones</h2>
+          <p class="text-[11px] text-text-dim mt-0.5">Controla qué avisos recibir y revisa tu historial.</p>
+        </div>
+
+        <!-- Preference Toggles -->
+        <div class="p-5 rounded-2xl border border-white/5 bg-white/[0.01] space-y-4">
+          <h3 class="text-xs font-bold text-white uppercase tracking-wider">Preferencias de Envío</h3>
+          
+          <div class="space-y-3 text-xs">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-bold text-white">Avisos de Seguridad</p>
+                <p class="text-[10px] text-text-dim">Alertas de accesos desde dispositivos nuevos.</p>
+              </div>
+              <input type="checkbox" id="pref-security" {% if user_profile.preferenciasNotificaciones.seguridad|default:True %}checked{% endif %} class="rounded bg-white/10 border-white/20 text-primary focus:ring-primary">
+            </div>
+            <div class="flex items-center justify-between border-t border-white/5 pt-3">
+              <div>
+                <p class="font-bold text-white">Nuevos Lanzamientos</p>
+                <p class="text-[10px] text-text-dim">Avisos cuando tus artistas seguidos publican material.</p>
+              </div>
+              <input type="checkbox" id="pref-releases" {% if user_profile.preferenciasNotificaciones.lanzamientos|default:True %}checked{% endif %} class="rounded bg-white/10 border-white/20 text-primary focus:ring-primary">
+            </div>
+            <div class="flex items-center justify-between border-t border-white/5 pt-3">
+              <div>
+                <p class="font-bold text-white">Transacciones y Pagos</p>
+                <p class="text-[10px] text-text-dim">Facturas de cobro y renovación de suscripciones.</p>
+              </div>
+              <input type="checkbox" id="pref-payments" {% if user_profile.preferenciasNotificaciones.pagos|default:True %}checked{% endif %} class="rounded bg-white/10 border-white/20 text-primary focus:ring-primary">
+            </div>
+          </div>
+          
+          <div class="flex justify-end items-center gap-3 pt-2">
+            <span id="notif-success-msg" class="text-green-400 text-xs font-bold transition-opacity duration-300 opacity-0"></span>
+            <button onclick="saveNotificationPreferences()" class="px-4 py-1.5 bg-primary text-on-primary font-bold rounded-lg text-[10px] active:scale-95 transition-all">Guardar preferencias</button>
+          </div>
+        </div>
+
+        <!-- Notification History -->
+        <div class="space-y-4 pt-4 border-t border-white/5">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <h3 class="text-xs font-bold text-white uppercase tracking-wider">Historial de Notificaciones</h3>
+            
+            <!-- Filters -->
+            <div class="flex gap-1.5">
+              <button onclick="filterNotifs('all', event)" class="notif-filter active px-2.5 py-1 rounded-full text-[10px] font-bold border border-white/10 bg-white/5 text-white">Todas</button>
+              <button onclick="filterNotifs('Aviso de Seguridad', event)" class="notif-filter px-2.5 py-1 rounded-full text-[10px] font-bold border border-white/10 text-text-dim hover:text-white">Seguridad</button>
+              <button onclick="filterNotifs('Nuevo Lanzamiento', event)" class="notif-filter px-2.5 py-1 rounded-full text-[10px] font-bold border border-white/10 text-text-dim hover:text-white">Lanzamientos</button>
+              <button onclick="filterNotifs('Pago Exitoso', event)" class="notif-filter px-2.5 py-1 rounded-full text-[10px] font-bold border border-white/10 text-text-dim hover:text-white">Pagos</button>
+            </div>
+          </div>
+
+          <div class="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+            {% for n in notifications %}
+              <div class="notif-item p-3.5 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02]" data-type="{{ n.tipoNotif }}">
+                <div class="flex justify-between items-start gap-4">
+                  <div>
+                    <span class="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider
+                      {% if n.tipoNotif == 'Aviso de Seguridad' %}bg-red-500/10 text-red-400 border border-red-500/20
+                      {% elif n.tipoNotif == 'Pago Exitoso' %}bg-green-500/10 text-green-400 border border-green-500/20
+                      {% else %}bg-primary/10 text-primary border border-primary/20{% endif %}">
+                      {{ n.tipoNotif }}
+                    </span>
+                    <p class="text-xs text-white mt-2 leading-relaxed">{{ n.mensaje }}</p>
+                  </div>
+                  <span class="text-[9px] text-text-dim font-mono-num shrink-0">{{ n.fechaEnvio|slice:':10' }}</span>
+                </div>
+              </div>
+            {% empty %}
+              <p class="text-[11px] text-text-dim italic">No has recibido notificaciones.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. SECURITY SECTION -->
+      <div id="settings-sect-security" class="settings-section space-y-6 hidden">
+        <div class="border-b border-white/5 pb-4">
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider">Seguridad e Historial de Sesiones</h2>
+          <p class="text-[11px] text-text-dim mt-0.5">Consulta tu historial de accesos y controla la sesión.</p>
+        </div>
+
+        <!-- Access History List (Read-only) -->
+        <div class="space-y-4">
+          <h3 class="text-xs font-bold text-white uppercase tracking-wider">Historial de Accesos Recientes</h3>
+          
+          <div class="overflow-x-auto rounded-xl border border-white/5">
+            <table class="w-full text-xs text-left">
+              <thead>
+                <tr class="bg-white/[0.02] border-b border-white/5 text-text-dim text-[10px] uppercase font-bold tracking-wider">
+                  <th class="px-4 py-3">Acción</th>
+                  <th class="px-4 py-3">IP Origen</th>
+                  <th class="px-4 py-3 text-right">Fecha y Hora</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5 font-mono-num text-white/80">
+                {% for log in audit_logs %}
+                  <tr class="hover:bg-white/[0.01]">
+                    <td class="px-4 py-2.5 font-bold font-sans text-xs text-white">{{ log.accion }}</td>
+                    <td class="px-4 py-2.5">{{ log.ipOrigen }}</td>
+                    <td class="px-4 py-2.5 text-right text-[10px] text-text-dim">{{ log.fechaHora|slice:':10' }} {{ log.fechaHora|slice:'11:19' }}</td>
+                  </tr>
+                {% empty %}
+                  <tr>
+                    <td colspan="3" class="px-4 py-6 text-center italic text-text-dim font-sans">No hay registros de accesos recientes.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Quick Logout Action -->
+        <div class="pt-6 border-t border-white/5 flex items-center justify-between gap-4">
+          <div class="space-y-0.5">
+            <h3 class="text-xs font-bold text-white">Cerrar Sesión Activa</h3>
+            <p class="text-[10px] text-text-dim max-w-sm">Sal de la cuenta en este dispositivo. Deberás volver a iniciar sesión.</p>
+          </div>
+          <button onclick="openLogoutModal()" class="px-5 py-2 border border-red-500/20 hover:border-red-500/50 hover:bg-red-500/10 text-red-400 text-xs font-bold rounded-xl active:scale-95 transition-all">Cerrar sesión</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
