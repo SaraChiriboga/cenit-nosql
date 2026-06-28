@@ -228,9 +228,9 @@ tailwind.config = {
           <p class="text-xs text-text-dim">Cénit Player</p>
         </div>
       </div>
-      <a href="{% url 'logout' %}" class="text-text-dim hover:text-red-400 transition-colors p-1" title="Cerrar sesión">
+      <button onclick="openLogoutModal()" class="text-text-dim hover:text-red-400 transition-colors p-1 outline-none" title="Cerrar sesión">
         <span class="material-symbols-outlined text-[18px]">logout</span>
-      </a>
+      </button>
     </div>
   </div>
 </nav>
@@ -403,6 +403,26 @@ tailwind.config = {
     <div class="flex justify-center gap-3 pt-2">
       <button onclick="closeDeletePlaylistModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-white/60 hover:text-white transition-colors">Cancelar</button>
       <button onclick="submitDeletePlaylist()" class="px-5 py-2 bg-red-500 hover:bg-red-600 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-red-500/10">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div id="logout-confirm-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden">
+  <div class="glass w-full max-w-sm rounded-2xl p-6 border border-white/10 space-y-4 text-center">
+    <div class="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-2 text-primary">
+      <span class="material-symbols-outlined text-[26px]">logout</span>
+    </div>
+    <div class="space-y-1.5">
+      <h3 class="text-base font-bold text-white">¿Cerrar sesión?</h3>
+      <p class="text-xs text-text-dim leading-relaxed">¿Estás seguro de que deseas salir del reproductor?</p>
+    </div>
+    <div class="flex justify-center gap-3 pt-2">
+      <button onclick="closeLogoutModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-text-dim hover:text-white transition-colors">Cancelar</button>
+      <form action="{% url 'logout' %}?next={% url 'login_player' %}" method="post" class="inline">
+        {% csrf_token %}
+        <button type="submit" class="px-5 py-2 bg-primary text-on-primary hover:bg-primary/80 active:scale-95 rounded-xl text-xs font-bold transition-all shadow-lg shadow-primary/10">Salir</button>
+      </form>
     </div>
   </div>
 </div>
@@ -1592,6 +1612,15 @@ tailwind.config = {
   // -------------------------------------------------------------
   // USER CONFIGURATIONS / SETTINGS FUNCTIONS
   // -------------------------------------------------------------
+  window.openLogoutModal = function() {
+    const modal = document.getElementById('logout-confirm-modal');
+    if (modal) modal.classList.remove('hidden');
+  };
+  window.closeLogoutModal = function() {
+    const modal = document.getElementById('logout-confirm-modal');
+    if (modal) modal.classList.add('hidden');
+  };
+
   function showSuccessMsg(elementId, message) {
     const el = document.getElementById(elementId);
     if (el) {

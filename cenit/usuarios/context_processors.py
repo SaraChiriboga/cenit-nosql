@@ -23,3 +23,21 @@ def user_role(request):
             except Exception:
                 role = 'Usuario'
     return {'user_role': role}
+
+
+def custom_reports(request):
+    """
+    Inyecta 'reportes_personalizados' en el contexto de todas las plantillas.
+    Permite cargar el listado de reportes creados en el sidebar.
+    """
+    reportes = []
+    if request.user.is_authenticated:
+        try:
+            # Traer los reportes de la colección
+            reportes_cursor = db['reportes_personalizados'].find({}, {'titulo': 1, 'metodo': 1})
+            for doc in reportes_cursor:
+                doc['id_str'] = str(doc['_id'])
+                reportes.append(doc)
+        except Exception:
+            pass
+    return {'reportes_personalizados': reportes}

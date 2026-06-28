@@ -27,6 +27,15 @@ with open(credentials_path, encoding='utf-8') as f:
 MONGODB_URI = db_config.pop("MONGODB_URI", "mongodb://localhost:27017/")
 MONGODB_NAME = db_config.pop("MONGODB_NAME", "Cenit")
 
+# Load secrets from secrets.json
+secrets_path = os.path.join(BASE_DIR, 'secrets.json')
+if os.path.exists(secrets_path):
+    with open(secrets_path, encoding='utf-8') as f:
+        secrets_config = json.load(f)
+        GEMINI_API_KEY = secrets_config.get("GEMINI_API_KEY", "")
+else:
+    GEMINI_API_KEY = ""
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -80,6 +89,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'usuarios.context_processors.user_role',
+                'usuarios.context_processors.custom_reports',
             ],
         },
     },

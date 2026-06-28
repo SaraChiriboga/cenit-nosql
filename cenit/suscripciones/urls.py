@@ -88,4 +88,19 @@ urlpatterns = [
     # ── DASHBOARD ANALISTA ──
     path('reportes/dashboard/',      views.analista_dashboard,     name='analista_dashboard'),
     path('reportes/dashboard/data/', views.analista_dashboard_data, name='analista_dashboard_data'),
+
+    # ── REPORTES PERSONALIZADOS ──
+    path('reportes/crear/', views.crear_reporte_hub, name='crear_reporte_hub'),
+    path('reportes/crear/mongodb/', views.crear_reporte_mongodb, name='crear_reporte_mongodb'),
+    path('reportes/crear/powerbi/', views.crear_reporte_powerbi, name='crear_reporte_powerbi'),
+    path('reportes/crear/ia/', views.crear_reporte_ia, name='crear_reporte_ia'),
+    path('reportes/ver/<str:report_id>/', views.ver_reporte_personalizado, name='ver_reporte_personalizado'),
+    
+    path('reportes/api/ejecutar-mongo/', views.ejecutar_query_mongo_api, name='ejecutar_query_mongo_api'),
+    path('reportes/api/ia-query/', views.ia_generar_query_api, name='ia_generar_query_api'),
+    path('reportes/api/guardar/', views.guardar_reporte_api, name='guardar_reporte_api'),
+    
+    path('reportes/exportar/dinamico/pdf/', views.exportar_reporte_dinamico_pdf, name='exportar_reporte_dinamico_pdf'),
+    path('reportes/exportar/dinamico/excel/', views.exportar_reporte_dinamico_excel, name='exportar_reporte_dinamico_excel'),
+    path('reportes/eliminar/<str:report_id>/', views.eliminar_reporte, name='eliminar_reporte'),
 ]
