@@ -710,7 +710,7 @@ def login_analista_view(request):
         })
 
     login(request, user)
-    return redirect('reporte_top_10')
+    return redirect('analista_dashboard')
 
 
 @require_http_methods(["GET", "POST"])

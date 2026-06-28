@@ -1,3 +1,4 @@
+import json
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
@@ -8,6 +9,7 @@ from django.core.mail import EmailMessage
 from django.http import JsonResponse, HttpResponse
 from django.template.loader import render_to_string
 from weasyprint import HTML
+from io import BytesIO
 
 from cenit.mongo_client import db
 from .models import MongoDoc, prepare_doc, parse_date
@@ -69,6 +71,137 @@ def _next_id(collection, field):
     """Genera el siguiente ID numérico auto-incremental para una colección."""
     last = collection.find_one(sort=[(field, -1)])
     return (last[field] + 1) if last else 1
+
+
+def _parse_date_params(request):
+    """Extrae filtros de fecha ?desde= y ?hasta= del GET, retorna (desde, hasta) datetime o None."""
+    desde_str = request.GET.get('desde', '').strip()
+    hasta_str = request.GET.get('hasta', '').strip()
+    desde = None
+    hasta = None
+    try:
+        if desde_str:
+            desde = datetime.strptime(desde_str, '%Y-%m-%d')
+    except (ValueError, TypeError):
+        pass
+    try:
+        if hasta_str:
+            hasta = datetime.strptime(hasta_str, '%Y-%m-%d') + timedelta(days=1)
+    except (ValueError, TypeError):
+        pass
+    return desde, hasta, desde_str, hasta_str
+
+
+def _paginate(request, docs):
+    """Aplica ?page= y ?per_page= a una lista de docs. Retorna (slice, total, page, total_pages)."""
+    page = request.GET.get('page', 1)
+    try:
+        page = int(page)
+    except (ValueError, TypeError):
+        page = 1
+    per_page = request.GET.get('per_page', 50)
+    try:
+        per_page = int(per_page)
+    except (ValueError, TypeError):
+        per_page = 50
+    if per_page > 200:
+        per_page = 200
+    total = len(docs)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * per_page
+    end = start + per_page
+    return docs[start:end], total, page, total_pages, per_page
+
+
+def _build_excel_response(wb, filename):
+    """Toma un openpyxl Workbook y retorna un HttpResponse de descarga."""
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    response = HttpResponse(
+        buffer.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _estilo_excel_header(ws, headers):
+    """Aplica formato bold + color a la fila 1 y escribe headers."""
+    from openpyxl.styles import Font, PatternFill, Alignment
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = Font(bold=True, color='00363A')
+        cell.fill = PatternFill('solid', fgColor='45F3FF')
+        cell.alignment = Alignment(horizontal='center')
+
+
+# ── Helpers de datos para reportes (DRY) ────────────────
+
+def _data_vencimientos(desde=None, hasta=None):
+    """Retorna lista de suscripciones expiradas próximas a vencer."""
+    filtro = {
+        'estado': 'Expirada',
+        'tipoSuscripcion.nombrePlan': {
+            '$in': ['Premium Individual', 'Premium Duo', 'Premium Familiar', 'Premium Estudiante']
+        }
+    }
+    if desde or hasta:
+        filtro['fechaFin'] = {}
+        if desde:
+            filtro['fechaFin']['$gte'] = desde.isoformat()
+        if hasta:
+            filtro['fechaFin']['$lte'] = hasta.isoformat()
+    docs = list(suscripciones_col.find(filtro).sort('fechaFin', 1))
+    user_ids = {d.get('idUsuario') for d in docs if d.get('idUsuario')}
+    user_names = _lookup_usuarios(user_ids)
+    for d in docs:
+        prepare_doc(d)
+        resolved_name = user_names.get(d.get('idUsuario'), '—')
+        d['usuario_nombre'] = resolved_name
+        d['usuario_nombre_nombre'] = resolved_name
+    return [MongoDoc(d) for d in docs]
+
+
+def _data_promociones_vencidas(desde=None, hasta=None):
+    """Retorna lista de promociones activas con alto descuento."""
+    filtro = {'estadoActivo': True, 'porcentajeDesc': {'$gt': 20}}
+    if desde or hasta:
+        filtro['fechaExpira'] = {}
+        if desde:
+            filtro['fechaExpira']['$gte'] = desde.isoformat()
+        if hasta:
+            filtro['fechaExpira']['$lte'] = hasta.isoformat()
+    docs = list(promociones_col.find(filtro).sort('fechaExpira', 1))
+    for d in docs:
+        prepare_doc(d)
+    return [MongoDoc(d) for d in docs]
+
+
+def _render_pdf(request, template_name, context, filename):
+    """Genera un PDF desde un template y lo retorna como HttpResponse."""
+    html_string = render_to_string(template_name, context, request=request)
+    pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+    response = HttpResponse(pdf_file, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _enviar_pdf_correo(request, template_name, context, filename, subject, body):
+    """Genera PDF y lo envía por correo al usuario autenticado."""
+    html_string = render_to_string(template_name, context, request=request)
+    pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+    destinatario = request.user.email or 'admin@cenit.com'
+    email = EmailMessage(
+        subject=subject,
+        body=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[destinatario],
+    )
+    email.attach(filename, pdf_file, 'application/pdf')
+    email.send()
+    return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
 
 
 # ══════════════════════════════════════════
@@ -904,50 +1037,37 @@ def estadistica_delete(request, pk):
 @login_required
 def reporte_vencimientos(request):
     """Informe B: Suscripciones que vencen en los próximos 5 días."""
-    docs = list(suscripciones_col.find({
-        'estado': 'Expirada',
-        'tipoSuscripcion.nombrePlan': {
-            '$in': [
-                'Premium Individual',
-                'Premium Duo',
-                'Premium Familiar',
-                'Premium Estudiante'
-            ]
-        }
-    }).sort('fechaFin', 1))
-
-    user_ids = {d.get('idUsuario') for d in docs if d.get('idUsuario')}
-    user_names = _lookup_usuarios(user_ids)
-
-    for d in docs:
-        prepare_doc(d)
-        resolved_name = user_names.get(d.get('idUsuario'), '—')
-        d['usuario_nombre'] = resolved_name
-        d['usuario_nombre_nombre'] = resolved_name
-
-    proximas = [MongoDoc(d) for d in docs]
+    desde, hasta, desde_str, hasta_str = _parse_date_params(request)
+    docs = _data_vencimientos(desde, hasta)
+    docs_paginated, total, page, total_pages, per_page = _paginate(request, docs)
     return render(request, 'Suscripciones/reportes/reporte_vencimientos.html', {
-        'proximas': proximas,
+        'proximas': docs_paginated,
         'hoy':      datetime.now(),
         'limite':   datetime.now() + timedelta(days=5),
+        'desde': desde_str,
+        'hasta': hasta_str,
+        'page': page,
+        'total_pages': total_pages,
+        'total': total,
+        'per_page': per_page,
     })
 
 
 @login_required
 def reporte_promociones_vencidas(request):
     """Informe D: Promociones expiradas que aún figuran como activas."""
-    docs = list(promociones_col.find({
-        'estadoActivo': True,
-        'porcentajeDesc': {'$gt': 20}
-    }).sort('fechaExpira', 1))
-
-    for d in docs:
-        prepare_doc(d)
-
-    vencidas = [MongoDoc(d) for d in docs]
+    desde, hasta, desde_str, hasta_str = _parse_date_params(request)
+    docs = _data_promociones_vencidas(desde, hasta)
+    docs_paginated, total, page, total_pages, per_page = _paginate(request, docs)
     return render(request, 'Suscripciones/reportes/reporte_promociones_vencidas.html', {
-        'vencidas': vencidas,
+        'vencidas': docs_paginated,
         'ahora':    datetime.now(),
+        'desde': desde_str,
+        'hasta': hasta_str,
+        'page': page,
+        'total_pages': total_pages,
+        'total': total,
+        'per_page': per_page,
     })
 
 
@@ -963,140 +1083,87 @@ def _contexto_base(request):
 @login_required
 def exportar_vencimientos_pdf(request):
     try:
-        docs = list(suscripciones_col.find({
-            'estado': 'Expirada',
-            'tipoSuscripcion.nombrePlan': {
-                '$in': [
-                    'Premium Individual',
-                    'Premium Duo',
-                    'Premium Familiar',
-                    'Premium Estudiante'
-                ]
-            }
-        }).sort('fechaFin', 1))
-        user_ids = {d.get('idUsuario') for d in docs if d.get('idUsuario')}
-        user_names = _lookup_usuarios(user_ids)
-        for d in docs:
-            prepare_doc(d)
-            resolved_name = user_names.get(d.get('idUsuario'), '—')
-            d['usuario_nombre'] = resolved_name
-            d['usuario_nombre_nombre'] = resolved_name
-        proximas = [MongoDoc(d) for d in docs]
-        
-        context = {
-            **_contexto_base(request),
-            'proximas': proximas,
-            'hoy':      datetime.now(),
-            'limite':   datetime.now() + timedelta(days=5),
-        }
-        html_string = render_to_string('Suscripciones/reportes/pdf_vencimientos.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        response = HttpResponse(pdf_file, content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="Suscripciones_Expiradas.pdf"'
-        return response
+        docs = _data_vencimientos()
+        context = {**_contexto_base(request), 'proximas': docs, 'hoy': datetime.now(), 'limite': datetime.now() + timedelta(days=5)}
+        return _render_pdf(request, 'Suscripciones/reportes/pdf_vencimientos.html', context, 'Suscripciones_Expiradas.pdf')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
 
 @login_required
 def enviar_vencimientos_correo(request):
     try:
-        docs = list(suscripciones_col.find({
-            'estado': 'Expirada',
-            'tipoSuscripcion.nombrePlan': {
-                '$in': [
-                    'Premium Individual',
-                    'Premium Duo',
-                    'Premium Familiar',
-                    'Premium Estudiante'
-                ]
-            }
-        }).sort('fechaFin', 1))
-        user_ids = {d.get('idUsuario') for d in docs if d.get('idUsuario')}
-        user_names = _lookup_usuarios(user_ids)
-        for d in docs:
-            prepare_doc(d)
-            resolved_name = user_names.get(d.get('idUsuario'), '—')
-            d['usuario_nombre'] = resolved_name
-            d['usuario_nombre_nombre'] = resolved_name
-        proximas = [MongoDoc(d) for d in docs]
-
-        context = {
-            **_contexto_base(request),
-            'proximas': proximas,
-            'hoy':      datetime.now(),
-            'limite':   datetime.now() + timedelta(days=5),
-        }
-        html_string = render_to_string('Suscripciones/reportes/pdf_vencimientos.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        destinatario = request.user.email or 'admin@cenit.com'
-        email = EmailMessage(
-            subject='CÉNIT — Informe de Suscripciones Expiradas',
-            body='Adjuntamos el informe detallado de suscripciones Premium inactivas/expiradas.',
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[destinatario],
-        )
-        email.attach('Suscripciones_Expiradas.pdf', pdf_file, 'application/pdf')
-        email.send()
-        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+        docs = _data_vencimientos()
+        context = {**_contexto_base(request), 'proximas': docs, 'hoy': datetime.now(), 'limite': datetime.now() + timedelta(days=5)}
+        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_vencimientos.html', context,
+                                 'Suscripciones_Expiradas.pdf', 'CÉNIT — Informe de Suscripciones Expiradas',
+                                 'Adjuntamos el informe detallado de suscripciones Premium inactivas/expiradas.')
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def exportar_vencimientos_excel(request):
+    try:
+        import openpyxl
+        docs = _data_vencimientos()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Vencimientos'
+        _estilo_excel_header(ws, ['Usuario', 'Plan', 'Fecha Inicio', 'Fecha Fin', 'Estado'])
+        for i, d in enumerate(docs, 2):
+            ws.cell(row=i, column=1, value=d.usuario_nombre or '—')
+            nombre_plan = d.tipoSuscripcion.nombrePlan if d.tipoSuscripcion else '—'
+            ws.cell(row=i, column=2, value=nombre_plan)
+            ws.cell(row=i, column=3, value=str(d.fechaInicio or '—'))
+            ws.cell(row=i, column=4, value=str(d.fechaFin or '—'))
+            ws.cell(row=i, column=5, value=d.estado or '—')
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 25
+        return _build_excel_response(wb, 'Suscripciones_Expiradas.xlsx')
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
 
 
 # ── EXPORTACIÓN PROMOCIONES ALTO DESCUENTO ──
 @login_required
 def exportar_promociones_vencidas_pdf(request):
     try:
-        docs = list(promociones_col.find({
-            'estadoActivo': True,
-            'porcentajeDesc': {'$gt': 20}
-        }).sort('fechaExpira', 1))
-        for d in docs:
-            prepare_doc(d)
-        vencidas = [MongoDoc(d) for d in docs]
-        
-        context = {
-            **_contexto_base(request),
-            'vencidas': vencidas,
-            'ahora':    datetime.now(),
-        }
-        html_string = render_to_string('Suscripciones/reportes/pdf_promociones_vencidas.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        response = HttpResponse(pdf_file, content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="Promociones_Alto_Descuento.pdf"'
-        return response
+        docs = _data_promociones_vencidas()
+        context = {**_contexto_base(request), 'vencidas': docs, 'ahora': datetime.now()}
+        return _render_pdf(request, 'Suscripciones/reportes/pdf_promociones_vencidas.html', context, 'Promociones_Alto_Descuento.pdf')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
 
 @login_required
 def enviar_promociones_vencidas_correo(request):
     try:
-        docs = list(promociones_col.find({
-            'estadoActivo': True,
-            'porcentajeDesc': {'$gt': 20}
-        }).sort('fechaExpira', 1))
-        for d in docs:
-            prepare_doc(d)
-        vencidas = [MongoDoc(d) for d in docs]
-
-        context = {
-            **_contexto_base(request),
-            'vencidas': vencidas,
-            'ahora':    datetime.now(),
-        }
-        html_string = render_to_string('Suscripciones/reportes/pdf_promociones_vencidas.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        destinatario = request.user.email or 'admin@cenit.com'
-        email = EmailMessage(
-            subject='CÉNIT — Promociones Activas con Alto Descuento',
-            body='Adjuntamos el informe ejecutivo de las promociones con descuento superior al 20%.',
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[destinatario],
-        )
-        email.attach('Promociones_Alto_Descuento.pdf', pdf_file, 'application/pdf')
-        email.send()
-        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+        docs = _data_promociones_vencidas()
+        context = {**_contexto_base(request), 'vencidas': docs, 'ahora': datetime.now()}
+        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_promociones_vencidas.html', context,
+                                 'Promociones_Alto_Descuento.pdf', 'CÉNIT — Promociones Activas con Alto Descuento',
+                                 'Adjuntamos el informe ejecutivo de las promociones con descuento superior al 20%.')
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def exportar_promociones_vencidas_excel(request):
+    try:
+        import openpyxl
+        docs = _data_promociones_vencidas()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Promociones'
+        _estilo_excel_header(ws, ['Promoción ID', 'Nombre', 'Descuento %', 'Fecha Expira', 'Estado'])
+        for i, d in enumerate(docs, 2):
+            ws.cell(row=i, column=1, value=d.promo_id or '—')
+            ws.cell(row=i, column=2, value=d.nombre or '—')
+            ws.cell(row=i, column=3, value=d.porcentajeDesc or 0)
+            ws.cell(row=i, column=4, value=str(d.fechaExpira or '—'))
+            ws.cell(row=i, column=5, value='Activa' if d.estadoActivo else 'Inactiva')
+        ws.column_dimensions['A'].width = 15
+        ws.column_dimensions['B'].width = 30
+        return _build_excel_response(wb, 'Promociones_Alto_Descuento.xlsx')
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
 
 
 # ── REPORTE: USUARIOS PREMIUM ACTIVOS ──
@@ -1116,21 +1183,21 @@ def obtener_usuarios_premium_activos():
 def reporte_usuarios_premium(request):
     try:
         usuarios = obtener_usuarios_premium_activos()
+        usuarios, total, page, total_pages, per_page = _paginate(request, usuarios)
     except Exception as e:
         messages.error(request, f"Error: {str(e)}")
         usuarios = []
-    return render(request, 'Suscripciones/reportes/reporte_usuarios_premium.html', {'usuarios': usuarios})
+        total = page = total_pages = per_page = 0
+    return render(request, 'Suscripciones/reportes/reporte_usuarios_premium.html', {
+        'usuarios': usuarios, 'page': page, 'total_pages': total_pages, 'total': total, 'per_page': per_page,
+    })
 
 @login_required
 def exportar_usuarios_premium_pdf(request):
     try:
         usuarios = obtener_usuarios_premium_activos()
         context = {**_contexto_base(request), 'usuarios': usuarios}
-        html_string = render_to_string('Suscripciones/reportes/pdf_usuarios_premium.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        response = HttpResponse(pdf_file, content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="Usuarios_Premium_Activos.pdf"'
-        return response
+        return _render_pdf(request, 'Suscripciones/reportes/pdf_usuarios_premium.html', context, 'Usuarios_Premium_Activos.pdf')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
 
@@ -1139,20 +1206,31 @@ def enviar_usuarios_premium_correo(request):
     try:
         usuarios = obtener_usuarios_premium_activos()
         context = {**_contexto_base(request), 'usuarios': usuarios}
-        html_string = render_to_string('Suscripciones/reportes/pdf_usuarios_premium.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        destinatario = request.user.email or 'admin@cenit.com'
-        email = EmailMessage(
-            subject='CÉNIT — Usuarios con Plan Premium Activo',
-            body='Adjuntamos el informe detallado de usuarios con suscripción Premium activa.',
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[destinatario],
-        )
-        email.attach('Usuarios_Premium_Activos.pdf', pdf_file, 'application/pdf')
-        email.send()
-        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_usuarios_premium.html', context,
+                                 'Usuarios_Premium_Activos.pdf', 'CÉNIT — Usuarios con Plan Premium Activo',
+                                 'Adjuntamos el informe detallado de usuarios con suscripción Premium activa.')
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def exportar_usuarios_premium_excel(request):
+    try:
+        import openpyxl
+        usuarios = obtener_usuarios_premium_activos()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Premium Activos'
+        _estilo_excel_header(ws, ['Nombre', 'Email', 'Plan', 'Registro'])
+        for i, u in enumerate(usuarios, 2):
+            ws.cell(row=i, column=1, value=u.get('nombre_completo', '—'))
+            ws.cell(row=i, column=2, value=u.get('email', '—'))
+            ws.cell(row=i, column=3, value=u.get('estadoPlan', '—'))
+            ws.cell(row=i, column=4, value=str(u.get('fechaRegistro', '—')))
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 35
+        return _build_excel_response(wb, 'Usuarios_Premium_Activos.xlsx')
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
 
 
 # ── REPORTE: CANDIDATOS A PLAN PREMIUM ──
@@ -1172,21 +1250,21 @@ def obtener_candidatos_premium():
 def reporte_usuarios_free(request):
     try:
         usuarios = obtener_candidatos_premium()
+        usuarios, total, page, total_pages, per_page = _paginate(request, usuarios)
     except Exception as e:
         messages.error(request, f"Error: {str(e)}")
         usuarios = []
-    return render(request, 'Suscripciones/reportes/reporte_usuarios_free.html', {'usuarios': usuarios})
+        total = page = total_pages = per_page = 0
+    return render(request, 'Suscripciones/reportes/reporte_usuarios_free.html', {
+        'usuarios': usuarios, 'page': page, 'total_pages': total_pages, 'total': total, 'per_page': per_page,
+    })
 
 @login_required
 def exportar_usuarios_free_pdf(request):
     try:
         usuarios = obtener_candidatos_premium()
         context = {**_contexto_base(request), 'usuarios': usuarios}
-        html_string = render_to_string('Suscripciones/reportes/pdf_usuarios_free.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        response = HttpResponse(pdf_file, content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="Candidatos_Plan_Premium.pdf"'
-        return response
+        return _render_pdf(request, 'Suscripciones/reportes/pdf_usuarios_free.html', context, 'Candidatos_Plan_Premium.pdf')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
 
@@ -1195,20 +1273,31 @@ def enviar_usuarios_free_correo(request):
     try:
         usuarios = obtener_candidatos_premium()
         context = {**_contexto_base(request), 'usuarios': usuarios}
-        html_string = render_to_string('Suscripciones/reportes/pdf_usuarios_free.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        destinatario = request.user.email or 'admin@cenit.com'
-        email = EmailMessage(
-            subject='CÉNIT — Candidatos a Conversión Premium (Plan Free)',
-            body='Adjuntamos el informe de usuarios activos en plan Free para campañas de conversión.',
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[destinatario],
-        )
-        email.attach('Candidatos_Plan_Premium.pdf', pdf_file, 'application/pdf')
-        email.send()
-        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_usuarios_free.html', context,
+                                 'Candidatos_Plan_Premium.pdf', 'CÉNIT — Candidatos a Conversión Premium (Plan Free)',
+                                 'Adjuntamos el informe de usuarios activos en plan Free para campañas de conversión.')
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def exportar_usuarios_free_excel(request):
+    try:
+        import openpyxl
+        usuarios = obtener_candidatos_premium()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Candidatos Premium'
+        _estilo_excel_header(ws, ['Nombre', 'Email', 'Plan', 'Registro'])
+        for i, u in enumerate(usuarios, 2):
+            ws.cell(row=i, column=1, value=u.get('nombre_completo', '—'))
+            ws.cell(row=i, column=2, value=u.get('email', '—'))
+            ws.cell(row=i, column=3, value=u.get('estadoPlan', '—'))
+            ws.cell(row=i, column=4, value=str(u.get('fechaRegistro', '—')))
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 35
+        return _build_excel_response(wb, 'Candidatos_Plan_Premium.xlsx')
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
 
 
 # ── REPORTE: INTENTOS DE ACCESO FALLIDOS ──
@@ -1228,21 +1317,21 @@ def obtener_accesos_fallidos():
 def reporte_accesos_fallidos(request):
     try:
         accesos = obtener_accesos_fallidos()
+        accesos, total, page, total_pages, per_page = _paginate(request, accesos)
     except Exception as e:
         messages.error(request, f"Error: {str(e)}")
         accesos = []
-    return render(request, 'Suscripciones/reportes/reporte_accesos_fallidos.html', {'accesos': accesos})
+        total = page = total_pages = per_page = 0
+    return render(request, 'Suscripciones/reportes/reporte_accesos_fallidos.html', {
+        'accesos': accesos, 'page': page, 'total_pages': total_pages, 'total': total, 'per_page': per_page,
+    })
 
 @login_required
 def exportar_accesos_fallidos_pdf(request):
     try:
         accesos = obtener_accesos_fallidos()
         context = {**_contexto_base(request), 'accesos': accesos}
-        html_string = render_to_string('Suscripciones/reportes/pdf_accesos_fallidos.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        response = HttpResponse(pdf_file, content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="Accesos_Fallidos_Audit.pdf"'
-        return response
+        return _render_pdf(request, 'Suscripciones/reportes/pdf_accesos_fallidos.html', context, 'Accesos_Fallidos_Audit.pdf')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
 
@@ -1251,20 +1340,32 @@ def enviar_accesos_fallidos_correo(request):
     try:
         accesos = obtener_accesos_fallidos()
         context = {**_contexto_base(request), 'accesos': accesos}
-        html_string = render_to_string('Suscripciones/reportes/pdf_accesos_fallidos.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        destinatario = request.user.email or 'admin@cenit.com'
-        email = EmailMessage(
-            subject='CÉNIT — Auditoría de Intentos de Acceso Fallidos',
-            body='Adjuntamos la auditoría de seguridad detallando los intentos fallidos de inicio de sesión.',
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[destinatario],
-        )
-        email.attach('Accesos_Fallidos_Audit.pdf', pdf_file, 'application/pdf')
-        email.send()
-        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_accesos_fallidos.html', context,
+                                 'Accesos_Fallidos_Audit.pdf', 'CÉNIT — Auditoría de Intentos de Acceso Fallidos',
+                                 'Adjuntamos la auditoría de seguridad detallando los intentos fallidos de inicio de sesión.')
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def exportar_accesos_fallidos_excel(request):
+    try:
+        import openpyxl
+        accesos = obtener_accesos_fallidos()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Accesos Fallidos'
+        _estilo_excel_header(ws, ['Usuario', 'Acción', 'IP', 'Fecha'])
+        for i, d in enumerate(accesos, 2):
+            ws.cell(row=i, column=1, value=d.get('usuario_nombre', '—'))
+            ws.cell(row=i, column=2, value=d.get('accion', '—'))
+            ws.cell(row=i, column=3, value=d.get('ipOrigen', '—'))
+            ws.cell(row=i, column=4, value=str(getattr(d, 'fechaHora', d.get('fechaHora', '—'))[:19] if hasattr(d, 'fechaHora') else '—'))
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 25
+        ws.column_dimensions['C'].width = 20
+        return _build_excel_response(wb, 'Accesos_Fallidos_Audit.xlsx')
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
 
 
 # ── REPORTE: ACCIONES DE ADMINISTRACIÓN ──
@@ -1292,21 +1393,21 @@ def obtener_acciones_admin():
 def reporte_acciones_admin(request):
     try:
         acciones = obtener_acciones_admin()
+        acciones, total, page, total_pages, per_page = _paginate(request, acciones)
     except Exception as e:
         messages.error(request, f"Error: {str(e)}")
         acciones = []
-    return render(request, 'Suscripciones/reportes/reporte_acciones_admin.html', {'acciones': acciones})
+        total = page = total_pages = per_page = 0
+    return render(request, 'Suscripciones/reportes/reporte_acciones_admin.html', {
+        'acciones': acciones, 'page': page, 'total_pages': total_pages, 'total': total, 'per_page': per_page,
+    })
 
 @login_required
 def exportar_acciones_admin_pdf(request):
     try:
         acciones = obtener_acciones_admin()
         context = {**_contexto_base(request), 'acciones': acciones}
-        html_string = render_to_string('Suscripciones/reportes/pdf_acciones_admin.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        response = HttpResponse(pdf_file, content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="Acciones_Administracion_Audit.pdf"'
-        return response
+        return _render_pdf(request, 'Suscripciones/reportes/pdf_acciones_admin.html', context, 'Acciones_Administracion_Audit.pdf')
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}", status=500)
 
@@ -1315,17 +1416,142 @@ def enviar_acciones_admin_correo(request):
     try:
         acciones = obtener_acciones_admin()
         context = {**_contexto_base(request), 'acciones': acciones}
-        html_string = render_to_string('Suscripciones/reportes/pdf_acciones_admin.html', context, request=request)
-        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
-        destinatario = request.user.email or 'admin@cenit.com'
-        email = EmailMessage(
-            subject='CÉNIT — Auditoría de Acciones de Administración',
-            body='Adjuntamos la auditoría detallada de acciones administrativas críticas en la plataforma.',
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[destinatario],
-        )
-        email.attach('Acciones_Administracion_Audit.pdf', pdf_file, 'application/pdf')
-        email.send()
-        return JsonResponse({'status': 'success', 'message': f'Reporte enviado a {destinatario}.'})
+        return _enviar_pdf_correo(request, 'Suscripciones/reportes/pdf_acciones_admin.html', context,
+                                 'Acciones_Administracion_Audit.pdf', 'CÉNIT — Auditoría de Acciones de Administración',
+                                 'Adjuntamos la auditoría detallada de acciones administrativas críticas en la plataforma.')
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def exportar_acciones_admin_excel(request):
+    try:
+        import openpyxl
+        acciones = obtener_acciones_admin()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Acciones Admin'
+        _estilo_excel_header(ws, ['Usuario', 'Acción', 'IP', 'Fecha'])
+        for i, d in enumerate(acciones, 2):
+            ws.cell(row=i, column=1, value=d.get('usuario_nombre', '—'))
+            ws.cell(row=i, column=2, value=d.get('accion', '—'))
+            ws.cell(row=i, column=3, value=d.get('ipOrigen', '—'))
+            ws.cell(row=i, column=4, value=str(d.get('fechaHora', '—'))[:19])
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 25
+        return _build_excel_response(wb, 'Acciones_Administracion_Audit.xlsx')
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+
+# ══════════════════════════════════════════
+#  DASHBOARD DEL ANALISTA
+# ══════════════════════════════════════════
+
+def _dashboard_kpis():
+    """Calcula todos los KPIs y datos de gráficas para el dashboard. Retorna un dict."""
+    from catalogo.views import obtener_ranking_popularidad_mensual
+    data = {}
+
+    # ── KPI 1: Canción #1 del mes ──
+    try:
+        ranking = obtener_ranking_popularidad_mensual()
+        if ranking:
+            data['cancion_top'] = ranking[0].get('tituloCancion') or ranking[0].get('nombre') or '—'
+            data['cancion_top_artista'] = ranking[0].get('nombreArtistico', '—')
+        else:
+            primera = db['Cancion'].find_one({}, {'tituloCancion': 1})
+            data['cancion_top'] = primera.get('tituloCancion', '—') if primera else '—'
+            data['cancion_top_artista'] = '—'
+    except Exception:
+        data['cancion_top'] = '—'
+        data['cancion_top_artista'] = '—'
+
+    # ── KPI 2: Total usuarios premium activos ──
+    try:
+        data['total_premium'] = usuarios_col.count_documents({'estadoPlan': 'Premium', 'estadoActivo': 'Activo'})
+    except Exception:
+        data['total_premium'] = 0
+
+    # ── KPI 3: Suscripciones que vencen en 5 días ──
+    try:
+        hoy = datetime.now()
+        en_5_dias = hoy + timedelta(days=5)
+        docs_sus = list(suscripciones_col.find({'estado': {'$in': ['Activa', 'activa']}}))
+        count = 0
+        for s in docs_sus:
+            fecha_fin = s.get('fechaFin')
+            if isinstance(fecha_fin, str):
+                try:
+                    fecha_fin = datetime.fromisoformat(fecha_fin)
+                except Exception:
+                    continue
+            if fecha_fin and hoy <= fecha_fin <= en_5_dias:
+                count += 1
+        data['vencen_pronto'] = count
+    except Exception:
+        data['vencen_pronto'] = 0
+
+    # ── KPI 4: Total géneros ──
+    try:
+        data['total_generos'] = db['Genero'].count_documents({})
+    except Exception:
+        data['total_generos'] = 0
+
+    # ── KPI 5: Ingresos estimados del mes ──
+    try:
+        sus_activas = list(suscripciones_col.find({'estado': {'$in': ['Activa', 'activa']}}))
+        total_ingresos = 0
+        for s in sus_activas:
+            tipo = s.get('tipoSuscripcion', {})
+            if isinstance(tipo, dict):
+                total_ingresos += tipo.get('precio', 0) or 0
+        data['ingresos_estimados'] = round(total_ingresos, 2)
+    except Exception:
+        data['ingresos_estimados'] = 0
+
+    # ── KPI 6: % conversión Free → Premium ──
+    try:
+        total_users = usuarios_col.count_documents({})
+        if total_users > 0:
+            data['conversion_pct'] = round((data['total_premium'] / total_users) * 100, 1)
+        else:
+            data['conversion_pct'] = 0
+    except Exception:
+        data['conversion_pct'] = 0
+
+    # ── Datos para gráfico de pastel: distribución por plan ──
+    try:
+        pipeline = [
+            {"$group": {"_id": "$estadoPlan", "count": {"$sum": 1}}}
+        ]
+        plan_dist = list(usuarios_col.aggregate(pipeline))
+        data['plan_labels'] = json.dumps([d['_id'] or 'Sin plan' for d in plan_dist])
+        data['plan_data'] = json.dumps([d['count'] for d in plan_dist])
+    except Exception:
+        data['plan_labels'] = '[]'
+        data['plan_data'] = '[]'
+
+    # ── Datos para gráfico de barras: top 5 canciones ──
+    try:
+        ranking = obtener_ranking_popularidad_mensual()
+        top5 = ranking[:5] if ranking else []
+        data['top5_labels'] = json.dumps([t.get('tituloCancion', '—')[:20] for t in top5])
+        data['top5_data'] = json.dumps([t.get('total_escuchas_mes', 0) for t in top5])
+    except Exception:
+        data['top5_labels'] = '[]'
+        data['top5_data'] = '[]'
+
+    return data
+
+
+@login_required
+def analista_dashboard(request):
+    context = _dashboard_kpis()
+    return render(request, 'Suscripciones/dashboard_analista.html', context)
+
+
+@login_required
+def analista_dashboard_data(request):
+    """Endpoint JSON para refrescar KPIs vía AJAX."""
+    data = _dashboard_kpis()
+    return JsonResponse(data)

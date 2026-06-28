@@ -2,7 +2,11 @@
 
 {% block title %}Top 10 Mensual{% endblock %}
 {% block breadcrumb %}
-<a href="/static" class="hover:text-primary transition-colors">Dashboard</a>
+{% if user_role == 'Analista' %}
+<a href="{% url 'analista_dashboard' %}" class="hover:text-primary transition-colors">Dashboard</a>
+{% else %}
+<a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+{% endif %}
 <span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
 <span class="text-on-surface-variant">Catalog</span>
 <span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
@@ -58,11 +62,22 @@
             <a href="{% url 'exportar_top_10_pdf' %}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-secondary text-black hover:scale-105 rounded-xl text-sm font-bold transition-transform shadow-lg shadow-secondary/10">
                 <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> Descargar PDF
             </a>
+            <a href="{% url 'exportar_top_10_excel' %}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-green-600/20">
+                <span class="material-symbols-outlined text-[18px]">table_view</span> Exportar Excel
+            </a>
             <button onclick="window.enviarReporteCorreo('{% url 'enviar_top_10_correo' %}')" id="btn-mail" class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl border border-primary/20 text-sm font-medium transition-all">
                 <span class="material-symbols-outlined text-[18px]">send</span> Enviar Email
             </button>
         </div>
     </div>
+
+    <!-- Chart.js Bar Chart -->
+    {% if canciones %}
+    <div class="glass-panel rounded-3xl border border-white/5 shadow-xl p-6 mb-6 no-print">
+        <h2 class="text-sm font-bold uppercase tracking-widest text-white/30 mb-4">Visualización — Escuchas del Mes</h2>
+        <canvas id="top10Chart" height="90"></canvas>
+    </div>
+    {% endif %}
 
     <div class="glass-panel rounded-3xl overflow-hidden border border-white/5 shadow-2xl print:border-none print:shadow-none print:rounded-none">
         <table class="w-full text-left border-collapse">
@@ -109,11 +124,10 @@
         var oldHtml = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Procesando...';
-        
         try {
             var res = await fetch(url);
             var data = await res.json();
-            alert(data.status === 'success' ? '¡Éxito! ' + data.message : 'Error: ' + data.message);
+            alert(data.status === 'success' ? '\u00a1Éxito! ' + data.message : 'Error: ' + data.message);
         } catch(e) {
             alert('Error de conexión con el servidor de correo.');
         } finally {
@@ -122,4 +136,36 @@
         }
     }
 </script>
+
+{% if canciones %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const labels = [{% for c in canciones %}'{{ c.tituloCancion|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+    const data   = [{% for c in canciones %}{{ c.total_escuchas_mes|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const ctx = document.getElementById('top10Chart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Escuchas',
+                data: data,
+                backgroundColor: 'rgba(68,226,215,0.25)',
+                borderColor: 'rgba(68,226,215,0.9)',
+                borderWidth: 2,
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#bac9ca' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#e3e2e8' }, grid: { display: false } }
+            }
+        }
+    });
+</script>
+{% endif %}
 {% endblock %}

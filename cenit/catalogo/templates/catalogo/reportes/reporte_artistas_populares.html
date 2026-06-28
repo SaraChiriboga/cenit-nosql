@@ -2,7 +2,11 @@
 
 {% block title %}Artistas más Seguidos{% endblock %}
 {% block breadcrumb %}
+{% if user_role == 'Analista' %}
+<a href="{% url 'analista_dashboard' %}" class="hover:text-primary transition-colors">Dashboard</a>
+{% else %}
 <a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+{% endif %}
 <span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
 <span class="text-on-surface-variant">Catalog</span>
 <span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
@@ -26,11 +30,24 @@
             <a href="{% url 'exportar_artistas_populares_pdf' %}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-secondary text-black hover:scale-105 rounded-xl text-sm font-bold transition-transform shadow-lg shadow-secondary/10">
                 <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> Descargar PDF
             </a>
+            <a href="{% url 'exportar_artistas_populares_excel' %}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-green-600/20">
+                <span class="material-symbols-outlined text-[18px]">table_view</span> Exportar Excel
+            </a>
             <button onclick="window.enviarReporteCorreo('{% url 'enviar_artistas_populares_correo' %}')" id="btn-mail" class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl border border-primary/20 text-sm font-medium transition-all">
                 <span class="material-symbols-outlined text-[18px]">send</span> Enviar Email
             </button>
         </div>
     </div>
+
+    </div>
+
+    <!-- Chart.js Vertical Bars -->
+    {% if artistas %}
+    <div class="glass-panel rounded-3xl border border-white/5 shadow-xl p-6 mb-6 no-print">
+        <h2 class="text-sm font-bold uppercase tracking-widest text-white/30 mb-4">Ranking Visual — Seguidores por Artista</h2>
+        <canvas id="artistasChart" height="80"></canvas>
+    </div>
+    {% endif %}
 
     <div class="glass-panel rounded-3xl overflow-hidden border border-white/5 shadow-2xl print:border-none print:shadow-none print:rounded-none">
         <table class="w-full text-left border-collapse">
@@ -66,7 +83,6 @@
         var oldHtml = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Enviando...';
-
         try {
             var res = await fetch(url);
             var data = await res.json();
@@ -79,4 +95,35 @@
         }
     }
 </script>
+
+{% if artistas %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const aLabels = [{% for a in artistas %}'{{ a.nombreArtista|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+    const aData   = [{% for a in artistas %}{{ a.totalSeguidores|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const ctx2 = document.getElementById('artistasChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: aLabels,
+            datasets: [{
+                label: 'Seguidores',
+                data: aData,
+                backgroundColor: 'rgba(255,193,7,0.25)',
+                borderColor: 'rgba(255,193,7,0.9)',
+                borderWidth: 2,
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#bac9ca', maxRotation: 30 }, grid: { display: false } },
+                y: { ticks: { color: '#bac9ca' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+        }
+    });
+</script>
+{% endif %}
 {% endblock %}

@@ -2,7 +2,11 @@
 
 {% block title %}Canciones por Género{% endblock %}
 {% block breadcrumb %}
+{% if user_role == 'Analista' %}
+<a href="{% url 'analista_dashboard' %}" class="hover:text-primary transition-colors">Dashboard</a>
+{% else %}
 <a href="/" class="hover:text-primary transition-colors">Dashboard</a>
+{% endif %}
 <span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
 <span class="text-on-surface-variant">Catalog</span>
 <span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
@@ -26,11 +30,26 @@
             <a href="{% url 'exportar_canciones_genero_pdf' %}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-secondary text-black hover:scale-105 rounded-xl text-sm font-bold transition-transform shadow-lg shadow-secondary/10">
                 <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> Descargar PDF
             </a>
+            <a href="{% url 'exportar_canciones_genero_excel' %}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-green-600/20">
+                <span class="material-symbols-outlined text-[18px]">table_view</span> Exportar Excel
+            </a>
             <button onclick="window.enviarReporteCorreo('{% url 'enviar_canciones_genero_correo' %}')" id="btn-mail" class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl border border-primary/20 text-sm font-medium transition-all">
                 <span class="material-symbols-outlined text-[18px]">send</span> Enviar Email
             </button>
         </div>
     </div>
+
+    </div>
+
+    <!-- Chart.js Barras -->
+    {% if datos %}
+    <div class="glass-panel rounded-3xl border border-white/5 shadow-xl p-6 mb-6 no-print">
+        <h2 class="text-sm font-bold uppercase tracking-widest text-white/30 mb-4">Distribución Visual por Género</h2>
+        <div class="relative" style="height: 300px;">
+            <canvas id="generoChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="glass-panel rounded-3xl overflow-hidden border border-white/5 shadow-2xl print:border-none print:shadow-none print:rounded-none">
         <table class="w-full text-left border-collapse">
@@ -64,7 +83,6 @@
         var oldHtml = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Enviando...';
-
         try {
             var res = await fetch(url);
             var data = await res.json();
@@ -77,4 +95,65 @@
         }
     }
 </script>
+
+{% if datos %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const genLabels = [{% for d in datos %}'{{ d.nombreGenero|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+    const genData   = [{% for d in datos %}{{ d.totalCanciones|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const ctx = document.getElementById('generoChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: genLabels,
+            datasets: [{
+                label: 'Canciones',
+                data: genData,
+                backgroundColor: 'rgba(68, 226, 215, 0.15)',
+                borderColor: 'rgba(68, 226, 215, 0.9)',
+                borderWidth: 2,
+                borderRadius: { topLeft: 0, topRight: 6, bottomLeft: 0, bottomRight: 6 },
+                hoverBackgroundColor: 'rgba(68, 226, 215, 0.30)',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1C1E24',
+                    borderColor: 'rgba(68,226,215,0.3)',
+                    borderWidth: 1,
+                    titleColor: '#E3E2E8',
+                    bodyColor: '#AAA8B5',
+                    padding: 12,
+                    callbacks: {
+                        label: ctx => `  ${ctx.parsed.x.toLocaleString()} canciones`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: '#AAA8B5',
+                        font: { size: 11 },
+                    },
+                    grid: { color: 'rgba(255,255,255,0.04)' },
+                    border: { display: false }
+                },
+                y: {
+                    ticks: {
+                        color: '#E3E2E8',
+                        font: { size: 12, weight: '500' },
+                    },
+                    grid: { display: false },
+                    border: { display: false }
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
 {% endblock %}

@@ -1477,3 +1477,136 @@ def enviar_artistas_populares_correo(request):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
+
+# ══════════════════════════════════════════
+#  EXPORTACIÓN EXCEL — CATÁLOGO
+# ══════════════════════════════════════════
+
+@login_required
+def exportar_top_10_excel(request):
+    """Exporta el ranking Top 10 a un archivo Excel."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        canciones = obtener_ranking_popularidad_mensual()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Top 10 Mensual'
+        # Encabezado
+        headers = ['#', 'Canción', 'Artista', 'Escuchas']
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.font = Font(bold=True, color='00363A')
+            cell.fill = PatternFill('solid', fgColor='45F3FF')
+            cell.alignment = Alignment(horizontal='center')
+        # Datos
+        for i, c in enumerate(canciones, 2):
+            ws.cell(row=i, column=1, value=i - 1)
+            ws.cell(row=i, column=2, value=c.get('tituloCancion') or c.get('nombre', '—'))
+            ws.cell(row=i, column=3, value=c.get('nombreArtistico', '—'))
+            ws.cell(row=i, column=4, value=c.get('total_escuchas_mes', 0))
+        ws.column_dimensions['B'].width = 35
+        ws.column_dimensions['C'].width = 25
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        response = HttpResponse(buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="Top_10_Mensual.xlsx"'
+        return response
+    except Exception as e:
+        return HttpResponse(f'Error al generar Excel: {str(e)}', status=500)
+
+
+@login_required
+def exportar_canciones_genero_excel(request):
+    """Exporta Canciones por Género a Excel."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        datos = obtener_canciones_por_genero()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Canciones por Género'
+        headers = ['Género', 'Total Canciones']
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.font = Font(bold=True, color='00363A')
+            cell.fill = PatternFill('solid', fgColor='45F3FF')
+            cell.alignment = Alignment(horizontal='center')
+        for i, d in enumerate(datos, 2):
+            ws.cell(row=i, column=1, value=d.get('genero', '—'))
+            ws.cell(row=i, column=2, value=d.get('total', 0))
+        ws.column_dimensions['A'].width = 30
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        response = HttpResponse(buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="Canciones_por_Genero.xlsx"'
+        return response
+    except Exception as e:
+        return HttpResponse(f'Error al generar Excel: {str(e)}', status=500)
+
+
+@login_required
+def exportar_artistas_populares_excel(request):
+    """Exporta Artistas más Seguidos a Excel."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        artistas = obtener_artistas_mas_seguidos()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Artistas más Seguidos'
+        headers = ['Artista', 'País', 'Seguidores']
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.font = Font(bold=True, color='00363A')
+            cell.fill = PatternFill('solid', fgColor='45F3FF')
+            cell.alignment = Alignment(horizontal='center')
+        for i, a in enumerate(artistas, 2):
+            ws.cell(row=i, column=1, value=a.get('nombreArtista', '—'))
+            ws.cell(row=i, column=2, value=a.get('paisOrigen', '—'))
+            ws.cell(row=i, column=3, value=a.get('totalSeguidores', 0))
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 20
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        response = HttpResponse(buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="Artistas_mas_Seguidos.xlsx"'
+        return response
+    except Exception as e:
+        return HttpResponse(f'Error al generar Excel: {str(e)}', status=500)
+
+
+@login_required
+def exportar_playlists_populares_excel(request):
+    """Exporta Playlists Populares a Excel."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        playlists = obtener_playlists_populares()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Playlists Populares'
+        headers = ['Playlist', 'Creador', 'Total Canciones']
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.font = Font(bold=True, color='00363A')
+            cell.fill = PatternFill('solid', fgColor='45F3FF')
+            cell.alignment = Alignment(horizontal='center')
+        for i, p in enumerate(playlists, 2):
+            ws.cell(row=i, column=1, value=p.get('nombre', '—'))
+            ws.cell(row=i, column=2, value=p.get('owner_name', '—'))
+            ws.cell(row=i, column=3, value=p.get('total_canciones', 0))
+        ws.column_dimensions['A'].width = 35
+        ws.column_dimensions['B'].width = 25
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        response = HttpResponse(buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="Playlists_Populares.xlsx"'
+        return response
+    except Exception as e:
+        return HttpResponse(f'Error al generar Excel: {str(e)}', status=500)
+

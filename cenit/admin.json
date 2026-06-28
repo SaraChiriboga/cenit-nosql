@@ -1,12 +1,11 @@
 {
     "ENGINE": "mssql",
     "NAME": "Cenit",
-    "SERVER": "SARILOLA",
+    "SERVER": "localhost",
     "USER": "PythonConnectCenit",
     "PASSWORD": "Cenit2026!",
     "OPTIONS": {
-        "driver": "ODBC Driver 17 for SQL Server",
-        "extra_params": "Trusted_Connection=yes;"
+        "driver": "ODBC Driver 17 for SQL Server"
     },
     "MONGODB_URI": "mongodb+srv://choloplay:Cenit2026@clusterudla01.3scysxe.mongodb.net/C%C3%A9nit",
     "MONGODB_NAME": "Cénit"

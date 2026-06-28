@@ -44,10 +44,10 @@ class RoleRestrictionMiddleware:
 
         # ── ROL: ANALISTA ──
         elif role == 'Analista':
-            # Solo puede ingresar a reportes o estadísticas
-            is_report_path = '/reportes/' in path or '/estadisticas/' in path
-            if not is_report_path:
-                return redirect('reporte_top_10')
+            # Solo puede ingresar a reportes, estadísticas o su dashboard
+            is_allowed = '/reportes/' in path or '/estadisticas/' in path
+            if not is_allowed:
+                return redirect('analista_dashboard')
 
         # ── ROL: ADMINISTRADOR ──
         elif role == 'Administrador':

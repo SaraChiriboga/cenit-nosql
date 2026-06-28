@@ -9,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    {% block extrahead %}{% endblock %}
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0B0C10; }
@@ -99,6 +100,17 @@
 
         <nav class="flex-1 flex flex-col gap-1 px-3 overflow-y-auto">
 
+            {% if user_role == 'Analista' %}
+            <a href="{% url 'analista_dashboard' %}"
+               class="flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-150
+                      {% if request.resolver_match.url_name == 'analista_dashboard' %}text-secondary bg-secondary/10{% else %}text-on-surface-variant hover:text-on-surface hover:bg-white/5{% endif %}">
+                <span class="material-symbols-outlined text-[20px]">home</span>
+                <span class="font-body-md text-body-md">Dashboard</span>
+            </a>
+            <div class="h-px bg-white/5 my-1"></div>
+            {% endif %}
+
+            {% if user_role == 'Administrador' %}
             <div>
                 <button id="catalog-toggle"
                     class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
@@ -128,7 +140,9 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
 
+            {% if user_role == 'Administrador' %}
             <div>
                 <button id="usuarios-toggle"
                     class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
@@ -186,7 +200,9 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
 
+            {% if user_role == 'Administrador' %}
             <div>
                 <button id="subscriptions-toggle"
                     class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-0
@@ -245,6 +261,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
 
             <div>
                 <button id="reportes-toggle"
@@ -253,10 +270,10 @@
                     <span class="material-symbols-outlined text-[20px]">analytics</span>
                     <span class="font-body-md text-body-md flex-1 text-left">Reportes</span>
                     <span class="material-symbols-outlined text-[16px] submenu-arrow transition-transform duration-200
-                          {% if '/reportes/' in request.path %}rotated{% endif %}" id="reportes-arrow">chevron_right</span>
+                          {% if '/reportes/' in request.path or user_role == 'Analista' %}rotated{% endif %}" id="reportes-arrow">chevron_right</span>
                 </button>
 
-                <div class="submenu {% if '/reportes/' in request.path %}open{% endif %}" id="reportes-submenu">
+                <div class="submenu {% if '/reportes/' in request.path or user_role == 'Analista' %}open{% endif %}" id="reportes-submenu">
                     <div class="ml-3 pl-3 border-l border-white/10 mt-1 flex flex-col gap-0.5 pb-2">
 
                         <!-- CATÁLOGO -->
@@ -328,11 +345,19 @@
         <div class="mt-auto px-6 border-t border-white/5 pt-8">
             <div class="flex items-center gap-3 p-3 rounded-lg bg-surface-container-highest/40 mb-6">
                 <div class="w-10 h-10 rounded-full overflow-hidden bg-secondary/20 flex items-center justify-center">
+                    {% if user_role == 'Analista' %}
+                    <span class="material-symbols-outlined text-secondary">bar_chart</span>
+                    {% else %}
                     <span class="material-symbols-outlined text-secondary">smart_toy</span>
+                    {% endif %}
                 </div>
                 <div>
                     <div class="font-label-md text-label-md text-on-surface">{{ request.user.username|default:"CENIT-SA"|upper }}</div>
+                    {% if user_role == 'Analista' %}
+                    <div class="font-label-sm text-label-sm text-on-surface-variant">Analyst Console</div>
+                    {% else %}
                     <div class="font-label-sm text-label-sm text-on-surface-variant">Admin Console</div>
+                    {% endif %}
                 </div>
                 <div class="ml-auto">
                     <span class="material-symbols-outlined text-secondary text-[20px]">verified</span>
