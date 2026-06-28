@@ -840,6 +840,15 @@ tailwind.config = {
   function loadSong(song) {
     if (!song) return;
 
+    fetch('/player/api/song/play/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ cancion_id: song.id })
+    }).catch(err => console.error("Error registering play:", err));
+
     document.querySelectorAll('.track-row').forEach(row => {
       row.classList.remove('is-playing', 'text-primary', 'bg-white/[0.02]');
       const rowIcon = row.querySelector('.row-play span');

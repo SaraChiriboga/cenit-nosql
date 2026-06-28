@@ -568,7 +568,7 @@ def player_artist_view(request, artist_id):
 
         # Songs
         songs_cursor = db["Cancion"].find({
-            "colaboradores.idArtista": int(artist_id),
+            "colaboradores.artista_id": int(artist_id),
             "estadoPublicacion": "Publicada"
         }).limit(5)
         popular_tracks = []
@@ -916,6 +916,29 @@ def eliminar_playlist(request):
             
         db["playlists"].delete_one({"_id": ObjectId(playlist_id)})
         return JsonResponse({"status": "success", "message": "Playlist eliminada correctamente."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required(login_url='login_player')
+@require_POST
+def registrar_reproduccion(request):
+    try:
+        data = json.loads(request.body)
+        cancion_id = data.get("cancion_id")
+        if not cancion_id:
+            return JsonResponse({"status": "error", "message": "Falta ID de canción."}, status=400)
+            
+        import datetime
+        today_str = datetime.date.today().isoformat()
+        
+        # Increment play counts in estadisticasDiarias
+        db["estadisticasDiarias"].update_one(
+            {"idCancion": int(cancion_id), "fechaReporte": today_str},
+            {"$inc": {"totalRepros": 1}},
+            upsert=True
+        )
+        
+        return JsonResponse({"status": "success", "message": "Reproducción registrada correctamente."})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
 

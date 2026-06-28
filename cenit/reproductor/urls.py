@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/song/<int:cancion_id>/preview/', views.get_song_preview, name='player_song_preview'),
     path('api/playlist/edit/', views.editar_playlist, name='player_editar_playlist'),
     path('api/playlist/delete/', views.eliminar_playlist, name='player_eliminar_playlist'),
+    path('api/song/play/', views.registrar_reproduccion, name='player_registrar_reproduccion'),
     
     # Template-based sub-views
     path('view/home/', views.player_home_view, name='player_view_home'),
