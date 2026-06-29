@@ -1658,7 +1658,7 @@ def _dashboard_kpis():
     try:
         hoy = datetime.now()
         en_5_dias = hoy + timedelta(days=5)
-        docs_sus = list(suscripciones_col.find({'estado': {'$in': ['Activa', 'activa']}}))
+        docs_sus = list(suscripciones_col.find({'estado': {'$in': ['Activa', 'activa']}}, {'fechaFin': 1}))
         count = 0
         for s in docs_sus:
             fecha_fin = s.get('fechaFin')
@@ -1681,7 +1681,7 @@ def _dashboard_kpis():
 
     # ── KPI 5: Ingresos estimados del mes ──
     try:
-        sus_activas = list(suscripciones_col.find({'estado': {'$in': ['Activa', 'activa']}}))
+        sus_activas = list(suscripciones_col.find({'estado': {'$in': ['Activa', 'activa']}}, {'tipoSuscripcion.precio': 1}))
         total_ingresos = 0
         for s in sus_activas:
             tipo = s.get('tipoSuscripcion', {})
