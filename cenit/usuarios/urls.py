@@ -15,7 +15,7 @@ urlpatterns = [
     # ══════════════════════════════════════════
     path('auditoria/',                   views.auditoria_list,   name='auditoria_list'),
     path('auditoria/nuevo/',             views.auditoria_add,    name='auditoria_add'),
-    path('auditoria/<int:pk>/eliminar/', views.auditoria_delete, name='auditoria_delete'),
+    path('auditoria/<str:pk>/eliminar/', views.auditoria_delete, name='auditoria_delete'),
 
     # ══════════════════════════════════════════
     #  SEGUIMIENTOS

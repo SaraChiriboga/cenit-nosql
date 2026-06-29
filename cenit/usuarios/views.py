@@ -20,7 +20,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.views.decorators.http import require_POST
 
-from .models import AuditoriaAcceso, Rol, Seguimiento, CancionFavorita
+
 
 
 # ══════════════════════════════════════════
@@ -129,9 +129,15 @@ def seguimiento_list(request):
     docs = list(mongo_db["seguimientos"].find())
     seguimientos = []
     
+    user_ids = list(set([doc.get("idUsuario") for doc in docs if doc.get("idUsuario") is not None]))
+    artist_ids = list(set([doc.get("idArtista") for doc in docs if doc.get("idArtista") is not None]))
+    
+    users_dict = {u.get("id"): u for u in mongo_db["usuarios"].find({"id": {"$in": user_ids}})}
+    artists_dict = {a.get("artista_id"): a for a in mongo_db["Artista"].find({"artista_id": {"$in": artist_ids}})}
+    
     for doc in docs:
-        user = mongo_db["usuarios"].find_one({"id": doc.get("idUsuario")})
-        artist = mongo_db["Artista"].find_one({"artista_id": doc.get("idArtista")})
+        user = users_dict.get(doc.get("idUsuario"))
+        artist = artists_dict.get(doc.get("idArtista"))
         
         user_name = f"{user.get('nombre', '')} {user.get('apellido', '')}" if user else f"Usuario {doc.get('idUsuario')}"
         artist_name = artist.get('nombreArtistico', f"Artista {doc.get('idArtista')}") if artist else f"Artista {doc.get('idArtista')}"
@@ -226,16 +232,25 @@ def favorita_list(request):
     docs = list(mongo_db["cancionesFavoritas"].find())
     favoritas = []
     
+    user_ids = list(set([doc.get("idUsuario") for doc in docs if doc.get("idUsuario") is not None]))
+    song_ids = list(set([doc.get("idCancion") for doc in docs if doc.get("idCancion") is not None]))
+    
+    users_dict = {u.get("id"): u for u in mongo_db["usuarios"].find({"id": {"$in": user_ids}})}
+    songs_dict = {s.get("cancion_id"): s for s in mongo_db["Cancion"].find({"cancion_id": {"$in": song_ids}})}
+    
+    album_ids = list(set([s.get("album_id") for s in songs_dict.values() if s.get("album_id") is not None]))
+    albums_dict = {a.get("album_id"): a for a in mongo_db["Album"].find({"album_id": {"$in": album_ids}})}
+    
     for doc in docs:
-        user = mongo_db["usuarios"].find_one({"id": doc.get("idUsuario")})
-        song = mongo_db["Cancion"].find_one({"cancion_id": doc.get("idCancion")})
+        user = users_dict.get(doc.get("idUsuario"))
+        song = songs_dict.get(doc.get("idCancion"))
         
         user_name = f"{user.get('nombre', '')} {user.get('apellido', '')}" if user else f"Usuario {doc.get('idUsuario')}"
         song_name = song.get('tituloCancion', f"Canción {doc.get('idCancion')}") if song else f"Canción {doc.get('idCancion')}"
         album_name = "Sencillo"
         
-        if song and song.get('album'):
-            album_doc = mongo_db["Album"].find_one({"album_id": song.get('album')})
+        if song and song.get('album_id'):
+            album_doc = albums_dict.get(song.get('album_id'))
             if album_doc:
                 album_name = album_doc.get("tituloAlbum", "Sencillo")
                 
@@ -316,11 +331,6 @@ def favorita_delete(request):
 
     return redirect('favorita_list')
 
-def _obtener_datos_sql(query, params=None):
-    with connection.cursor() as cursor:
-        cursor.execute(query, params or [])
-        columns = [col[0] for col in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 # ══════════════════════════════════════════
 #  DIRECTORIO GENERAL (users_overview)
@@ -395,7 +405,12 @@ def add_user(request):
                     'message': 'Este correo ya está registrado en el sistema.'
                 }, status=400)
 
+            # --- CORRECCIÓN: Generar ID auto-incremental ---
+            max_user = mongo_db["usuarios"].find_one(sort=[("id", -1)])
+            next_id = (max_user.get("id", 0) + 1) if max_user else 1
+
             new_user = {
+                "id": next_id,
                 "nombre": nombre,
                 "apellido": apellido,
                 "email": email,

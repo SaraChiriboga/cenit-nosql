@@ -61,13 +61,14 @@
                 <td class="px-6 py-4 text-on-surface font-medium">{{ registro.accion|default:"—" }}</td>
                 <td class="px-6 py-4 text-on-surface-variant font-mono">{{ registro.iporigen|default:"—" }}</td>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 rounded-lg bg-secondary/10 text-secondary text-xs font-medium">{{ registro.rol }}</span>
+                    <span class="px-2 py-1 rounded-lg bg-secondary/10 text-secondary text-xs font-medium">{{ registro.rol.nombrerol }}</span>
                 </td>
                 <td class="px-6 py-4 text-right">
-                    <a href="{% url 'auditoria_delete' registro.idlog %}"
-                       class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all inline-flex">
+                    <button type="button"
+                       class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all inline-flex"
+                       onclick="showDeleteModal('{{ registro.idlog }}')">
                         <span class="material-symbols-outlined text-[18px]">delete</span>
-                    </a>
+                    </button>
                 </td>
             </tr>
             {% empty %}
@@ -81,4 +82,52 @@
         </tbody>
     </table>
 </div>
+
+<!-- Modal de confirmación -->
+<div id="delete-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="glass-panel p-8 rounded-3xl w-full max-w-sm text-center border border-white/10 shadow-2xl transform transition-transform scale-95" id="delete-modal-content">
+        <span class="material-symbols-outlined text-5xl text-red-500 mb-4 block">delete_forever</span>
+        <h2 class="text-xl font-bold text-white mb-2">¿Eliminar registro?</h2>
+        <p class="text-white/60 mb-8 text-sm">Esta acción eliminará el registro de auditoría permanentemente y no se puede deshacer.</p>
+        <div class="flex gap-4">
+            <button onclick="closeModal()" class="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all">
+                Cancelar
+            </button>
+            <button id="btn-confirm-delete" onclick="confirmDelete()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                Eliminar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    var pendingDeleteUrl = null;
+
+    function showDeleteModal(idlog) {
+        pendingDeleteUrl = "{% url 'auditoria_delete' 999999 %}".replace('999999', idlog);
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => {
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }, 10);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 150);
+    }
+
+    function confirmDelete() {
+        if (pendingDeleteUrl) window.location.href = pendingDeleteUrl;
+    }
+</script>
 {% endblock %}

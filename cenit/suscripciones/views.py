@@ -318,11 +318,6 @@ def plan_list(request):
             {'moneda':     {'$regex': query, '$options': 'i'}},
         ]}
     planes = [MongoDoc(d) for d in tipo_suscripciones_col.find(filtro).sort('tipo_id', 1)]
-    import sys
-    if planes:
-        print(f"DEBUG VIEW: plan type is {type(planes[0])}", file=sys.stderr)
-        print(f"DEBUG VIEW: plan._data is {planes[0]._data}", file=sys.stderr)
-        print(f"DEBUG VIEW: plan.tipo_id evaluates to {getattr(planes[0], 'tipo_id', 'NOT FOUND')}", file=sys.stderr)
     return render(request, 'Suscripciones/plan/plan_list.html', {
         'planes': planes,
         'query': query,
@@ -338,7 +333,7 @@ def plan_add(request):
             moneda  = request.POST.get('moneda')
             duracion = request.POST.get('duracion')
 
-            if not all([nombre, precio, moneda, duracion]):
+            if not all([nombre, moneda, duracion]) or precio is None or precio == '':
                 messages.error(request, 'Todos los campos son obligatorios.')
                 return render(request, 'Suscripciones/plan/plan_form.html',
                               {'action': 'Nuevo', 'monedas': MONEDAS})

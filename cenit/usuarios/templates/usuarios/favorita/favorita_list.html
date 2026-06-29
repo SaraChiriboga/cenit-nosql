@@ -79,9 +79,9 @@
                         {% csrf_token %}
                         <input type="hidden" name="usuario_id" value="{{ fav.usuario_id }}">
                         <input type="hidden" name="cancion_id" value="{{ fav.cancion_id }}">
-                        <button type="submit"
+                        <button type="button"
                                 class="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all"
-                                onclick="return confirm('¿Quitar esta canción de favoritas?')">
+                                onclick="showDeleteModal('{{ fav.usuario_id }}', '{{ fav.cancion_id }}')">
                             <span class="material-symbols-outlined text-[18px]">delete</span>
                         </button>
                     </form>
@@ -98,4 +98,62 @@
         </tbody>
     </table>
 </div>
+
+<!-- Modal de confirmación -->
+<div id="delete-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="glass-panel p-8 rounded-3xl w-full max-w-sm text-center border border-white/10 shadow-2xl transform transition-transform scale-95" id="delete-modal-content">
+        <span class="material-symbols-outlined text-5xl text-red-500 mb-4 block">delete_forever</span>
+        <h2 class="text-xl font-bold text-white mb-2">¿Quitar de favoritas?</h2>
+        <p class="text-white/60 mb-8 text-sm">Esta canción será removida de la lista de favoritas del usuario. Esta acción no se puede deshacer.</p>
+        <div class="flex gap-4">
+            <button onclick="closeModal()" class="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all">
+                Cancelar
+            </button>
+            <button id="btn-confirm-delete" onclick="confirmDelete()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                Eliminar
+            </button>
+        </div>
+    </div>
+</div>
+
+<form id="delete-fav-form" method="post" action="{% url 'favorita_delete' %}" style="display:none">
+    {% csrf_token %}
+    <input type="hidden" id="del-usuario-id" name="usuario_id">
+    <input type="hidden" id="del-cancion-id" name="cancion_id">
+</form>
+
+<script>
+    var pendingUsuarioId = null;
+    var pendingCancionId = null;
+
+    function showDeleteModal(usuarioId, cancionId) {
+        pendingUsuarioId = usuarioId;
+        pendingCancionId = cancionId;
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => {
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }, 10);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('delete-modal');
+        const content = document.getElementById('delete-modal-content');
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 150);
+    }
+
+    function confirmDelete() {
+        document.getElementById('del-usuario-id').value = pendingUsuarioId;
+        document.getElementById('del-cancion-id').value = pendingCancionId;
+        document.getElementById('delete-fav-form').submit();
+    }
+</script>
 {% endblock %}

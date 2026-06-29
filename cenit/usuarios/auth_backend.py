@@ -20,6 +20,9 @@ class MongoAuthBackend(BaseBackend):
             if not mongo_user:
                 return None
 
+            if mongo_user.get("estadoCuenta") == "Suspendido":
+                return None
+
             stored_hash = mongo_user.get("contrasena")
             
             # Si la contraseña es del formato Django PBKDF2
