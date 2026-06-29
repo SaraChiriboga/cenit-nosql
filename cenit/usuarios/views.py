@@ -1,7 +1,15 @@
+from django.utils.dateparse import parse_datetime
 import secrets
 import datetime
 from bson import ObjectId
 from cenit.mongo_client import db as mongo_db
+class MongoDoc:
+    def __init__(self, name, **kwargs):
+        self._name = name
+        self.__dict__.update(kwargs)
+    def __str__(self):
+        return str(self._name)
+
 
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password
@@ -123,7 +131,7 @@ def seguimiento_list(request):
     
     for doc in docs:
         user = mongo_db["usuarios"].find_one({"id": doc.get("idUsuario")})
-        artist = mongo_db["Artista"].find_one({"idArtista": doc.get("idArtista")})
+        artist = mongo_db["Artista"].find_one({"artista_id": doc.get("idArtista")})
         
         user_name = f"{user.get('nombre', '')} {user.get('apellido', '')}" if user else f"Usuario {doc.get('idUsuario')}"
         artist_name = artist.get('nombreArtistico', f"Artista {doc.get('idArtista')}") if artist else f"Artista {doc.get('idArtista')}"
@@ -132,9 +140,11 @@ def seguimiento_list(request):
             continue
             
         seguimientos.append({
-            'usuario': {'idusuario': doc.get('idUsuario'), 'nombre': user_name, 'apellido': ''},
-            'artista': {'idartista': doc.get('idArtista'), 'nombreartistico': artist_name},
-            'fechaseguimiento': doc.get('fechaSeguimiento')
+            'usuario': MongoDoc(user_name),
+            'artista': MongoDoc(artist_name, paisorigen=artist.get('paisOrigen', '') if artist else '', urlperfil=artist.get('urlPerfil', '') if artist else ''),
+            'fechaseguimiento': parse_datetime(doc.get('fechaSeguimiento')) if doc.get('fechaSeguimiento') and isinstance(doc.get('fechaSeguimiento'), str) else doc.get('fechaSeguimiento'),
+            'usuario_id': doc.get('idUsuario'),
+            'artista_id': doc.get('idArtista'),
         })
         
     return render(request, 'Usuarios/seguimiento/seguimiento_list.html', {
@@ -233,9 +243,11 @@ def favorita_list(request):
             continue
             
         favoritas.append({
-            'usuario': {'idusuario': doc.get('idUsuario'), 'nombre': user_name, 'apellido': ''},
-            'cancion': {'idcancion': doc.get('idCancion'), 'titulocancion': song_name, 'album': {'tituloalbum': album_name}},
-            'fechalike': doc.get('fechaLike')
+            'usuario': MongoDoc(user_name),
+            'cancion': MongoDoc(song_name, album=album_name, urlportada=song.get('urlPortada', '') if song else ''),
+            'fechalike': parse_datetime(doc.get('fechaLike')) if doc.get('fechaLike') and isinstance(doc.get('fechaLike'), str) else doc.get('fechaLike'),
+            'usuario_id': doc.get('idUsuario'),
+            'cancion_id': doc.get('idCancion'),
         })
         
     return render(request, 'Usuarios/favorita/favorita_list.html', {
@@ -628,6 +640,13 @@ def read_role(request, idRol):
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.http import require_http_methods
 from cenit.mongo_client import db as mongo_db
+class MongoDoc:
+    def __init__(self, name, **kwargs):
+        self._name = name
+        self.__dict__.update(kwargs)
+    def __str__(self):
+        return str(self._name)
+
 
 
 def _get_role_from_user(user):
