@@ -2,12 +2,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # ── Usuarios ──
     path('', views.users_overview, name='users_overview'),
     path('nuevo/', views.add_user, name='add_user'),
-    path('<str:idUsuario>/', views.read_user, name='read_user'),
-    path('<str:idUsuario>/editar/', views.edit_user, name='edit_user'),
-    path('<str:idUsuario>/toggle/', views.toggle_user, name='toggle_user'),
 
     # ── Roles ──
     path('roles/', views.roles_overview, name='roles_overview'),
@@ -34,4 +30,9 @@ urlpatterns = [
     path('favoritas/',           views.favorita_list,   name='favorita_list'),
     path('favoritas/nueva/',     views.favorita_add,    name='favorita_add'),
     path('favoritas/eliminar/',  views.favorita_delete, name='favorita_delete'),
+
+    # ── Rutas Dinámicas de Usuarios (Deben ir al final para no atrapar rutas estáticas) ──
+    path('<str:idUsuario>/', views.read_user, name='read_user'),
+    path('<str:idUsuario>/editar/', views.edit_user, name='edit_user'),
+    path('<str:idUsuario>/toggle/', views.toggle_user, name='toggle_user'),
 ]

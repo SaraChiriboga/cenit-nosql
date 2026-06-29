@@ -21,14 +21,27 @@ from .models import AuditoriaAcceso, Rol, Seguimiento, CancionFavorita
 
 @login_required
 def auditoria_list(request):
-    registros = AuditoriaAcceso.objects.select_related('rol').all()
     query = request.GET.get('q', '')
+    filter_query = {}
     if query:
-        registros = registros.filter(
-            Q(accion__icontains=query) |
-            Q(iporigen__icontains=query) |
-            Q(rol__nombrerol__icontains=query)
-        )
+        filter_query = {
+            "$or": [
+                {"accion": {"$regex": query, "$options": "i"}},
+                {"iporigen": {"$regex": query, "$options": "i"}},
+                {"rol": {"$regex": query, "$options": "i"}}
+            ]
+        }
+    
+    docs = list(mongo_db["AuditoriaAcceso"].find(filter_query).sort("_id", -1))
+    registros = []
+    for doc in docs:
+        registros.append({
+            'idlog': str(doc.get('_id')),
+            'accion': doc.get('accion'),
+            'iporigen': doc.get('iporigen'),
+            'rol': {'nombrerol': doc.get('rol')}
+        })
+        
     return render(request, 'Usuarios/auditoria/auditoria_list.html', {
         'registros': registros,
         'query': query,
@@ -37,23 +50,32 @@ def auditoria_list(request):
 
 @login_required
 def auditoria_add(request):
-    roles = Rol.objects.all()
+    roles = []
+    roles_docs = mongo_db["usuarios"].distinct("rol.nombreRol")
+    for r in roles_docs:
+        if r: roles.append({'nombrerol': r, 'idrol': r})
+    if not roles:
+        roles = [{'nombrerol': 'Administrador', 'idrol': 'Administrador'}, 
+                 {'nombrerol': 'Analista', 'idrol': 'Analista'}, 
+                 {'nombrerol': 'Usuario', 'idrol': 'Usuario'}]
+
     if request.method == 'POST':
         try:
             accion   = request.POST.get('accion')
             iporigen = request.POST.get('iporigen')
-            rol_id   = request.POST.get('rol')
+            rol_nombre = request.POST.get('rol')
 
-            if not rol_id:
+            if not rol_nombre:
                 messages.error(request, 'El rol es obligatorio.')
                 return render(request, 'Usuarios/auditoria/auditoria_form.html',
                               {'action': 'Nuevo', 'roles': roles})
 
-            AuditoriaAcceso.objects.create(
-                accion=accion or None,
-                iporigen=iporigen or None,
-                rol_id=rol_id,
-            )
+            mongo_db["AuditoriaAcceso"].insert_one({
+                'accion': accion or None,
+                'iporigen': iporigen or None,
+                'rol': rol_nombre,
+                'fecha': datetime.datetime.now().isoformat()
+            })
             messages.success(request, 'Registro de auditoría creado.')
             return redirect('auditoria_list')
         except Exception as e:
@@ -67,11 +89,20 @@ def auditoria_add(request):
 
 @login_required
 def auditoria_delete(request, pk):
-    registro = get_object_or_404(AuditoriaAcceso, pk=pk)
+    try:
+        doc = mongo_db["AuditoriaAcceso"].find_one({"_id": ObjectId(pk)})
+    except:
+        doc = None
+    if not doc:
+        messages.error(request, 'Registro no encontrado.')
+        return redirect('auditoria_list')
+
     if request.method == 'POST':
-        registro.delete()
+        mongo_db["AuditoriaAcceso"].delete_one({"_id": ObjectId(pk)})
         messages.success(request, 'Registro de auditoría eliminado.')
         return redirect('auditoria_list')
+    
+    registro = {'idlog': str(doc.get('_id')), 'accion': doc.get('accion')}
     return render(request, 'Usuarios/confirm_delete.html', {
         'objeto': registro,
         'tipo': 'registro de auditoría',
@@ -85,13 +116,27 @@ def auditoria_delete(request, pk):
 
 @login_required
 def seguimiento_list(request):
-    seguimientos = Seguimiento.objects.select_related('usuario', 'artista').all()
     query = request.GET.get('q', '')
-    if query:
-        seguimientos = seguimientos.filter(
-            Q(usuario__nombre__icontains=query) |
-            Q(artista__nombre__icontains=query)
-        )
+    
+    docs = list(mongo_db["seguimientos"].find())
+    seguimientos = []
+    
+    for doc in docs:
+        user = mongo_db["usuarios"].find_one({"id": doc.get("idUsuario")})
+        artist = mongo_db["Artista"].find_one({"idArtista": doc.get("idArtista")})
+        
+        user_name = f"{user.get('nombre', '')} {user.get('apellido', '')}" if user else f"Usuario {doc.get('idUsuario')}"
+        artist_name = artist.get('nombreArtistico', f"Artista {doc.get('idArtista')}") if artist else f"Artista {doc.get('idArtista')}"
+        
+        if query and query.lower() not in user_name.lower() and query.lower() not in artist_name.lower():
+            continue
+            
+        seguimientos.append({
+            'usuario': {'idusuario': doc.get('idUsuario'), 'nombre': user_name, 'apellido': ''},
+            'artista': {'idartista': doc.get('idArtista'), 'nombreartistico': artist_name},
+            'fechaseguimiento': doc.get('fechaSeguimiento')
+        })
+        
     return render(request, 'Usuarios/seguimiento/seguimiento_list.html', {
         'seguimientos': seguimientos,
         'query': query,
@@ -100,15 +145,16 @@ def seguimiento_list(request):
 
 @login_required
 def seguimiento_add(request):
-    from .models import Usuario
-    from catalogo.models import Artista
-    usuarios = Usuario.objects.all()
-    artistas = Artista.objects.all()
+    usuarios_docs = list(mongo_db["usuarios"].find({}, {"id": 1, "nombre": 1, "apellido": 1}))
+    usuarios = [{'idusuario': u.get('id'), 'nombre': u.get('nombre',''), 'apellido': u.get('apellido','')} for u in usuarios_docs]
+    
+    artistas_docs = list(mongo_db["Artista"].find({}, {"idArtista": 1, "nombreArtistico": 1}))
+    artistas = [{'idartista': a.get('idArtista'), 'nombreartistico': a.get('nombreArtistico')} for a in artistas_docs]
 
     if request.method == 'POST':
         try:
-            usuario_id = request.POST.get('usuario')
-            artista_id = request.POST.get('artista')
+            usuario_id = int(request.POST.get('usuario')) if request.POST.get('usuario') else None
+            artista_id = int(request.POST.get('artista')) if request.POST.get('artista') else None
 
             if not all([usuario_id, artista_id]):
                 messages.error(request, 'Usuario y artista son obligatorios.')
@@ -116,16 +162,18 @@ def seguimiento_add(request):
                     'action': 'Nuevo', 'usuarios': usuarios, 'artistas': artistas,
                 })
 
-            if Seguimiento.objects.filter(usuario_id=usuario_id, artista_id=artista_id).exists():
+            if mongo_db["seguimientos"].find_one({"idUsuario": usuario_id, "idArtista": artista_id}):
                 messages.error(request, 'Ese usuario ya sigue a ese artista.')
                 return render(request, 'Usuarios/seguimiento/seguimiento_form.html', {
                     'action': 'Nuevo', 'usuarios': usuarios, 'artistas': artistas,
                 })
 
-            Seguimiento.objects.create(
-                usuario_id=usuario_id,
-                artista_id=artista_id,
-            )
+            mongo_db["seguimientos"].insert_one({
+                "idUsuario": usuario_id,
+                "idArtista": artista_id,
+                "activo": 1,
+                "fechaSeguimiento": datetime.datetime.now().isoformat()
+            })
             messages.success(request, 'Seguimiento registrado.')
             return redirect('seguimiento_list')
         except Exception as e:
@@ -141,16 +189,17 @@ def seguimiento_add(request):
 @login_required
 def seguimiento_delete(request):
     if request.method == 'POST':
-        usuario_id = request.POST.get('usuario_id')
-        artista_id = request.POST.get('artista_id')
-        entrada = Seguimiento.objects.filter(
-            usuario_id=usuario_id, artista_id=artista_id
-        ).first()
-        if entrada:
-            entrada.delete()
-            messages.success(request, 'Seguimiento eliminado.')
-        else:
-            messages.error(request, 'No se encontró ese seguimiento.')
+        try:
+            usuario_id = int(request.POST.get('usuario_id'))
+            artista_id = int(request.POST.get('artista_id'))
+            result = mongo_db["seguimientos"].delete_one({"idUsuario": usuario_id, "idArtista": artista_id})
+            
+            if result.deleted_count > 0:
+                messages.success(request, 'Seguimiento eliminado.')
+            else:
+                messages.error(request, 'No se encontró ese seguimiento.')
+        except:
+            messages.error(request, 'Error al procesar la solicitud.')
         return redirect('seguimiento_list')
 
     return redirect('seguimiento_list')
@@ -162,13 +211,33 @@ def seguimiento_delete(request):
 
 @login_required
 def favorita_list(request):
-    favoritas = CancionFavorita.objects.select_related('usuario', 'cancion','cancion__album').all()
     query = request.GET.get('q', '')
-    if query:
-        favoritas = favoritas.filter(
-            Q(usuario__nombre__icontains=query) |
-            Q(cancion__titulocancion__icontains=query)
-        )
+    
+    docs = list(mongo_db["cancionesFavoritas"].find())
+    favoritas = []
+    
+    for doc in docs:
+        user = mongo_db["usuarios"].find_one({"id": doc.get("idUsuario")})
+        song = mongo_db["Cancion"].find_one({"cancion_id": doc.get("idCancion")})
+        
+        user_name = f"{user.get('nombre', '')} {user.get('apellido', '')}" if user else f"Usuario {doc.get('idUsuario')}"
+        song_name = song.get('tituloCancion', f"Canción {doc.get('idCancion')}") if song else f"Canción {doc.get('idCancion')}"
+        album_name = "Sencillo"
+        
+        if song and song.get('album'):
+            album_doc = mongo_db["Album"].find_one({"album_id": song.get('album')})
+            if album_doc:
+                album_name = album_doc.get("tituloAlbum", "Sencillo")
+                
+        if query and query.lower() not in user_name.lower() and query.lower() not in song_name.lower():
+            continue
+            
+        favoritas.append({
+            'usuario': {'idusuario': doc.get('idUsuario'), 'nombre': user_name, 'apellido': ''},
+            'cancion': {'idcancion': doc.get('idCancion'), 'titulocancion': song_name, 'album': {'tituloalbum': album_name}},
+            'fechalike': doc.get('fechaLike')
+        })
+        
     return render(request, 'Usuarios/favorita/favorita_list.html', {
         'favoritas': favoritas,
         'query': query,
@@ -177,15 +246,16 @@ def favorita_list(request):
 
 @login_required
 def favorita_add(request):
-    from .models import Usuario
-    from catalogo.models import Cancion
-    usuarios = Usuario.objects.all()
-    canciones = Cancion.objects.all()
+    usuarios_docs = list(mongo_db["usuarios"].find({}, {"id": 1, "nombre": 1, "apellido": 1}))
+    usuarios = [{'idusuario': u.get('id'), 'nombre': u.get('nombre',''), 'apellido': u.get('apellido','')} for u in usuarios_docs]
+    
+    canciones_docs = list(mongo_db["Cancion"].find({}, {"cancion_id": 1, "tituloCancion": 1}))
+    canciones = [{'idcancion': c.get('cancion_id'), 'titulocancion': c.get('tituloCancion')} for c in canciones_docs]
 
     if request.method == 'POST':
         try:
-            usuario_id = request.POST.get('usuario')
-            cancion_id = request.POST.get('cancion')
+            usuario_id = int(request.POST.get('usuario')) if request.POST.get('usuario') else None
+            cancion_id = int(request.POST.get('cancion')) if request.POST.get('cancion') else None
 
             if not all([usuario_id, cancion_id]):
                 messages.error(request, 'Usuario y canción son obligatorios.')
@@ -193,16 +263,17 @@ def favorita_add(request):
                     'action': 'Nueva', 'usuarios': usuarios, 'canciones': canciones,
                 })
 
-            if CancionFavorita.objects.filter(usuario_id=usuario_id, cancion_id=cancion_id).exists():
+            if mongo_db["cancionesFavoritas"].find_one({"idUsuario": usuario_id, "idCancion": cancion_id}):
                 messages.error(request, 'Esa canción ya está en favoritas de ese usuario.')
                 return render(request, 'Usuarios/favorita/favorita_form.html', {
                     'action': 'Nueva', 'usuarios': usuarios, 'canciones': canciones,
                 })
 
-            CancionFavorita.objects.create(
-                usuario_id=usuario_id,
-                cancion_id=cancion_id,
-            )
+            mongo_db["cancionesFavoritas"].insert_one({
+                "idUsuario": usuario_id,
+                "idCancion": cancion_id,
+                "fechaLike": datetime.datetime.now().isoformat()
+            })
             messages.success(request, 'Canción agregada a favoritas.')
             return redirect('favorita_list')
         except Exception as e:
@@ -218,16 +289,17 @@ def favorita_add(request):
 @login_required
 def favorita_delete(request):
     if request.method == 'POST':
-        usuario_id = request.POST.get('usuario_id')
-        cancion_id = request.POST.get('cancion_id')
-        entrada = CancionFavorita.objects.filter(
-            usuario_id=usuario_id, cancion_id=cancion_id
-        ).first()
-        if entrada:
-            entrada.delete()
-            messages.success(request, 'Canción quitada de favoritas.')
-        else:
-            messages.error(request, 'No se encontró esa entrada en favoritas.')
+        try:
+            usuario_id = int(request.POST.get('usuario_id'))
+            cancion_id = int(request.POST.get('cancion_id'))
+            result = mongo_db["cancionesFavoritas"].delete_one({"idUsuario": usuario_id, "idCancion": cancion_id})
+            
+            if result.deleted_count > 0:
+                messages.success(request, 'Canción quitada de favoritas.')
+            else:
+                messages.error(request, 'No se encontró esa entrada en favoritas.')
+        except:
+            messages.error(request, 'Error al procesar la solicitud.')
         return redirect('favorita_list')
 
     return redirect('favorita_list')
@@ -281,7 +353,7 @@ def users_overview(request):
 
     except Exception as e:
         error_db = str(e)
-        print(f"❌ ERROR MONGODB EN USERS_OVERVIEW: {error_db}")
+        print(f"[X] ERROR MONGODB EN USERS_OVERVIEW: {error_db}")
 
     context = {
         'usuarios': usuarios,
@@ -364,7 +436,7 @@ def read_user(request, idUsuario):
         else:
             return redirect('users_overview')
     except Exception as e:
-        print(f"❌ ERROR EN READ_USER: {str(e)}")
+        print(f"[X] ERROR EN READ_USER: {str(e)}")
         return redirect('users_overview')
 
     return render(request, 'usuarios/usuarios/read_user.html', {'u': u})
@@ -424,7 +496,7 @@ def edit_user(request, idUsuario):
         }
         return render(request, 'usuarios/usuarios/edit_user.html', {'u': u})
     except Exception as e:
-        print(f"❌ ERROR EN EDIT_USER: {str(e)}")
+        print(f"[X] ERROR EN EDIT_USER: {str(e)}")
         return redirect('users_overview')
 
 # ══════════════════════════════════════════
@@ -488,7 +560,7 @@ def roles_overview(request):
             })
     except Exception as e:
         error_db = str(e)
-        print(f"❌ ERROR MONGODB EN ROLES_OVERVIEW: {error_db}")
+        print(f"[X] ERROR MONGODB EN ROLES_OVERVIEW: {error_db}")
 
     return render(request, 'usuarios/roles/roles_overview.html', {'roles': roles, 'error_db': error_db})
 @login_required
@@ -570,7 +642,7 @@ def _get_role_from_user(user):
                 return rol.get("nombreRol", "Usuario")
             return str(rol)
     except Exception as e:
-        print("❌ Error al obtener rol:", e)
+        print("[X] Error al obtener rol:", e)
     return 'Usuario'
 
 
